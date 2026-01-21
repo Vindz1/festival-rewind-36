@@ -1,26 +1,37 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Music } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { FestivalCard } from '@/components/FestivalCard';
-import { Button } from '@/components/ui/button';
 import { festivals } from '@/data/festivals';
+import { useAuth } from '@/hooks/useAuth';
+import { Flame } from 'lucide-react';
 
 const Festivals = () => {
-  const [selectedFestivals, setSelectedFestivals] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
-  const toggleFestival = (id: string) => {
-    setSelectedFestivals((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background noise flex items-center justify-center">
+        <div className="animate-spin">
+          <Flame className="w-8 h-8 text-primary" />
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
     <div className="min-h-screen bg-background noise">
       <Header />
 
-      <main className="pt-24 pb-32">
+      <main className="pt-24 pb-16">
         <div className="container px-4">
           {/* Header */}
           <motion.div
@@ -29,10 +40,10 @@ const Festivals = () => {
             className="text-center mb-12"
           >
             <h1 className="font-display text-5xl md:text-7xl text-foreground mb-4">
-              CHOISISSEZ VOS <span className="text-gradient-fire">FESTIVALS</span>
+              CHOISISSEZ VOTRE <span className="text-gradient-fire">FESTIVAL</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Sélectionnez les éditions auxquelles vous avez participé pour retrouver vos concerts
+              Sélectionnez une édition pour voir les artistes et marquer vos concerts
             </p>
           </motion.div>
 
@@ -47,47 +58,14 @@ const Festivals = () => {
               >
                 <FestivalCard
                   festival={festival}
-                  onClick={() => toggleFestival(festival.id)}
-                  isSelected={selectedFestivals.includes(festival.id)}
+                  onClick={() => navigate(`/festivals/${festival.id}`)}
+                  isSelected={false}
                 />
               </motion.div>
             ))}
           </div>
         </div>
       </main>
-
-      {/* Bottom bar */}
-      {selectedFestivals.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-0 left-0 right-0 glass border-t border-border"
-        >
-          <div className="container px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <Music className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {selectedFestivals.length} festival{selectedFestivals.length > 1 ? 's' : ''} sélectionné{selectedFestivals.length > 1 ? 's' : ''}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Continuez pour choisir vos concerts
-                  </div>
-                </div>
-              </div>
-              <Link to={`/concerts?festivals=${selectedFestivals.join(',')}`}>
-                <Button variant="fire" className="gap-2">
-                  Continuer
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 };
