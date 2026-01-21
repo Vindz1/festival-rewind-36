@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          spotify_access_token: string | null
+          spotify_refresh_token: string | null
+          spotify_token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          spotify_access_token?: string | null
+          spotify_refresh_token?: string | null
+          spotify_token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          spotify_access_token?: string | null
+          spotify_refresh_token?: string | null
+          spotify_token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_concerts: {
+        Row: {
+          artist_mbid: string | null
+          artist_name: string
+          created_at: string
+          event_date: string | null
+          id: string
+          setlist_fm_event_id: string
+          user_id: string
+          venue_name: string | null
+        }
+        Insert: {
+          artist_mbid?: string | null
+          artist_name: string
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          setlist_fm_event_id: string
+          user_id: string
+          venue_name?: string | null
+        }
+        Update: {
+          artist_mbid?: string | null
+          artist_name?: string
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          setlist_fm_event_id?: string
+          user_id?: string
+          venue_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
