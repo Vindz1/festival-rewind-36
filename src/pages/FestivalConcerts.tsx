@@ -16,6 +16,7 @@ interface SetlistArtist {
   name: string;
   eventDate: string;
   venueId: string;
+  setlistId: string;
 }
 
 const FestivalConcerts = () => {
@@ -81,8 +82,17 @@ const FestivalConcerts = () => {
       return;
     }
     
-    const selectedArtists = userConcerts.map(c => c.artist_name);
-    navigate(`/generate?festival=${festivalId}&artists=${encodeURIComponent(selectedArtists.join(','))}`);
+    // Build artist data with setlistId for each selected concert
+    const selectedArtistsData = userConcerts.map(concert => {
+      const artist = artists.find(a => a.name === concert.artist_name);
+      return {
+        name: concert.artist_name,
+        mbid: artist?.mbid || concert.artist_mbid,
+        setlistId: artist?.setlistId,
+      };
+    });
+    
+    navigate(`/generate?festival=${festivalId}&artists=${encodeURIComponent(JSON.stringify(selectedArtistsData))}`);
   };
 
   if (authLoading) {
