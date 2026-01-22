@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Music, Check, ExternalLink, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Flame, Music, Check, ExternalLink, ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -16,23 +16,47 @@ interface Track {
   songName: string;
 }
 
+interface ArtistData {
+  name: string;
+  mbid?: string;
+  setlistId?: string;
+}
+
+interface ArtistWithStatus {
+  name: string;
+  songs: string[];
+  noSetlist: boolean;
+  message?: string;
+}
+
 const Generate = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { isConnected: spotifyConnected, loading: spotifyLoading } = useSpotify();
+  const { isConnected: spotifyConnected, connect: connectSpotify, loading: spotifyLoading } = useSpotify();
   
-  const artistNames = searchParams.get('artists')?.split(',').filter(Boolean) || [];
   const festivalId = searchParams.get('festival') || 'hellfest-2024';
   const year = festivalId.match(/\d{4}/)?.[0] || '2024';
+  
+  // Parse artist data from URL
+  const artistsParam = searchParams.get('artists');
+  let artistsData: ArtistData[] = [];
+  try {
+    artistsData = artistsParam ? JSON.parse(decodeURIComponent(artistsParam)) : [];
+  } catch {
+    // Fallback for old format (comma-separated names)
+    artistsData = artistsParam?.split(',').filter(Boolean).map(name => ({ name: decodeURIComponent(name) })) || [];
+  }
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentArtist, setCurrentArtist] = useState('');
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [artistsStatus, setArtistsStatus] = useState<ArtistWithStatus[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [tracksAdded, setTracksAdded] = useState(0);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,37 +65,67 @@ const Generate = () => {
   }, [user, authLoading, navigate]);
 
   const fetchSetlists = useCallback(async () => {
-    if (artistNames.length === 0 || isGenerating) return;
+    if (artistsData.length === 0 || isGenerating || hasFetched) return;
     
     setIsGenerating(true);
+    setHasFetched(true);
     setProgress(0);
     const allTracks: Track[] = [];
+    const allArtistsStatus: ArtistWithStatus[] = [];
 
-    for (let i = 0; i < artistNames.length; i++) {
-      const artistName = decodeURIComponent(artistNames[i]);
-      setCurrentArtist(artistName);
-      setProgress(Math.round(((i + 1) / artistNames.length) * 100));
+    for (let i = 0; i < artistsData.length; i++) {
+      const artist = artistsData[i];
+      setCurrentArtist(artist.name);
+      setProgress(Math.round(((i + 1) / artistsData.length) * 100));
 
       try {
         const { data, error } = await supabase.functions.invoke('setlist-fm', {
           body: { 
             action: 'getArtistSetlist',
-            artistName,
+            artistName: artist.name,
+            artistMbid: artist.mbid,
+            setlistId: artist.setlistId,
           },
         });
 
         if (error) {
-          console.error(`Error fetching setlist for ${artistName}:`, error);
+          console.error(`Error fetching setlist for ${artist.name}:`, error);
+          allArtistsStatus.push({
+            name: artist.name,
+            songs: [],
+            noSetlist: true,
+            message: 'Erreur lors de la récupération',
+          });
           continue;
         }
 
-        if (data?.success && data?.songs) {
-          for (const songName of data.songs) {
-            allTracks.push({ artistName, songName });
+        if (data?.success) {
+          if (data.noSetlist || data.songs?.length === 0) {
+            allArtistsStatus.push({
+              name: artist.name,
+              songs: [],
+              noSetlist: true,
+              message: data.message || 'Set-list non disponible pour ce groupe',
+            });
+          } else {
+            allArtistsStatus.push({
+              name: artist.name,
+              songs: data.songs,
+              noSetlist: false,
+            });
+            for (const songName of data.songs) {
+              allTracks.push({ artistName: artist.name, songName });
+            }
           }
         }
       } catch (err) {
-        console.error(`Error fetching setlist for ${artistName}:`, err);
+        console.error(`Error fetching setlist for ${artist.name}:`, err);
+        allArtistsStatus.push({
+          name: artist.name,
+          songs: [],
+          noSetlist: true,
+          message: 'Erreur lors de la récupération',
+        });
       }
 
       // Small delay to avoid rate limiting
@@ -79,18 +133,34 @@ const Generate = () => {
     }
 
     setTracks(allTracks);
+    setArtistsStatus(allArtistsStatus);
     setIsGenerating(false);
     setCurrentArtist('');
-  }, [artistNames, isGenerating]);
+  }, [artistsData, isGenerating, hasFetched]);
 
   useEffect(() => {
-    if (artistNames.length > 0 && !isGenerating && tracks.length === 0) {
+    if (artistsData.length > 0 && !hasFetched) {
       fetchSetlists();
     }
-  }, [artistNames, fetchSetlists, isGenerating, tracks.length]);
+  }, [artistsData, fetchSetlists, hasFetched]);
 
   const createPlaylist = async () => {
-    if (!user || !spotifyConnected || tracks.length === 0) return;
+    if (!user) {
+      toast.error('Veuillez vous connecter');
+      navigate('/auth');
+      return;
+    }
+    
+    if (!spotifyConnected) {
+      toast.error('Veuillez d\'abord connecter Spotify');
+      connectSpotify();
+      return;
+    }
+    
+    if (tracks.length === 0) {
+      toast.error('Aucun morceau à ajouter');
+      return;
+    }
 
     setIsCreatingPlaylist(true);
 
@@ -122,6 +192,9 @@ const Generate = () => {
     }
   };
 
+  const artistsWithSetlist = artistsStatus.filter(a => !a.noSetlist);
+  const artistsWithoutSetlist = artistsStatus.filter(a => a.noSetlist);
+
   if (authLoading || spotifyLoading) {
     return (
       <div className="min-h-screen bg-background noise flex items-center justify-center">
@@ -140,7 +213,7 @@ const Generate = () => {
         <div className="container px-4 max-w-3xl mx-auto">
           {/* Back link */}
           <Link 
-            to="/festivals" 
+            to={`/festivals/${festivalId}`}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -204,55 +277,84 @@ const Generate = () => {
           )}
 
           {/* Tracks list */}
-          {!isGenerating && tracks.length > 0 && (
+          {!isGenerating && hasFetched && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              {/* Track list */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-border flex items-center gap-3">
-                  <Music className="w-5 h-5 text-primary" />
-                  <h2 className="font-display text-xl">Mon Hellfest {year}</h2>
-                  <Badge variant="fire" className="ml-auto">{tracks.length} titres</Badge>
-                </div>
-                <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                  {tracks.slice(0, 50).map((track, index) => (
-                    <motion.div
-                      key={`${track.artistName}-${track.songName}-${index}`}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.02 }}
-                      className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <span className="text-sm text-muted-foreground w-6">{index + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground truncate">{track.songName}</div>
-                        <div className="text-sm text-muted-foreground truncate">{track.artistName}</div>
+              {/* Artists without setlist warning */}
+              {artistsWithoutSetlist.length > 0 && (
+                <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-medium text-accent mb-2">
+                        Set-lists non disponibles ({artistsWithoutSetlist.length})
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {artistsWithoutSetlist.map(artist => (
+                          <Badge key={artist.name} variant="outline" className="text-muted-foreground">
+                            {artist.name}
+                          </Badge>
+                        ))}
                       </div>
-                    </motion.div>
-                  ))}
-                  {tracks.length > 50 && (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Et {tracks.length - 50} autres morceaux...
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Track list */}
+              {tracks.length > 0 && (
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-border flex items-center gap-3">
+                    <Music className="w-5 h-5 text-primary" />
+                    <h2 className="font-display text-xl">Mon Hellfest {year}</h2>
+                    <Badge variant="fire" className="ml-auto">{tracks.length} titres</Badge>
+                  </div>
+                  <div className="divide-y divide-border max-h-80 overflow-y-auto">
+                    {tracks.slice(0, 50).map((track, index) => (
+                      <motion.div
+                        key={`${track.artistName}-${track.songName}-${index}`}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                        className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-sm text-muted-foreground w-6">{index + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate">{track.songName}</div>
+                          <div className="text-sm text-muted-foreground truncate">{track.artistName}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {tracks.length > 50 && (
+                      <div className="p-4 text-center text-muted-foreground">
+                        Et {tracks.length - 50} autres morceaux...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Export section */}
-              {!playlistUrl ? (
+              {!playlistUrl && tracks.length > 0 && (
                 <div className="bg-card border border-border rounded-xl p-6">
                   <h3 className="font-display text-xl text-foreground mb-4">
                     Créer la playlist sur Spotify
                   </h3>
                   
                   {!spotifyConnected ? (
-                    <p className="text-muted-foreground mb-4">
-                      Veuillez d'abord connecter votre compte Spotify depuis la page des festivals.
-                    </p>
+                    <div>
+                      <p className="text-muted-foreground mb-4">
+                        Connectez votre compte Spotify pour créer la playlist.
+                      </p>
+                      <Button variant="fire" size="lg" className="w-full" onClick={connectSpotify}>
+                        <Music className="w-5 h-5 mr-2" />
+                        Connecter Spotify
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       variant="fire"
@@ -263,38 +365,55 @@ const Generate = () => {
                     >
                       {isCreatingPlaylist ? (
                         <>
-                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <RefreshCw className="w-5 h-5 animate-spin mr-2" />
                           Création en cours...
                         </>
                       ) : (
                         <>
-                          <Flame className="w-5 h-5" />
+                          <Flame className="w-5 h-5 mr-2" />
                           Créer "Mon Hellfest {year}" sur Spotify
                         </>
                       )}
                     </Button>
                   )}
                 </div>
-              ) : (
+              )}
+
+              {/* Playlist created success */}
+              {playlistUrl && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg"
                 >
                   <Check className="w-6 h-6 text-green-500" />
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium text-green-400">Playlist créée avec succès !</div>
                     <div className="text-sm text-muted-foreground">
                       Ouvrez Spotify pour l'écouter
                     </div>
                   </div>
                   <a href={playlistUrl} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" size="sm" className="ml-auto gap-2">
+                    <Button variant="outline" size="sm" className="gap-2">
                       <ExternalLink className="w-4 h-4" />
                       Ouvrir
                     </Button>
                   </a>
                 </motion.div>
+              )}
+
+              {/* No tracks found */}
+              {tracks.length === 0 && artistsData.length > 0 && (
+                <div className="text-center py-12 bg-card border border-border rounded-xl">
+                  <AlertTriangle className="w-12 h-12 text-accent mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    Aucun morceau trouvé pour les artistes sélectionnés.
+                  </p>
+                  <Button variant="outline" onClick={() => { setHasFetched(false); fetchSetlists(); }}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Réessayer
+                  </Button>
+                </div>
               )}
 
               {/* New playlist button */}
@@ -307,17 +426,6 @@ const Generate = () => {
                 </Link>
               </div>
             </motion.div>
-          )}
-
-          {/* No tracks found */}
-          {!isGenerating && tracks.length === 0 && artistNames.length > 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">Aucun morceau trouvé. Réessayez.</p>
-              <Button variant="outline" onClick={fetchSetlists}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Réessayer
-              </Button>
-            </div>
           )}
         </div>
       </main>

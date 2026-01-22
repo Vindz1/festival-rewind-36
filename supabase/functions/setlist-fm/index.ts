@@ -50,7 +50,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action, festivalName, year, artistMbid, artistName } = await req.json();
+    const { action, festivalName, year, artistMbid, artistName, setlistId, eventDate, venueName } = await req.json();
     
     console.log('Setlist.fm API request:', { action, festivalName, year, artistMbid, artistName });
 
@@ -64,10 +64,11 @@ serve(async (req) => {
     };
 
     if (action === 'getFestivalArtists') {
-      // Search for Hellfest setlists for the given year
-      // Hellfest is in Clisson, France
+      // Search for Hellfest setlists for the given year using venue and city
+      // Hellfest is at Val de Moine in Clisson, France
       const searchUrl = new URL(`${SETLIST_FM_BASE_URL}/search/setlists`);
-      searchUrl.searchParams.set('festivalName', festivalName || 'Hellfest');
+      searchUrl.searchParams.set('venueName', 'Val de Moine');
+      searchUrl.searchParams.set('cityName', 'Clisson');
       searchUrl.searchParams.set('year', year.toString());
       searchUrl.searchParams.set('p', '1');
       
@@ -84,8 +85,14 @@ serve(async (req) => {
       const data = await response.json();
       console.log('Setlist.fm response:', JSON.stringify(data).substring(0, 500));
       
-      // Extract unique artists from all setlists
-      const artistsMap = new Map<string, { mbid: string; name: string; eventDate: string; venueId: string }>();
+      // Extract unique artists from all setlists with their specific event info
+      const artistsMap = new Map<string, { 
+        mbid: string; 
+        name: string; 
+        eventDate: string; 
+        venueId: string;
+        setlistId: string;
+      }>();
       
       if (data.setlist) {
         for (const setlist of data.setlist as SetlistFmSetlist[]) {
@@ -96,13 +103,14 @@ serve(async (req) => {
               name: setlist.artist.name,
               eventDate: setlist.eventDate,
               venueId: setlist.venue.id,
+              setlistId: setlist.id,
             });
           }
         }
       }
 
-      // Get more pages if available
-      const totalPages = Math.min(Math.ceil((data.total || 0) / (data.itemsPerPage || 20)), 5);
+      // Get more pages if available (up to 10 pages for better coverage)
+      const totalPages = Math.min(Math.ceil((data.total || 0) / (data.itemsPerPage || 20)), 10);
       
       for (let page = 2; page <= totalPages; page++) {
         searchUrl.searchParams.set('p', page.toString());
@@ -118,15 +126,18 @@ serve(async (req) => {
                   name: setlist.artist.name,
                   eventDate: setlist.eventDate,
                   venueId: setlist.venue.id,
+                  setlistId: setlist.id,
                 });
               }
             }
           }
         }
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const artists = Array.from(artistsMap.values());
-      console.log(`Found ${artists.length} unique artists`);
+      console.log(`Found ${artists.length} unique artists for Hellfest ${year}`);
 
       return new Response(
         JSON.stringify({ 
@@ -140,57 +151,111 @@ serve(async (req) => {
     }
 
     if (action === 'getArtistSetlist') {
-      // Get the most recent setlists for an artist to extract songs
-      let searchUrl: string;
+      let songs: string[] = [];
+      let foundSetlist = false;
       
-      if (artistMbid) {
-        searchUrl = `${SETLIST_FM_BASE_URL}/artist/${artistMbid}/setlists`;
-      } else {
-        searchUrl = `${SETLIST_FM_BASE_URL}/search/setlists?artistName=${encodeURIComponent(artistName)}`;
-      }
-      
-      console.log('Fetching artist setlist from:', searchUrl);
-      
-      const response = await fetch(searchUrl, { headers });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Setlist.fm API error:', response.status, errorText);
-        throw new Error(`Setlist.fm API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Extract unique songs from the setlists (up to 15)
-      const songsSet = new Set<string>();
-      const songs: string[] = [];
-      
-      const setlists = data.setlist || [];
-      
-      for (const setlist of setlists as SetlistFmSetlist[]) {
-        if (setlist.sets?.set) {
-          for (const set of setlist.sets.set) {
-            if (set.song) {
-              for (const song of set.song) {
-                if (song.name && !songsSet.has(song.name) && songs.length < 15) {
-                  songsSet.add(song.name);
-                  songs.push(song.name);
+      // Priority 1: Try to get the specific setlist from the festival if setlistId is provided
+      if (setlistId) {
+        console.log(`Fetching specific setlist: ${setlistId}`);
+        try {
+          const setlistResponse = await fetch(`${SETLIST_FM_BASE_URL}/setlist/${setlistId}`, { headers });
+          if (setlistResponse.ok) {
+            const setlistData = await setlistResponse.json();
+            if (setlistData.sets?.set) {
+              for (const set of setlistData.sets.set) {
+                if (set.song) {
+                  for (const song of set.song) {
+                    if (song.name && songs.length < 20) {
+                      songs.push(song.name);
+                    }
+                  }
                 }
               }
             }
+            if (songs.length > 0) {
+              foundSetlist = true;
+              console.log(`Found ${songs.length} songs from specific setlist for ${artistName}`);
+            }
+          }
+        } catch (e) {
+          console.log('Could not fetch specific setlist, falling back to recent setlists');
+        }
+      }
+      
+      // Priority 2: If no songs found from specific setlist, get the most recent setlists
+      if (!foundSetlist) {
+        let searchUrl: string;
+        
+        if (artistMbid) {
+          searchUrl = `${SETLIST_FM_BASE_URL}/artist/${artistMbid}/setlists`;
+        } else {
+          searchUrl = `${SETLIST_FM_BASE_URL}/search/setlists?artistName=${encodeURIComponent(artistName)}`;
+        }
+        
+        console.log('Fetching artist recent setlists from:', searchUrl);
+        
+        const response = await fetch(searchUrl, { headers });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Setlist.fm API error:', response.status, errorText);
+          // Return empty songs instead of throwing - artist may have no setlists
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              songs: [],
+              artistName,
+              noSetlist: true,
+              message: 'Set-list non disponible pour ce groupe',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const data = await response.json();
+        
+        // Extract unique songs from the setlists (up to 15)
+        const songsSet = new Set<string>();
+        const setlists = data.setlist || [];
+        
+        for (const setlist of setlists as SetlistFmSetlist[]) {
+          if (setlist.sets?.set) {
+            for (const set of setlist.sets.set) {
+              if (set.song) {
+                for (const song of set.song) {
+                  if (song.name && !songsSet.has(song.name) && songs.length < 15) {
+                    songsSet.add(song.name);
+                    songs.push(song.name);
+                  }
+                }
+              }
+            }
+            if (songs.length >= 15) break;
           }
           if (songs.length >= 15) break;
         }
-        if (songs.length >= 15) break;
       }
 
       console.log(`Found ${songs.length} songs for artist ${artistName || artistMbid}`);
+
+      if (songs.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            songs: [],
+            artistName,
+            noSetlist: true,
+            message: 'Set-list non disponible pour ce groupe',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           songs,
-          artistName: artistName || (setlists[0] as SetlistFmSetlist)?.artist?.name,
+          artistName,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
