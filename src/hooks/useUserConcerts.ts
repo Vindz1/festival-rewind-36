@@ -67,35 +67,47 @@ export const useUserConcerts = (festivalId?: string) => {
 
     try {
       if (existingConcert) {
+        console.log('Deleting concert:', existingConcert.id);
         const { error } = await supabase
           .from('user_concerts')
           .delete()
           .eq('id', existingConcert.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Delete error details:', error);
+          throw error;
+        }
         setUserConcerts(prev => prev.filter(c => c.id !== existingConcert.id));
+        toast.success(`${artistName} retiré de ton historique`);
       } else {
+        const insertData = {
+          user_id: user.id,
+          artist_name: artistName,
+          setlist_fm_event_id: eventId,
+          artist_mbid: artistMbid || null,
+          event_date: eventDate || null,
+          venue_name: venueName || null,
+        };
+        console.log('Inserting concert:', insertData);
+        
         const { data, error } = await supabase
           .from('user_concerts')
-          .insert({
-            user_id: user.id,
-            artist_name: artistName,
-            setlist_fm_event_id: eventId,
-            artist_mbid: artistMbid || null,
-            event_date: eventDate || null,
-            venue_name: venueName || null,
-          })
+          .insert(insertData)
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error details:', error);
+          throw error;
+        }
         if (data) {
           setUserConcerts(prev => [...prev, data]);
+          toast.success(`${artistName} ajouté à ton historique ! 🤘`);
         }
       }
     } catch (error: any) {
       console.error('Error toggling concert:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(`Erreur: ${error.message || 'Impossible de sauvegarder'}`);
     }
   };
 

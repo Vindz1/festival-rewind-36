@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Flame, RefreshCw, Music } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Flame, RefreshCw, Music, Plus, Check } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
 import { useSpotify } from '@/hooks/useSpotify';
-import { toast } from 'sonner';
 
 interface SetlistArtist {
   mbid: string;
@@ -175,32 +174,16 @@ const FestivalConcerts = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: index * 0.02 }}
-                        onClick={() => toggleConcert(artist.name, festivalId || '', artist.mbid, artist.eventDate)}
                         className={`
-                          relative overflow-hidden rounded-lg cursor-pointer
+                          relative overflow-hidden rounded-lg
                           transition-all duration-300 group p-4
                           ${selected
                             ? 'bg-primary/20 border-2 border-primary shadow-fire'
-                            : 'bg-card border border-border hover:border-primary/50 hover:bg-card/80'
+                            : 'bg-card border border-border'
                           }
                         `}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`
-                            w-10 h-10 rounded-full flex items-center justify-center shrink-0
-                            transition-all duration-300
-                            ${selected
-                              ? 'bg-gradient-fire shadow-fire'
-                              : 'bg-muted border border-border group-hover:border-primary/50'
-                            }
-                          `}>
-                            {selected ? (
-                              <Flame className="w-5 h-5 text-primary-foreground" />
-                            ) : (
-                              <Music className="w-5 h-5 text-muted-foreground" />
-                            )}
-                          </div>
-                          
                           <div className="flex-1 min-w-0">
                             <h4 className={`
                               font-display text-lg truncate transition-colors
@@ -212,6 +195,26 @@ const FestivalConcerts = () => {
                               <span className="text-xs text-primary">J'y étais ! 🤘</span>
                             )}
                           </div>
+                          
+                          {/* Toggle button */}
+                          <button
+                            onClick={() => toggleConcert(artist.name, festivalId || '', artist.mbid, artist.eventDate)}
+                            className={`
+                              w-10 h-10 rounded-full flex items-center justify-center shrink-0
+                              transition-all duration-300 cursor-pointer
+                              ${selected
+                                ? 'bg-gradient-fire shadow-fire hover:opacity-80'
+                                : 'bg-muted border border-border hover:border-primary hover:bg-primary/10'
+                              }
+                            `}
+                            title={selected ? 'Retirer de mon historique' : 'Ajouter à mon historique'}
+                          >
+                            {selected ? (
+                              <Check className="w-5 h-5 text-primary-foreground" />
+                            ) : (
+                              <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                            )}
+                          </button>
                         </div>
                       </motion.div>
                     );
