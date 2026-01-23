@@ -80,15 +80,30 @@ export const useUserConcerts = (festivalId?: string) => {
         setUserConcerts(prev => prev.filter(c => c.id !== existingConcert.id));
         toast.success(`${artistName} retiré de ton historique`);
       } else {
+        // Convert date from DD-MM-YYYY to YYYY-MM-DD (ISO format for PostgreSQL)
+        let formattedDate: string | null = null;
+        if (eventDate) {
+          const parts = eventDate.split('-');
+          if (parts.length === 3 && parts[0].length === 2) {
+            // Date is in DD-MM-YYYY format, convert to YYYY-MM-DD
+            formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          } else if (parts.length === 3 && parts[0].length === 4) {
+            // Already in YYYY-MM-DD format
+            formattedDate = eventDate;
+          } else {
+            console.warn('Unknown date format:', eventDate);
+          }
+        }
+        
         const insertData = {
           user_id: user.id,
           artist_name: artistName,
           setlist_fm_event_id: eventId,
           artist_mbid: artistMbid || null,
-          event_date: eventDate || null,
+          event_date: formattedDate,
           venue_name: venueName || null,
         };
-        console.log('Inserting concert:', insertData);
+        console.log('Inserting concert with formatted date:', insertData);
         
         const { data, error } = await supabase
           .from('user_concerts')

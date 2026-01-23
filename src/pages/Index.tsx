@@ -3,6 +3,7 @@ import { Flame, Music, Sparkles, ArrowRight, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/Header';
+import { UniversalSearch } from '@/components/UniversalSearch';
 
 const Index = () => {
   return (
@@ -51,21 +52,31 @@ const Index = () => {
               transition={{ delay: 0.4 }}
               className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
             >
-              Retrouvez les concerts que vous avez vécus au Hellfest et générez automatiquement 
+              Retrouvez les concerts que vous avez vécus et générez automatiquement 
               des playlists basées sur les setlists réelles des artistes.
             </motion.p>
+
+            {/* Universal Search */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="pt-4"
+            >
+              <UniversalSearch />
+            </motion.div>
 
             {/* CTA Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.6 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
             >
               <Link to="/festivals">
                 <Button variant="fire" size="xl" className="group">
                   <Flame className="w-5 h-5" />
-                  Commencer l'aventure
+                  Hellfest
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -79,7 +90,7 @@ const Index = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.8 }}
               className="grid grid-cols-3 gap-8 pt-12 max-w-lg mx-auto"
             >
               {[
@@ -199,7 +210,7 @@ const Index = () => {
               PRÊT À REVIVRE VOS <span className="text-gradient-fire">CONCERTS</span> ?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-              Commencez dès maintenant et créez votre première playlist souvenir du Hellfest.
+              Commencez dès maintenant et créez votre première playlist souvenir.
             </p>
             <Link to="/festivals">
               <Button variant="fire" size="xl">

@@ -261,6 +261,77 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'searchFestivalsAndArtists') {
+      const { query } = await req.json().catch(() => ({ query: '' }));
+      
+      // Get the query from the original request body
+      const requestBody = await req.clone().json().catch(() => ({}));
+      const searchQuery = requestBody.query || query;
+      
+      console.log('Searching for festivals and artists:', searchQuery);
+      
+      const results: Array<{
+        type: 'festival' | 'artist';
+        id: string;
+        name: string;
+        venue?: string;
+        city?: string;
+        country?: string;
+        year?: string;
+      }> = [];
+      
+      // Search for venues/festivals
+      try {
+        const venueSearchUrl = `${SETLIST_FM_BASE_URL}/search/venues?name=${encodeURIComponent(searchQuery)}&p=1`;
+        const venueResponse = await fetch(venueSearchUrl, { headers });
+        
+        if (venueResponse.ok) {
+          const venueData = await venueResponse.json();
+          if (venueData.venue) {
+            for (const venue of venueData.venue.slice(0, 5)) {
+              results.push({
+                type: 'festival',
+                id: venue.id,
+                name: venue.name,
+                venue: venue.name,
+                city: venue.city?.name,
+                country: venue.city?.country?.name,
+                year: new Date().getFullYear().toString(),
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Venue search error:', e);
+      }
+      
+      // Search for artists
+      try {
+        const artistSearchUrl = `${SETLIST_FM_BASE_URL}/search/artists?artistName=${encodeURIComponent(searchQuery)}&p=1`;
+        const artistResponse = await fetch(artistSearchUrl, { headers });
+        
+        if (artistResponse.ok) {
+          const artistData = await artistResponse.json();
+          if (artistData.artist) {
+            for (const artist of artistData.artist.slice(0, 5)) {
+              results.push({
+                type: 'artist',
+                id: artist.mbid || artist.name,
+                name: artist.name,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Artist search error:', e);
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     throw new Error('Invalid action');
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

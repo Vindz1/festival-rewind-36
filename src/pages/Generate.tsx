@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSpotify } from '@/hooks/useSpotify';
 import { toast } from 'sonner';
+import { PlatformExport } from '@/components/PlatformExport';
+import { AffiliateLinks } from '@/components/AffiliateLinks';
 
 interface Track {
   artistName: string;
@@ -195,6 +197,9 @@ const Generate = () => {
   const artistsWithSetlist = artistsStatus.filter(a => !a.noSetlist);
   const artistsWithoutSetlist = artistsStatus.filter(a => a.noSetlist);
 
+  // Get unique artist names from tracks for affiliate links
+  const uniqueArtists = [...new Set(tracks.map(t => t.artistName))];
+
   if (authLoading || spotifyLoading) {
     return (
       <div className="min-h-screen bg-background noise flex items-center justify-center">
@@ -338,44 +343,21 @@ const Generate = () => {
                 </div>
               )}
 
-              {/* Export section */}
+              {/* Export section - Multi-platform */}
               {!playlistUrl && tracks.length > 0 && (
                 <div className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="font-display text-xl text-foreground mb-4">
-                    Créer la playlist sur Spotify
+                  <h3 className="font-display text-xl text-foreground mb-6 text-center">
+                    Exporter vers votre plateforme
                   </h3>
                   
-                  {!spotifyConnected ? (
-                    <div>
-                      <p className="text-muted-foreground mb-4">
-                        Connectez votre compte Spotify pour créer la playlist.
-                      </p>
-                      <Button variant="fire" size="lg" className="w-full" onClick={connectSpotify}>
-                        <Music className="w-5 h-5 mr-2" />
-                        Connecter Spotify
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="fire"
-                      size="lg"
-                      className="w-full"
-                      disabled={isCreatingPlaylist}
-                      onClick={createPlaylist}
-                    >
-                      {isCreatingPlaylist ? (
-                        <>
-                          <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                          Création en cours...
-                        </>
-                      ) : (
-                        <>
-                          <Flame className="w-5 h-5 mr-2" />
-                          Créer "Mon Hellfest {year}" sur Spotify
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <PlatformExport
+                    tracks={tracks}
+                    playlistName={`Mon Hellfest ${year}`}
+                    onSpotifyExport={spotifyConnected ? createPlaylist : connectSpotify}
+                    spotifyLoading={isCreatingPlaylist}
+                    spotifyConnected={spotifyConnected}
+                    spotifyPlaylistUrl={playlistUrl || undefined}
+                  />
                 </div>
               )}
 
@@ -384,11 +366,11 @@ const Generate = () => {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg"
+                  className="flex items-center gap-3 p-4 bg-primary/10 border border-primary/30 rounded-lg"
                 >
-                  <Check className="w-6 h-6 text-green-500" />
+                  <Check className="w-6 h-6 text-primary" />
                   <div className="flex-1">
-                    <div className="font-medium text-green-400">Playlist créée avec succès !</div>
+                    <div className="font-medium text-primary">Playlist créée avec succès !</div>
                     <div className="text-sm text-muted-foreground">
                       Ouvrez Spotify pour l'écouter
                     </div>
@@ -400,6 +382,28 @@ const Generate = () => {
                     </Button>
                   </a>
                 </motion.div>
+              )}
+
+              {/* Affiliate links section */}
+              {(tracks.length > 0 || playlistUrl) && (
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="font-display text-lg text-foreground mb-4">
+                    Retrouvez vos artistes
+                  </h3>
+                  <div className="space-y-4">
+                    {uniqueArtists.slice(0, 5).map(artist => (
+                      <div key={artist} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <span className="font-medium text-foreground">{artist}</span>
+                        <AffiliateLinks artistName={artist} variant="compact" />
+                      </div>
+                    ))}
+                    {uniqueArtists.length > 5 && (
+                      <p className="text-sm text-muted-foreground text-center">
+                        Et {uniqueArtists.length - 5} autres artistes...
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* No tracks found */}
