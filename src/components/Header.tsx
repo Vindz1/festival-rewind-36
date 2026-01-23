@@ -35,10 +35,10 @@ export const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="relative">
-              <Flame className="w-8 h-8 text-primary glow-fire transition-transform group-hover:scale-110" />
+              <Music className="w-8 h-8 text-primary glow-fire transition-transform group-hover:scale-110" />
             </div>
             <span className="font-display text-2xl tracking-wider text-foreground">
-              SETLIST<span className="text-gradient-fire">FEST</span>
+              SETLIST<span className="text-gradient-fire">MEMORY</span>
             </span>
           </Link>
 

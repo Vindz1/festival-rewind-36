@@ -28,7 +28,7 @@ const Index = () => {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border"
             >
               <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm text-muted-foreground">Revivez vos souvenirs de festivals</span>
+              <span className="text-sm text-muted-foreground">Revivez vos souvenirs de concerts</span>
             </motion.div>
 
             {/* Title */}
@@ -75,8 +75,8 @@ const Index = () => {
             >
               <Link to="/festivals">
                 <Button variant="fire" size="xl" className="group">
-                  <Flame className="w-5 h-5" />
-                  Hellfest
+                  <Music className="w-5 h-5" />
+                  Explorer
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -94,8 +94,8 @@ const Index = () => {
               className="grid grid-cols-3 gap-8 pt-12 max-w-lg mx-auto"
             >
               {[
-                { value: '5+', label: 'Éditions' },
-                { value: '500+', label: 'Artistes' },
+                { value: '10M+', label: 'Concerts' },
+                { value: '50K+', label: 'Festivals' },
                 { value: '∞', label: 'Souvenirs' },
               ].map((stat, i) => (
                 <div key={i} className="text-center">
@@ -145,18 +145,18 @@ const Index = () => {
             {[
               {
                 icon: <Music className="w-8 h-8" />,
-                title: 'SÉLECTIONNEZ',
-                description: 'Choisissez les festivals auxquels vous avez assisté',
+                title: 'RECHERCHEZ',
+                description: 'Trouvez n\'importe quel concert ou festival dans le monde',
                 step: '01',
               },
               {
-                icon: <Flame className="w-8 h-8" />,
+                icon: <Sparkles className="w-8 h-8" />,
                 title: 'COCHEZ',
-                description: 'Marquez les concerts que vous avez vécus',
+                description: 'Marquez les concerts auxquels vous avez assisté',
                 step: '02',
               },
               {
-                icon: <Sparkles className="w-8 h-8" />,
+                icon: <Play className="w-8 h-8" />,
                 title: 'GÉNÉREZ',
                 description: 'Créez votre playlist basée sur les vraies setlists',
                 step: '03',
@@ -205,17 +205,17 @@ const Index = () => {
             viewport={{ once: true }}
             className="max-w-3xl mx-auto text-center bg-gradient-card border border-border rounded-3xl p-12 shadow-card"
           >
-            <Flame className="w-16 h-16 text-primary mx-auto mb-6 glow-fire" />
+            <Music className="w-16 h-16 text-primary mx-auto mb-6 glow-fire" />
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-4">
               PRÊT À REVIVRE VOS <span className="text-gradient-fire">CONCERTS</span> ?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-              Commencez dès maintenant et créez votre première playlist souvenir.
+              Recherchez n'importe quel concert et créez votre playlist souvenir.
             </p>
             <Link to="/festivals">
               <Button variant="fire" size="xl">
-                <Flame className="w-5 h-5" />
-                Démarrer maintenant
+                <Music className="w-5 h-5" />
+                Commencer maintenant
               </Button>
             </Link>
           </motion.div>
@@ -227,11 +227,11 @@ const Index = () => {
         <div className="container px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-primary" />
-              <span className="font-display text-lg">SETLISTFEST</span>
+              <Music className="w-5 h-5 text-primary" />
+              <span className="font-display text-lg">SETLISTMEMORY</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Fait avec 🔥 pour les passionnés de festivals metal
+              Fait avec 🎸 pour les passionnés de musique live
             </p>
           </div>
         </div>
