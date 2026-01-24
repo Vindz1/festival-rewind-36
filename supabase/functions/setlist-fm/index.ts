@@ -50,9 +50,11 @@ serve(async (req) => {
   }
 
   try {
-    const { action, festivalName, year, artistMbid, artistName, setlistId, eventDate, venueName } = await req.json();
+    // CRITICAL: Read the body ONLY ONCE at the beginning
+    const body = await req.json();
+    const { action, year, artistMbid, artistName, setlistId, query, venueId, venueName, cityName } = body;
     
-    console.log('Setlist.fm API request:', { action, festivalName, year, artistMbid, artistName });
+    console.log('Setlist.fm API request:', { action, year, artistMbid, artistName, query, venueId, venueName });
 
     if (!SETLIST_FM_API_KEY) {
       throw new Error('SETLIST_FM_API_KEY not configured');
@@ -63,16 +65,23 @@ serve(async (req) => {
       'Accept': 'application/json',
     };
 
-    if (action === 'getFestivalArtists') {
-      // Search for Hellfest setlists for the given year using venue and city
-      // Hellfest is at Val de Moine in Clisson, France
+    // ========== ACTION: Get artists from a specific venue ==========
+    if (action === 'getVenueArtists') {
       const searchUrl = new URL(`${SETLIST_FM_BASE_URL}/search/setlists`);
-      searchUrl.searchParams.set('venueName', 'Val de Moine');
-      searchUrl.searchParams.set('cityName', 'Clisson');
-      searchUrl.searchParams.set('year', year.toString());
+      
+      // Use the venue name and city provided by the user
+      if (venueName) {
+        searchUrl.searchParams.set('venueName', venueName);
+      }
+      if (cityName) {
+        searchUrl.searchParams.set('cityName', cityName);
+      }
+      if (year) {
+        searchUrl.searchParams.set('year', year.toString());
+      }
       searchUrl.searchParams.set('p', '1');
       
-      console.log('Fetching festival artists from:', searchUrl.toString());
+      console.log('Fetching venue artists from:', searchUrl.toString());
       
       const response = await fetch(searchUrl.toString(), { headers });
       
@@ -85,7 +94,7 @@ serve(async (req) => {
       const data = await response.json();
       console.log('Setlist.fm response:', JSON.stringify(data).substring(0, 500));
       
-      // Extract unique artists from all setlists with their specific event info
+      // Extract unique artists from all setlists
       const artistsMap = new Map<string, { 
         mbid: string; 
         name: string; 
@@ -109,7 +118,7 @@ serve(async (req) => {
         }
       }
 
-      // Get more pages if available (up to 10 pages for better coverage)
+      // Get more pages if available (up to 10 pages)
       const totalPages = Math.min(Math.ceil((data.total || 0) / (data.itemsPerPage || 20)), 10);
       
       for (let page = 2; page <= totalPages; page++) {
@@ -132,29 +141,28 @@ serve(async (req) => {
             }
           }
         }
-        // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const artists = Array.from(artistsMap.values());
-      console.log(`Found ${artists.length} unique artists for Hellfest ${year}`);
+      console.log(`Found ${artists.length} unique artists for venue`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           artists,
           total: data.total || artists.length,
-          festivalId: `hellfest-${year}`,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // ========== ACTION: Get artist setlist ==========
     if (action === 'getArtistSetlist') {
       let songs: string[] = [];
       let foundSetlist = false;
       
-      // Priority 1: Try to get the specific setlist from the festival if setlistId is provided
+      // Priority 1: Try specific setlist if setlistId is provided
       if (setlistId) {
         console.log(`Fetching specific setlist: ${setlistId}`);
         try {
@@ -182,7 +190,7 @@ serve(async (req) => {
         }
       }
       
-      // Priority 2: If no songs found from specific setlist, get the most recent setlists
+      // Priority 2: Get recent setlists if no songs found
       if (!foundSetlist) {
         let searchUrl: string;
         
@@ -199,7 +207,6 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Setlist.fm API error:', response.status, errorText);
-          // Return empty songs instead of throwing - artist may have no setlists
           return new Response(
             JSON.stringify({ 
               success: true, 
@@ -214,7 +221,6 @@ serve(async (req) => {
 
         const data = await response.json();
         
-        // Extract unique songs from the setlists (up to 15)
         const songsSet = new Set<string>();
         const setlists = data.setlist || [];
         
@@ -261,14 +267,18 @@ serve(async (req) => {
       );
     }
 
+    // ========== ACTION: Universal search for festivals and artists ==========
     if (action === 'searchFestivalsAndArtists') {
-      const { query } = await req.json().catch(() => ({ query: '' }));
-      
-      // Get the query from the original request body
-      const requestBody = await req.clone().json().catch(() => ({}));
-      const searchQuery = requestBody.query || query;
+      const searchQuery = query || '';
       
       console.log('Searching for festivals and artists:', searchQuery);
+      
+      if (!searchQuery.trim()) {
+        return new Response(
+          JSON.stringify({ success: true, results: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       const results: Array<{
         type: 'festival' | 'artist';
@@ -278,11 +288,13 @@ serve(async (req) => {
         city?: string;
         country?: string;
         year?: string;
+        eventDate?: string;
       }> = [];
       
       // Search for venues/festivals
       try {
         const venueSearchUrl = `${SETLIST_FM_BASE_URL}/search/venues?name=${encodeURIComponent(searchQuery)}&p=1`;
+        console.log('Searching venues:', venueSearchUrl);
         const venueResponse = await fetch(venueSearchUrl, { headers });
         
         if (venueResponse.ok) {
@@ -308,6 +320,7 @@ serve(async (req) => {
       // Search for artists
       try {
         const artistSearchUrl = `${SETLIST_FM_BASE_URL}/search/artists?artistName=${encodeURIComponent(searchQuery)}&p=1`;
+        console.log('Searching artists:', artistSearchUrl);
         const artistResponse = await fetch(artistSearchUrl, { headers });
         
         if (artistResponse.ok) {
@@ -325,9 +338,82 @@ serve(async (req) => {
       } catch (e) {
         console.log('Artist search error:', e);
       }
+
+      // Also search for setlists directly (to find specific events/concerts)
+      try {
+        const setlistSearchUrl = `${SETLIST_FM_BASE_URL}/search/setlists?artistName=${encodeURIComponent(searchQuery)}&p=1`;
+        console.log('Searching setlists:', setlistSearchUrl);
+        const setlistResponse = await fetch(setlistSearchUrl, { headers });
+        
+        if (setlistResponse.ok) {
+          const setlistData = await setlistResponse.json();
+          if (setlistData.setlist) {
+            // Add unique venues from setlists as festivals
+            const addedVenues = new Set<string>();
+            for (const setlist of setlistData.setlist.slice(0, 10) as SetlistFmSetlist[]) {
+              const venueKey = setlist.venue.id;
+              if (!addedVenues.has(venueKey) && addedVenues.size < 3) {
+                addedVenues.add(venueKey);
+                // Check if venue is not already in results
+                if (!results.find(r => r.id === venueKey)) {
+                  results.push({
+                    type: 'festival',
+                    id: venueKey,
+                    name: setlist.venue.name,
+                    venue: setlist.venue.name,
+                    city: setlist.venue.city?.name,
+                    country: setlist.venue.city?.country?.name,
+                    year: setlist.eventDate?.split('-')[2] || new Date().getFullYear().toString(),
+                    eventDate: setlist.eventDate,
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Setlist search error:', e);
+      }
+      
+      console.log(`Found ${results.length} total results`);
       
       return new Response(
         JSON.stringify({ success: true, results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== ACTION: Get artist concerts/history ==========
+    if (action === 'getArtistConcerts') {
+      const searchUrl = artistMbid 
+        ? `${SETLIST_FM_BASE_URL}/artist/${artistMbid}/setlists?p=1`
+        : `${SETLIST_FM_BASE_URL}/search/setlists?artistName=${encodeURIComponent(artistName)}&p=1`;
+      
+      console.log('Fetching artist concerts:', searchUrl);
+      
+      const response = await fetch(searchUrl, { headers });
+      
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ success: true, concerts: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const data = await response.json();
+      
+      const concerts = (data.setlist || []).slice(0, 20).map((setlist: SetlistFmSetlist) => ({
+        id: setlist.id,
+        eventDate: setlist.eventDate,
+        venue: setlist.venue.name,
+        city: setlist.venue.city?.name,
+        country: setlist.venue.city?.country?.name,
+        songCount: setlist.sets?.set?.reduce((acc: number, s: { song?: Array<{ name: string }> }) => 
+          acc + (s.song?.length || 0), 0) || 0,
+      }));
+
+      return new Response(
+        JSON.stringify({ success: true, concerts, artistName }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

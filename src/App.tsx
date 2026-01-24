@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Festivals from "./pages/Festivals";
 import Concerts from "./pages/Concerts";
 import FestivalConcerts from "./pages/FestivalConcerts";
+import VenueConcerts from "./pages/VenueConcerts";
+import ArtistPage from "./pages/ArtistPage";
 import Generate from "./pages/Generate";
 import MyConcerts from "./pages/MyConcerts";
 import Auth from "./pages/Auth";
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/festivals" element={<Festivals />} />
           <Route path="/festivals/:festivalId" element={<FestivalConcerts />} />
+          <Route path="/venue/:venueId" element={<VenueConcerts />} />
+          <Route path="/artist/:artistId" element={<ArtistPage />} />
           <Route path="/concerts" element={<Concerts />} />
           <Route path="/generate" element={<Generate />} />
           <Route path="/my-concerts" element={<MyConcerts />} />
