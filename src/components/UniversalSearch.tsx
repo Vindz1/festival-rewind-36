@@ -29,9 +29,11 @@ export const UniversalSearch = () => {
     
     setLoading(true);
     setShowResults(true);
+    setResults([]);
     
     try {
-      // Search for festivals/venues via Setlist.fm
+      console.log('Starting search for:', query.trim());
+      
       const { data, error } = await supabase.functions.invoke('setlist-fm', {
         body: { 
           action: 'searchFestivalsAndArtists',
@@ -39,10 +41,17 @@ export const UniversalSearch = () => {
         },
       });
 
-      if (error) throw error;
+      console.log('Search response:', data, error);
+
+      if (error) {
+        console.error('Search error:', error);
+        throw error;
+      }
       
       if (data?.success) {
         setResults(data.results || []);
+      } else {
+        console.error('Search failed:', data?.error);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -56,26 +65,32 @@ export const UniversalSearch = () => {
     setQuery('');
     
     if (result.type === 'festival') {
-      // Navigate to festival with venue info
-      const festivalSlug = `${result.name.toLowerCase().replace(/\s+/g, '-')}-${result.year}`;
-      navigate(`/festival/${festivalSlug}?venue=${encodeURIComponent(result.venue || '')}&city=${encodeURIComponent(result.city || '')}&year=${result.year}`);
+      navigate(`/venue/${result.id}?name=${encodeURIComponent(result.name)}&city=${encodeURIComponent(result.city || '')}&country=${encodeURIComponent(result.country || '')}&year=${result.year || new Date().getFullYear()}`);
     } else {
-      // Navigate to artist page
       navigate(`/artist/${result.id}?name=${encodeURIComponent(result.name)}`);
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+    if (e.key === 'Escape') {
+      setShowResults(false);
+    }
+  };
+
   return (
-    <div className="relative w-full max-w-2xl mx-auto">
+    <div className="relative w-full max-w-2xl mx-auto z-50">
       <div className="relative flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Rechercher un festival ou un artiste..."
+            placeholder="Rechercher un festival, une salle ou un artiste..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={handleKeyDown}
             onFocus={() => results.length > 0 && setShowResults(true)}
             className="pl-12 pr-10 h-14 text-lg bg-card border-border focus:border-primary"
           />
@@ -103,7 +118,6 @@ export const UniversalSearch = () => {
         </Button>
       </div>
 
-      {/* Results dropdown */}
       <AnimatePresence>
         {showResults && (
           <motion.div
@@ -142,9 +156,11 @@ export const UniversalSearch = () => {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {result.type === 'festival' ? (
                           <>
-                            <MapPin className="w-4 h-4" />
-                            <span>{result.city}, {result.country}</span>
-                            {result.year && <span>• {result.year}</span>}
+                            <MapPin className="w-4 h-4 shrink-0" />
+                            <span className="truncate">
+                              {[result.city, result.country].filter(Boolean).join(', ')}
+                            </span>
+                            {result.year && <span className="shrink-0">• {result.year}</span>}
                           </>
                         ) : (
                           <span>Artiste</span>
@@ -164,6 +180,13 @@ export const UniversalSearch = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showResults && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setShowResults(false)}
+        />
+      )}
     </div>
   );
 };
