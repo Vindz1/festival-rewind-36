@@ -20,13 +20,13 @@ export const UniversalSearch = () => {
       const data = await res.json();
       
       if (data.results && data.results.length > 0) {
-        // On envoie les résultats groupés par année à la page de résultats
+        // On redirige vers la page de résultats avec les données trouvées
         navigate('/search-results', { state: { results: data.results, query } });
       } else {
-        toast.error("Aucune édition trouvée pour ce nom");
+        toast.error("Aucun résultat pour '" + query + "'");
       }
     } catch (err) {
-      toast.error("Le moteur de recherche est indisponible");
+      toast.error("Erreur de connexion au moteur");
     } finally {
       setLoading(false);
     }
@@ -37,14 +37,14 @@ export const UniversalSearch = () => {
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="Entrez le nom d'un festival (ex: Hellfest)..."
+          placeholder="Artiste ou Festival (Gojira, Hellfest...)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="h-14 pl-12 pr-32 bg-zinc-900/80 border-zinc-700 text-white rounded-2xl focus:border-primary transition-all"
+          className="h-14 pl-12 pr-32 bg-black/50 border-zinc-800 text-white rounded-2xl"
         />
         <Search className="absolute left-4 w-5 h-5 text-zinc-500" />
-        <Button type="submit" disabled={loading} className="absolute right-2 h-10 bg-primary hover:bg-primary/90 text-white rounded-xl px-6 font-bold">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Trouver"}
+        <Button type="submit" disabled={loading} className="absolute right-2 h-10 bg-primary text-white px-6">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Rechercher"}
         </Button>
       </div>
     </form>
