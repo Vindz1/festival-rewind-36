@@ -16,52 +16,35 @@ export const UniversalSearch = () => {
 
     setLoading(true);
     try {
-      // On appelle notre tunnel Vercel au lieu de Setlist.fm directement
       const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
       const data = await res.json();
       
-      if (data.setlist) {
-        const groupedResults = new Map();
-        data.setlist.forEach((s: any) => {
-          const year = s.eventDate.split('-')[2];
-          const city = s.venue.city.name;
-          const key = `${city}-${year}`;
-          
-          if (!groupedResults.has(key)) {
-            groupedResults.set(key, {
-              id: s.venue.id,
-              name: `${query} ${year}`,
-              city: city,
-              country: s.venue.city.country.name,
-              year: year
-            });
-          }
-        });
-
-        navigate('/search-results', { state: { results: Array.from(groupedResults.values()), query } });
+      if (data.results && data.results.length > 0) {
+        // On envoie les résultats groupés par année à la page de résultats
+        navigate('/search-results', { state: { results: data.results, query } });
       } else {
-        toast.error("Aucun festival trouvé");
+        toast.error("Aucune édition trouvée pour ce nom");
       }
     } catch (err) {
-      toast.error("Erreur de connexion au tunnel");
+      toast.error("Le moteur de recherche est indisponible");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto w-full">
+    <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto w-full px-4">
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="Cherchez un festival (ex: Hellfest, Coachella...)"
+          placeholder="Entrez le nom d'un festival (ex: Hellfest)..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="h-14 pl-12 pr-32 bg-zinc-900/50 border-zinc-800 text-white rounded-2xl"
+          className="h-14 pl-12 pr-32 bg-zinc-900/80 border-zinc-700 text-white rounded-2xl focus:border-primary transition-all"
         />
         <Search className="absolute left-4 w-5 h-5 text-zinc-500" />
-        <Button type="submit" disabled={loading} className="absolute right-2 h-10 bg-primary text-white px-6">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Rechercher"}
+        <Button type="submit" disabled={loading} className="absolute right-2 h-10 bg-primary hover:bg-primary/90 text-white rounded-xl px-6 font-bold">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Trouver"}
         </Button>
       </div>
     </form>
