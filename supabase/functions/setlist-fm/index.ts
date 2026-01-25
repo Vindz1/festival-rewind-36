@@ -280,7 +280,7 @@ serve(async (req) => {
         );
       }
       
-      // Use Maps for deduplication by ID
+      // Use Maps for deduplication - key by CITY to avoid listing multiple stages at same location
       const festivalsMap = new Map<string, {
         type: 'festival';
         id: string;
@@ -307,18 +307,29 @@ serve(async (req) => {
         if (venueResponse.ok) {
           const venueData = await venueResponse.json();
           if (venueData.venue) {
-            for (const venue of venueData.venue.slice(0, 10)) {
-              // Only add if we have a valid ID and not already in map
-              if (venue.id && !festivalsMap.has(venue.id)) {
-                festivalsMap.set(venue.id, {
-                  type: 'festival',
-                  id: venue.id,
-                  name: venue.name,
-                  venue: venue.name,
-                  city: venue.city?.name,
-                  country: venue.city?.country?.name,
-                  year: new Date().getFullYear().toString(),
-                });
+            for (const venue of venueData.venue.slice(0, 20)) {
+              // Create a key by city to group venues in the same location
+              const cityKey = `${venue.city?.name || 'unknown'}-${venue.city?.country?.code || ''}`.toLowerCase();
+              
+              // Only add if we have a valid ID and not already in map for this city
+              // Prefer the main festival name (longest or most relevant)
+              if (venue.id) {
+                const existing = festivalsMap.get(cityKey);
+                // Keep the one with the search query in the name, or the first one found
+                const nameMatchesQuery = venue.name.toLowerCase().includes(searchQuery.toLowerCase());
+                const shouldReplace = !existing || 
+                  (nameMatchesQuery && !existing.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                
+                if (shouldReplace) {
+                  festivalsMap.set(cityKey, {
+                    type: 'festival',
+                    id: venue.id,
+                    name: venue.name,
+                    venue: venue.name,
+                    city: venue.city?.name,
+                    country: venue.city?.country?.name,
+                  });
+                }
               }
             }
           }
@@ -362,18 +373,24 @@ serve(async (req) => {
         if (setlistResponse.ok) {
           const setlistData = await setlistResponse.json();
           if (setlistData.setlist) {
-            for (const setlist of setlistData.setlist.slice(0, 10) as SetlistFmSetlist[]) {
-              const venueId = setlist.venue.id;
-              // Add unique venues from setlists (deduplicated)
-              if (venueId && !festivalsMap.has(venueId)) {
-                festivalsMap.set(venueId, {
+            for (const setlist of setlistData.setlist.slice(0, 20) as SetlistFmSetlist[]) {
+              // Create a key by city+year to group events at same location
+              const cityKey = `${setlist.venue.city?.name || 'unknown'}-${setlist.venue.city?.country?.code || ''}`.toLowerCase();
+              
+              // Parse year from DD-MM-YYYY format
+              const dateParts = setlist.eventDate?.split('-');
+              const year = dateParts && dateParts.length === 3 ? dateParts[2] : undefined;
+              
+              // Only add if not already in map for this city
+              if (setlist.venue.id && !festivalsMap.has(cityKey)) {
+                festivalsMap.set(cityKey, {
                   type: 'festival',
-                  id: venueId,
+                  id: setlist.venue.id,
                   name: setlist.venue.name,
                   venue: setlist.venue.name,
                   city: setlist.venue.city?.name,
                   country: setlist.venue.city?.country?.name,
-                  year: setlist.eventDate?.split('-')[2] || new Date().getFullYear().toString(),
+                  year: year,
                   eventDate: setlist.eventDate,
                 });
               }
@@ -394,6 +411,71 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({ success: true, results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== ACTION: Get single setlist by ID ==========
+    if (action === 'getSetlist') {
+      if (!setlistId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'setlistId required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Fetching setlist:', setlistId);
+      
+      const response = await fetch(`${SETLIST_FM_BASE_URL}/setlist/${setlistId}`, { headers });
+      
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Setlist not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const setlist = await response.json() as SetlistFmSetlist;
+      
+      // Extract songs
+      const songs: string[] = [];
+      if (setlist.sets?.set) {
+        for (const set of setlist.sets.set) {
+          if (set.song) {
+            for (const song of set.song) {
+              if (song.name) {
+                songs.push(song.name);
+              }
+            }
+          }
+        }
+      }
+
+      // Parse date from DD-MM-YYYY to YYYY-MM-DD
+      let isoDate = '';
+      if (setlist.eventDate) {
+        const parts = setlist.eventDate.split('-');
+        if (parts.length === 3) {
+          isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          setlist: {
+            id: setlist.id,
+            artistName: setlist.artist.name,
+            artistMbid: setlist.artist.mbid,
+            venue: setlist.venue.name,
+            city: setlist.venue.city?.name,
+            country: setlist.venue.city?.country?.name,
+            eventDate: setlist.eventDate,
+            isoDate,
+            songs,
+            url: setlist.artist.url,
+          },
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Calendar, Music, MapPin, Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Calendar, Music, MapPin, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -138,7 +138,7 @@ const SearchResults = () => {
                             </div>
                           )}
                         </div>
-                        <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                       </div>
                     </motion.div>
                   ))}
@@ -176,7 +176,7 @@ const SearchResults = () => {
                             Voir les concerts
                           </div>
                         </div>
-                        <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
                       </div>
                     </motion.div>
                   ))}
