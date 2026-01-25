@@ -1,64 +1,78 @@
 import { useState } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
+import { Search, Loader2, Calendar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export const UniversalSearch = () => {
-  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSearch = () => {
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!query.trim()) return;
-    
-    setLoading(true);
-    // Redirect to search results page - no dropdown
-    navigate(`/search-results?q=${encodeURIComponent(query.trim())}`);
-  };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+    setLoading(true);
+    try {
+      const apiKey = import.meta.env.VITE_SETLIST_FM_API_KEY || 'ovRH4H1pKy1yumS7vWuHrg7q4dwF30FsICjj';
+      const res = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=1`, {
+        headers: { 'x-api-key': apiKey, 'Accept': 'application/json' }
+      });
+      
+      const data = await res.json();
+      
+      if (data.setlist) {
+        // Logique de regroupement par Ville + Année
+        const groupedResults = new Map();
+        data.setlist.forEach((s: any) => {
+          const year = s.eventDate.split('-')[2];
+          const city = s.venue.city.name;
+          const key = `${city}-${year}`;
+          
+          if (!groupedResults.has(key)) {
+            groupedResults.set(key, {
+              id: s.venue.id,
+              name: `${query} ${year}`,
+              city: city,
+              country: s.venue.city.country.name,
+              year: year
+            });
+          }
+        });
+
+        // On envoie les résultats à la page de résultats
+        navigate('/search-results', { state: { results: Array.from(groupedResults.values()), query } });
+      } else {
+        toast.error("Aucun festival trouvé");
+      }
+    } catch (err) {
+      toast.error("Erreur lors de la recherche");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto">
-      <div className="relative flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Rechercher un festival, une salle ou un artiste..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="pl-12 pr-10 h-14 text-lg bg-card border-border focus:border-primary"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+    <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto w-full group">
+      <div className="relative flex items-center">
+        <Input
+          type="text"
+          placeholder="Cherchez un festival (ex: Hellfest, Coachella...)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-14 pl-12 pr-32 bg-zinc-900/50 border-zinc-800 text-white rounded-2xl focus:ring-primary shadow-2xl"
+        />
+        <Search className="absolute left-4 w-5 h-5 text-zinc-500" />
         <Button 
-          variant="fire" 
-          size="lg"
-          onClick={handleSearch}
-          disabled={loading || !query.trim()}
-          className="h-14 px-6"
+          type="submit" 
+          disabled={loading}
+          className="absolute right-2 h-10 bg-primary hover:bg-primary/90 text-white rounded-xl px-6"
         >
-          {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            'Rechercher'
-          )}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Rechercher"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 };
