@@ -6,9 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Festivals from "./pages/Festivals";
 import Concerts from "./pages/Concerts";
-import FestivalConcerts from "./pages/FestivalConcerts";
-import VenueConcerts from "./pages/VenueConcerts";
-import ArtistPage from "./pages/ArtistPage";
+import SearchResults from "./pages/SearchResults";
+import EventPage from "./pages/EventPage";
 import Generate from "./pages/Generate";
 import MyConcerts from "./pages/MyConcerts";
 import Auth from "./pages/Auth";
@@ -27,9 +26,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/festivals" element={<Festivals />} />
-          <Route path="/festivals/:festivalId" element={<FestivalConcerts />} />
-          <Route path="/venue/:venueId" element={<VenueConcerts />} />
-          <Route path="/artist/:artistId" element={<ArtistPage />} />
+          <Route path="/search-results" element={<SearchResults />} />
+          <Route path="/event/:eventId" element={<EventPage />} />
           <Route path="/concerts" element={<Concerts />} />
           <Route path="/generate" element={<Generate />} />
           <Route path="/my-concerts" element={<MyConcerts />} />

@@ -280,8 +280,9 @@ serve(async (req) => {
         );
       }
       
-      const results: Array<{
-        type: 'festival' | 'artist';
+      // Use Maps for deduplication by ID
+      const festivalsMap = new Map<string, {
+        type: 'festival';
         id: string;
         name: string;
         venue?: string;
@@ -289,7 +290,13 @@ serve(async (req) => {
         country?: string;
         year?: string;
         eventDate?: string;
-      }> = [];
+      }>();
+      
+      const artistsMap = new Map<string, {
+        type: 'artist';
+        id: string;
+        name: string;
+      }>();
       
       // Search for venues/festivals
       try {
@@ -300,16 +307,19 @@ serve(async (req) => {
         if (venueResponse.ok) {
           const venueData = await venueResponse.json();
           if (venueData.venue) {
-            for (const venue of venueData.venue.slice(0, 5)) {
-              results.push({
-                type: 'festival',
-                id: venue.id,
-                name: venue.name,
-                venue: venue.name,
-                city: venue.city?.name,
-                country: venue.city?.country?.name,
-                year: new Date().getFullYear().toString(),
-              });
+            for (const venue of venueData.venue.slice(0, 10)) {
+              // Only add if we have a valid ID and not already in map
+              if (venue.id && !festivalsMap.has(venue.id)) {
+                festivalsMap.set(venue.id, {
+                  type: 'festival',
+                  id: venue.id,
+                  name: venue.name,
+                  venue: venue.name,
+                  city: venue.city?.name,
+                  country: venue.city?.country?.name,
+                  year: new Date().getFullYear().toString(),
+                });
+              }
             }
           }
         }
@@ -326,12 +336,16 @@ serve(async (req) => {
         if (artistResponse.ok) {
           const artistData = await artistResponse.json();
           if (artistData.artist) {
-            for (const artist of artistData.artist.slice(0, 5)) {
-              results.push({
-                type: 'artist',
-                id: artist.mbid || artist.name,
-                name: artist.name,
-              });
+            for (const artist of artistData.artist.slice(0, 10)) {
+              const artistId = artist.mbid || artist.name;
+              // Only add if we have a valid ID and not already in map
+              if (artistId && !artistsMap.has(artistId)) {
+                artistsMap.set(artistId, {
+                  type: 'artist',
+                  id: artistId,
+                  name: artist.name,
+                });
+              }
             }
           }
         }
@@ -348,25 +362,20 @@ serve(async (req) => {
         if (setlistResponse.ok) {
           const setlistData = await setlistResponse.json();
           if (setlistData.setlist) {
-            // Add unique venues from setlists as festivals
-            const addedVenues = new Set<string>();
             for (const setlist of setlistData.setlist.slice(0, 10) as SetlistFmSetlist[]) {
-              const venueKey = setlist.venue.id;
-              if (!addedVenues.has(venueKey) && addedVenues.size < 3) {
-                addedVenues.add(venueKey);
-                // Check if venue is not already in results
-                if (!results.find(r => r.id === venueKey)) {
-                  results.push({
-                    type: 'festival',
-                    id: venueKey,
-                    name: setlist.venue.name,
-                    venue: setlist.venue.name,
-                    city: setlist.venue.city?.name,
-                    country: setlist.venue.city?.country?.name,
-                    year: setlist.eventDate?.split('-')[2] || new Date().getFullYear().toString(),
-                    eventDate: setlist.eventDate,
-                  });
-                }
+              const venueId = setlist.venue.id;
+              // Add unique venues from setlists (deduplicated)
+              if (venueId && !festivalsMap.has(venueId)) {
+                festivalsMap.set(venueId, {
+                  type: 'festival',
+                  id: venueId,
+                  name: setlist.venue.name,
+                  venue: setlist.venue.name,
+                  city: setlist.venue.city?.name,
+                  country: setlist.venue.city?.country?.name,
+                  year: setlist.eventDate?.split('-')[2] || new Date().getFullYear().toString(),
+                  eventDate: setlist.eventDate,
+                });
               }
             }
           }
@@ -375,7 +384,13 @@ serve(async (req) => {
         console.log('Setlist search error:', e);
       }
       
-      console.log(`Found ${results.length} total results`);
+      // Combine results: festivals first, then artists (already deduplicated)
+      const results = [
+        ...Array.from(festivalsMap.values()).slice(0, 10),
+        ...Array.from(artistsMap.values()).slice(0, 10),
+      ];
+      
+      console.log(`Found ${results.length} unique results (${festivalsMap.size} festivals, ${artistsMap.size} artists)`);
       
       return new Response(
         JSON.stringify({ success: true, results }),
