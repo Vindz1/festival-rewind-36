@@ -19,14 +19,17 @@ export const UniversalSearch = () => {
       const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
       const data = await res.json();
       
+      console.log("Données reçues du tunnel:", data);
+
       if (data.results && data.results.length > 0) {
-        // On redirige vers la page de résultats avec les données trouvées
+        // NAVIGUER AVEC LES DONNÉES
         navigate('/search-results', { state: { results: data.results, query } });
       } else {
-        toast.error("Aucun résultat pour '" + query + "'");
+        toast.error("Aucun résultat trouvé pour " + query);
       }
     } catch (err) {
-      toast.error("Erreur de connexion au moteur");
+      console.error("Erreur appel API:", err);
+      toast.error("Erreur de connexion");
     } finally {
       setLoading(false);
     }
@@ -37,14 +40,14 @@ export const UniversalSearch = () => {
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="Artiste ou Festival (Gojira, Hellfest...)"
+          placeholder="Hellfest, Gojira..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="h-14 pl-12 pr-32 bg-black/50 border-zinc-800 text-white rounded-2xl"
+          className="h-14 pl-12 pr-32 bg-zinc-900 border-zinc-800 text-white rounded-2xl"
         />
         <Search className="absolute left-4 w-5 h-5 text-zinc-500" />
-        <Button type="submit" disabled={loading} className="absolute right-2 h-10 bg-primary text-white px-6">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Rechercher"}
+        <Button type="submit" disabled={loading} className="absolute right-2 bg-primary text-white px-6 rounded-xl font-bold">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Trouver"}
         </Button>
       </div>
     </form>
