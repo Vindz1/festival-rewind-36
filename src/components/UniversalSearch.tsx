@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
 
 export const UniversalSearch = () => {
   const [query, setQuery] = useState('');
@@ -18,18 +17,10 @@ export const UniversalSearch = () => {
     try {
       const res = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
       const data = await res.json();
-      
-      console.log("Données reçues du tunnel:", data);
-
-      if (data.results && data.results.length > 0) {
-        // NAVIGUER AVEC LES DONNÉES
-        navigate('/search-results', { state: { results: data.results, query } });
-      } else {
-        toast.error("Aucun résultat trouvé pour " + query);
-      }
+      // On ajoute ?q= dans l'URL pour permettre le rafraîchissement de page
+      navigate(`/search-results?q=${encodeURIComponent(query)}`, { state: { results: data.results, query } });
     } catch (err) {
-      console.error("Erreur appel API:", err);
-      toast.error("Erreur de connexion");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -40,7 +31,7 @@ export const UniversalSearch = () => {
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="Hellfest, Gojira..."
+          placeholder="Hellfest, Wacken, Gojira..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="h-14 pl-12 pr-32 bg-zinc-900 border-zinc-800 text-white rounded-2xl"
