@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Music, Calendar, Flame, ArrowRight, RefreshCw } from 'lucide-react';
+import { Music, Calendar, Flame, ArrowRight, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
@@ -96,13 +95,14 @@ const MyConcerts = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors"
+                  onClick={() => navigate(`/event/${concert.setlist_fm_event_id}?name=${encodeURIComponent(concert.artist_name)}&type=setlist`)}
+                  className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors cursor-pointer group"
                 >
                   <div className="w-12 h-12 rounded-lg bg-gradient-fire flex items-center justify-center shadow-fire shrink-0">
                     <Flame className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-display text-xl text-foreground truncate">
+                    <h3 className="font-display text-xl text-foreground truncate group-hover:text-primary transition-colors">
                       {concert.artist_name}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -119,9 +119,7 @@ const MyConcerts = () => {
                       )}
                     </div>
                   </div>
-                  <Badge variant="outline" className="shrink-0">
-                    {concert.setlist_fm_event_id.match(/\d{4}/)?.[0] || 'Festival'}
-                  </Badge>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                 </motion.div>
               ))}
             </div>
