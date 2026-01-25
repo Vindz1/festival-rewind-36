@@ -17,9 +17,9 @@ export default async function handler(req, res) {
         artData.artist.slice(0, 5).forEach(a => artists.push({ id: a.mbid, name: a.name, type: 'artist' }));
       }
 
-      // 2. Recherche Festivals (SCRAPING DE 20 PAGES)
+      // 2. Recherche Festivals (SCRAPING DE 50 PAGES)
       // On boucle pour remonter très loin dans les archives
-      for (let p = 1; p <= 20; p++) {
+      for (let p = 1; p <= 50; p++) {
         const setRes = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=${p}`, { headers });
         const setData = await setRes.json();
         if (!setData.setlist || setData.setlist.length === 0) break;
@@ -42,10 +42,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: [...artists, ...Array.from(resultsMap.values())] });
     }
 
-    // LISTE TOTALE ARTISTES (SCRAPING DE 15 PAGES)
+    // LISTE TOTALE ARTISTES (SCRAPING DE 50 PAGES)
     if (action === 'artists') {
       const uniqueArtists = new Map();
-      for (let p = 1; p <= 15; p++) {
+      for (let p = 1; p <= 50; p++) {
         const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueId=${venueId}&year=${year}&p=${p}`, { headers });
         const data = await response.json();
         if (!data.setlist || data.setlist.length === 0) break;
