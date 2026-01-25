@@ -1,29 +1,33 @@
 export default async function handler(req, res) {
   const { query } = req.query;
+  // On utilise le nom de clé standardisé
   const apiKey = process.env.SETLIST_FM_API_KEY;
 
-  if (!query) return res.status(400).json({ error: "Requête vide" });
+  console.log("Recherche lancée pour:", query);
+  
+  if (!apiKey) {
+    console.error("ERREUR: Clé API manquante dans Vercel");
+    return res.status(500).json({ error: "Configuration clé API manquante" });
+  }
 
   try {
-    const headers = { 'x-api-key': apiKey, 'Accept': 'application/json' };
+    const headers = { 
+      'x-api-key': apiKey, 
+      'Accept': 'application/json',
+      'User-Agent': 'SetlistMemory/1.0'
+    };
     
-    // 1. On cherche si c'est un ARTISTE (ex: Gojira)
-    const artRes = await fetch(`https://api.setlist.fm/rest/1.0/search/artists?artistName=${encodeURIComponent(query)}&p=1`, { headers });
-    const artData = await artRes.json();
-    const artists = (artData.artist || []).slice(0, 5).map(a => ({
-      type: 'artist',
-      id: a.mbid,
-      name: a.name
-    }));
+    // On tente une recherche large (Setlists)
+    const url = `https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=1`;
+    const response = await fetch(url, { headers });
+    const data = await response.json();
 
-    // 2. On cherche si c'est un FESTIVAL / LIEU (ex: Hellfest)
-    const setRes = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=1`, { headers });
-    const setData = await setRes.json();
-    
-    const festivals = [];
-    if (setData.setlist) {
+    let results = [];
+
+    // Si on trouve des festivals/concerts
+    if (data.setlist) {
       const grouped = new Map();
-      setData.setlist.forEach(s => {
+      data.setlist.forEach(s => {
         const year = s.eventDate.split('-')[2];
         const key = `${s.venue.name}-${year}`;
         if (!grouped.has(key)) {
@@ -36,12 +40,25 @@ export default async function handler(req, res) {
           });
         }
       });
-      festivals.push(...Array.from(grouped.values()).slice(0, 10));
+      results = Array.from(grouped.values());
     }
 
-    // On renvoie le mélange des deux
-    res.status(200).json({ results: [...artists, ...festivals] });
+    // Si c'est vide, on tente de chercher l'artiste (ex: Gojira)
+    if (results.length === 0) {
+      const artRes = await fetch(`https://api.setlist.fm/rest/1.0/search/artists?artistName=${encodeURIComponent(query)}&p=1`, { headers });
+      const artData = await artRes.json();
+      if (artData.artist) {
+        results = artData.artist.slice(0, 5).map(a => ({
+          type: 'artist',
+          id: a.mbid,
+          name: a.name
+        }));
+      }
+    }
+
+    return res.status(200).json({ results });
   } catch (error) {
-    res.status(500).json({ error: "Erreur moteur" });
+    console.error("Crash du tunnel:", error);
+    return res.status(500).json({ error: "Erreur interne du tunnel" });
   }
 }
