@@ -2,53 +2,64 @@ export default async function handler(req, res) {
   const { query, action, venueId, year, setlistId, mbid } = req.query;
   const apiKey = process.env.SETLIST_FM_API_KEY;
   const headers = { 'x-api-key': apiKey, 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' };
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   try {
-    // RECHERCHE (Artiste ou Festival)
+    // RECHERCHE BRUTE (Festivals & Artistes)
     if (!action || action === 'search') {
-      // 1. On cherche d'abord si c'est un artiste (ex: Gojira)
+      const resultsMap = new Map();
+      const artists = [];
+
+      // 1. Recherche Artistes (Top 5)
       const artRes = await fetch(`https://api.setlist.fm/rest/1.0/search/artists?artistName=${encodeURIComponent(query)}&p=1`, { headers });
       const artData = await artRes.json();
-      const artists = (artData.artist || []).slice(0, 3).map(a => ({
-        id: a.mbid, name: a.name, type: 'artist'
-      }));
-
-      // 2. On cherche les éditions de festivals
-      const yearMatch = query.match(/\b(19|20)\d{2}\b/);
-      const forcedYear = yearMatch ? yearMatch[0] : null;
-      const cleanQuery = forcedYear ? query.replace(forcedYear, '').trim() : query;
-      const years = forcedYear ? [forcedYear] : [2025, 2024, 2023];
-
-      const festivals = [];
-      for (const y of years) {
-        const setRes = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(cleanQuery)}&year=${y}&p=1`, { headers });
-        const setData = await setRes.json();
-        if (setData.setlist && setData.setlist.length > 0) {
-          const s = setData.setlist[0];
-          festivals.push({ id: s.venue.id, name: `${cleanQuery} ${y}`, city: s.venue.city.name, year: y, type: 'festival' });
-        }
+      if (artData.artist) {
+        artData.artist.slice(0, 5).forEach(a => artists.push({ id: a.mbid, name: a.name, type: 'artist' }));
       }
-      return res.status(200).json({ results: [...artists, ...festivals] });
+
+      // 2. Recherche Festivals (SCRAPING DE 20 PAGES)
+      // On boucle pour remonter très loin dans les archives
+      for (let p = 1; p <= 20; p++) {
+        const setRes = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=${p}`, { headers });
+        const setData = await setRes.json();
+        if (!setData.setlist || setData.setlist.length === 0) break;
+
+        setData.setlist.forEach(s => {
+          const y = s.eventDate.split('-')[2];
+          const key = `${s.venue.id}-${y}`;
+          if (!resultsMap.has(key)) {
+            resultsMap.set(key, {
+              id: s.venue.id,
+              name: `${s.venue.name} ${y}`,
+              city: s.venue.city.name,
+              year: y,
+              type: 'festival'
+            });
+          }
+        });
+        await sleep(100); // Protection anti-blocage
+      }
+      return res.status(200).json({ results: [...artists, ...Array.from(resultsMap.values())] });
     }
 
-    // LISTE DES CONCERTS D'UN ARTISTE
-    if (action === 'artistConcerts') {
-      const response = await fetch(`https://api.setlist.fm/rest/1.0/artist/${mbid}/setlists?p=1`, { headers });
-      const data = await response.json();
-      const concerts = (data.setlist || []).map(s => ({
-        setlistId: s.id, eventDate: s.eventDate, venue: s.venue.name, city: s.venue.city.name
-      }));
-      return res.status(200).json({ concerts });
-    }
-
-    // LISTE DES ARTISTES D'UN FESTIVAL
+    // LISTE TOTALE ARTISTES (SCRAPING DE 15 PAGES)
     if (action === 'artists') {
-      const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueId=${venueId}&year=${year}&p=1`, { headers });
-      const data = await response.json();
-      const artists = (data.setlist || []).map(s => ({
-        name: s.artist.name, mbid: s.artist.mbid, setlistId: s.id, eventDate: s.eventDate
-      }));
-      return res.status(200).json({ artists: artists.filter((v,i,a)=>a.findIndex(t=>(t.name===v.name))===i) });
+      const uniqueArtists = new Map();
+      for (let p = 1; p <= 15; p++) {
+        const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueId=${venueId}&year=${year}&p=${p}`, { headers });
+        const data = await response.json();
+        if (!data.setlist || data.setlist.length === 0) break;
+
+        data.setlist.forEach(s => {
+          if (!uniqueArtists.has(s.artist.name)) {
+            uniqueArtists.set(s.artist.name, {
+              name: s.artist.name, mbid: s.artist.mbid, setlistId: s.id, eventDate: s.eventDate
+            });
+          }
+        });
+        await sleep(50);
+      }
+      return res.status(200).json({ artists: Array.from(uniqueArtists.values()).sort((a,b) => a.name.localeCompare(b.name)) });
     }
 
     // DÉTAIL SETLIST
