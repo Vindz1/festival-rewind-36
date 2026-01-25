@@ -13,92 +13,73 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, year, artistMbid, artistName, setlistId, query, venueId, venueName, cityName } = body;
-    
-    if (!SETLIST_FM_API_KEY) throw new Error('SETLIST_FM_API_KEY non configurée');
+    const { action, query, venueId, year, cityName, setlistId } = body;
+    const headers = { 'x-api-key': SETLIST_FM_API_KEY!, 'Accept': 'application/json' };
 
-    const headers = { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' };
-
-    // RECHERCHE UNIVERSELLE : On cherche des festivals par nom et année
+    // RECHERCHE MONDIALE REGROUPÉE PAR ANNÉE
     if (action === 'searchFestivalsAndArtists') {
       const resultsMap = new Map();
-      
-      // On cherche directement dans les setlists pour avoir les années et les vrais événements
-      const searchUrl = `${SETLIST_FM_BASE_URL}/search/setlists?venueName=${encodeURIComponent(query)}&p=1`;
-      const response = await fetch(searchUrl, { headers });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.setlist) {
-          data.setlist.forEach((s: any) => {
-            const year = s.eventDate.split('-')[2];
-            const key = `${s.venue.name}-${year}`; // Clé unique par Nom + Année
-            if (!resultsMap.has(key)) {
-              resultsMap.set(key, {
-                type: 'festival',
-                id: s.venue.id,
-                name: `${s.venue.name} ${year}`,
-                venue: s.venue.name,
-                city: s.venue.city.name,
-                year: year,
-                eventDate: s.eventDate
-              });
-            }
-          });
-        }
+      const response = await fetch(`${SETLIST_FM_BASE_URL}/search/setlists?venueName=${encodeURIComponent(query)}&p=1`, { headers });
+      const data = await response.json();
+
+      if (data.setlist) {
+        data.setlist.forEach((s: any) => {
+          const yearEv = s.eventDate.split('-')[2];
+          const city = s.venue.city.name;
+          // Clé unique : Ville + Année (ex: Clisson-2024)
+          const key = `${city}-${yearEv}`;
+          
+          if (!resultsMap.has(key)) {
+            resultsMap.set(key, {
+              type: 'festival',
+              id: s.venue.id, // On garde un ID de référence
+              name: `${query} ${yearEv}`,
+              city: city,
+              country: s.venue.city.country.name,
+              year: yearEv
+            });
+          }
+        });
       }
-
-      // On ajoute aussi une recherche par artiste au cas où
-      const artResponse = await fetch(`${SETLIST_FM_BASE_URL}/search/artists?artistName=${encodeURIComponent(query)}&p=1`, { headers });
-      const artData = artResponse.ok ? await artResponse.json() : { artist: [] };
-      const artists = (artData.artist || []).slice(0, 5).map((a: any) => ({
-        type: 'artist',
-        id: a.mbid,
-        name: a.name
-      }));
-
-      return new Response(JSON.stringify({ 
-        success: true, 
-        results: [...Array.from(resultsMap.values()), ...artists] 
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, results: Array.from(resultsMap.values()) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // RÉCUPÉRATION DES ARTISTES (HELLFEST, ETC.)
+    // CHARGEMENT DE TOUS LES ARTISTES D'UNE VILLE POUR UNE ANNÉE (FESTIVAL COMPLET)
     if (action === 'getVenueArtists') {
-      const url = `${SETLIST_FM_BASE_URL}/search/setlists?venueId=${venueId}${year ? `&year=${year}` : ''}&p=1`;
+      // On cherche par Ville + Année pour avoir TOUTES les scènes du festival
+      const url = `${SETLIST_FM_BASE_URL}/search/setlists?cityName=${encodeURIComponent(cityName)}&year=${year}&p=1`;
       const response = await fetch(url, { headers });
       const data = await response.json();
       
-      const artists = (data.setlist || []).map((s: any) => ({
-        mbid: s.artist.mbid,
-        name: s.artist.name,
-        eventDate: s.eventDate,
-        setlistId: s.id
-      }));
+      // Dédoublonnage des artistes
+      const artistsMap = new Map();
+      (data.setlist || []).forEach((s: any) => {
+        if (!artistsMap.has(s.artist.name)) {
+          artistsMap.set(s.artist.name, {
+            mbid: s.artist.mbid,
+            name: s.artist.name,
+            eventDate: s.eventDate,
+            setlistId: s.id
+          });
+        }
+      });
 
-      return new Response(JSON.stringify({ success: true, artists }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, artists: Array.from(artistsMap.values()) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // RÉCUPÉRATION D'UNE SETLIST PRÉCISE
+    // RÉCUPÉRATION D'UNE SETLIST (AVEC LES MORCEAUX)
     if (action === 'getSetlist') {
       const response = await fetch(`${SETLIST_FM_BASE_URL}/setlist/${setlistId}`, { headers });
       const s = await response.json();
       const songs = s.sets?.set?.flatMap((set: any) => set.song?.map((so: any) => so.name)) || [];
-      
       return new Response(JSON.stringify({
         success: true,
-        setlist: {
-          id: s.id,
-          artistName: s.artist.name,
-          venue: s.venue.name,
-          eventDate: s.eventDate,
-          songs
-        }
+        setlist: { id: s.id, artistName: s.artist.name, eventDate: s.eventDate, songs, venue: s.venue.name }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(JSON.stringify({ success: false, error: 'Action invalide' }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ success: false }), { headers: corsHeaders });
   } catch (e) {
-    return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
   }
 });
