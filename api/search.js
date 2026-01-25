@@ -1,42 +1,47 @@
 export default async function handler(req, res) {
   const { query } = req.query;
-  // Utilisation du nom de clé corrigé
   const apiKey = process.env.SETLIST_FM_API_KEY;
 
-  try {
-    // STRATÉGIE : On cherche dans les SETLISTS pour trouver les éditions par année
-    const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=1`, {
-      headers: {
-        'x-api-key': apiKey,
-        'Accept': 'application/json'
-      }
-    });
+  if (!query) return res.status(400).json({ error: "Requête vide" });
 
-    const data = await response.json();
+  try {
+    const headers = { 'x-api-key': apiKey, 'Accept': 'application/json' };
     
-    // Si l'API renvoie des résultats, on les nettoie pour ne garder que les festivals par année
-    if (data.setlist) {
+    // 1. On cherche si c'est un ARTISTE (ex: Gojira)
+    const artRes = await fetch(`https://api.setlist.fm/rest/1.0/search/artists?artistName=${encodeURIComponent(query)}&p=1`, { headers });
+    const artData = await artRes.json();
+    const artists = (artData.artist || []).slice(0, 5).map(a => ({
+      type: 'artist',
+      id: a.mbid,
+      name: a.name
+    }));
+
+    // 2. On cherche si c'est un FESTIVAL / LIEU (ex: Hellfest)
+    const setRes = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(query)}&p=1`, { headers });
+    const setData = await setRes.json();
+    
+    const festivals = [];
+    if (setData.setlist) {
       const grouped = new Map();
-      data.setlist.forEach(s => {
+      setData.setlist.forEach(s => {
         const year = s.eventDate.split('-')[2];
-        const city = s.venue.city.name;
-        const key = `${city}-${year}`;
-        
+        const key = `${s.venue.name}-${year}`;
         if (!grouped.has(key)) {
           grouped.set(key, {
+            type: 'festival',
             id: s.venue.id,
-            name: `${query} ${year}`, // Ex: Hellfest 2024
-            city: city,
-            country: s.venue.city.country.name,
+            name: `${s.venue.name} ${year}`,
+            city: s.venue.city.name,
             year: year
           });
         }
       });
-      return res.status(200).json({ results: Array.from(grouped.values()) });
+      festivals.push(...Array.from(grouped.values()).slice(0, 10));
     }
 
-    res.status(200).json({ results: [] });
+    // On renvoie le mélange des deux
+    res.status(200).json({ results: [...artists, ...festivals] });
   } catch (error) {
-    res.status(500).json({ error: "Erreur tunnel de recherche" });
+    res.status(500).json({ error: "Erreur moteur" });
   }
 }
