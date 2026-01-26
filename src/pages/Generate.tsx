@@ -28,8 +28,8 @@ export default function Generate() {
   }, [concerts]);
 
   const handleSpotifyAuth = () => {
-    const client_id = "TON_CLIENT_ID_SPOTIFY"; // Remplace par ton ID réel
-    const redirect_uri = window.location.origin + "/spotify-callback";
+    const client_id = "927dd1fd048148d3b71cb0b9e109af6e"; // Remplace par ton ID réel
+    const redirect_uri = "https://festivalrewind-mcecz1qjn-vindz1s-projects.vercel.app/spotify-callback";
     const scope = "playlist-modify-public";
     
     const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
