@@ -1,51 +1,42 @@
 export default async function handler(req, res) {
-  const { action, username, setlistId } = req.query;
+  // Correction de la récupération des paramètres pour éviter le warning
+  const urlObj = new URL(req.url, `https://${req.headers.host}`);
+  const action = urlObj.searchParams.get('action');
+  const username = urlObj.searchParams.get('username')?.trim();
+  const setlistId = urlObj.searchParams.get('setlistId');
+  const p = urlObj.searchParams.get('p') || '1';
+
   const apiKey = process.env.SETLIST_FM_API_KEY;
   const headers = { 
     'x-api-key': apiKey, 
     'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
   };
 
   try {
     if (action === 'getUserConcerts') {
-      // On teste le pseudo tel quel
-      const url = `https://api.setlist.fm/rest/1.0/user/${encodeURIComponent(username)}/attended?p=1`;
-      console.log("Tentative d'import pour :", username);
-      
-      const response = await fetch(url, { headers });
+      // On teste l'URL précise que l'API attend
+      const apiUrl = `https://api.setlist.fm/rest/1.0/user/${username}/attended?p=${p}`;
+      console.log(`[DEBUG] Appel API : ${apiUrl}`);
+
+      const response = await fetch(apiUrl, { headers });
       
       if (response.status === 404) {
-        return res.status(404).json({ 
-          error: `L'utilisateur "${username}" est introuvable. Vérifie l'orthographe ou assure-toi que ton profil Setlist.fm n'est pas en "Privé".` 
-        });
-      }
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("Erreur API:", errText);
-        return res.status(response.status).json({ error: "Setlist.fm refuse l'accès." });
+        // On tente une version tout en minuscules au cas où
+        const retryUrl = `https://api.setlist.fm/rest/1.0/user/${username.toLowerCase()}/attended?p=${p}`;
+        console.log(`[DEBUG] 404 reçu. Tentative de secours : ${retryUrl}`);
+        const retryRes = await fetch(retryUrl, { headers });
+        
+        if (!retryRes.ok) {
+          return res.status(404).json({ error: `Setlist.fm ne trouve pas l'utilisateur "${username}" via son API. Vérifie que ton pseudo est exactement celui affiché sur ton profil (souvent sensible à la casse).` });
+        }
+        // Si le secours fonctionne, on continue avec ces données
+        const data = await retryRes.json();
+        return res.status(200).json({ results: formatConcerts(data) });
       }
 
       const data = await response.json();
-      
-      // Si la liste est vide
-      if (!data.setlist || data.setlist.length === 0) {
-        return res.status(200).json({ 
-          results: [], 
-          message: "Ton profil est bien trouvé, mais tu n'as aucun concert marqué comme 'I was there'." 
-        });
-      }
-
-      const concerts = data.setlist.map(s => ({
-        id: s.id,
-        artist: s.artist.name,
-        venue: s.venue.name,
-        city: s.venue.city.name,
-        date: s.eventDate
-      }));
-      
-      return res.status(200).json({ results: concerts });
+      return res.status(200).json({ results: formatConcerts(data) });
     }
 
     if (action === 'getSetlist') {
@@ -55,7 +46,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ artist: s.artist.name, songs });
     }
   } catch (e) {
-    console.error("Crash Tunnel:", e);
-    res.status(500).json({ error: "Erreur technique du serveur." });
+    console.error(`[CRASH] ${e.message}`);
+    res.status(500).json({ error: "Erreur technique." });
   }
+}
+
+// Fonction pour harmoniser les données
+function formatConcerts(data) {
+  return (data.setlist || []).map(s => ({
+    id: s.id,
+    artist: s.artist.name,
+    venue: s.venue.name,
+    city: s.venue.city.name,
+    date: s.eventDate
+  }));
 }
