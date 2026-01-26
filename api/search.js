@@ -1,39 +1,27 @@
 export default async function handler(req, res) {
-  // On récupère le pseudo proprement sans passer par url.parse()
   const { action, username, setlistId } = req.query;
   const apiKey = process.env.SETLIST_FM_API_KEY;
 
   const headers = { 
     'x-api-key': apiKey, 
     'Accept': 'application/json',
-    'User-Agent': 'Festival-Rewind-App'
+    'User-Agent': 'Mozilla/5.0'
   };
 
   try {
     if (action === 'getUserConcerts') {
-      const cleanUsername = username.trim();
-      const apiUrl = `https://api.setlist.fm/rest/1.0/user/${cleanUsername}/attended?p=1`;
-      
-      console.log(`[DEBUG] Tentative sur : ${apiUrl}`);
-
+      const apiUrl = `https://api.setlist.fm/rest/1.0/user/${username.trim()}/attended?p=1`;
       const response = await fetch(apiUrl, { headers });
       
-      // Si 404, on essaie une dernière fois en minuscules
-      if (response.status === 404) {
-        const retryUrl = `https://api.setlist.fm/rest/1.0/user/${cleanUsername.toLowerCase()}/attended?p=1`;
-        const retryRes = await fetch(retryUrl, { headers });
-        
-        if (!retryRes.ok) {
-          return res.status(404).json({ 
-            error: `Pseudo "${cleanUsername}" non reconnu par l'API. Es-tu sûr de ton pseudo technique ?` 
-          });
-        }
-        const data = await retryRes.json();
-        return res.status(200).json({ results: data.setlist || [] });
+      // DEBUG : On regarde ce que l'API dit vraiment
+      if (!response.ok) {
+        return res.status(response.status).json({ 
+          error: `Erreur API ${response.status}`,
+          debug: `L'API Setlist.fm a répondu ${response.status} pour le pseudo ${username}.`
+        });
       }
 
       const data = await response.json();
-      // On renvoie directement la liste
       return res.status(200).json({ results: data.setlist || [] });
     }
 
@@ -44,6 +32,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ artist: s.artist.name, songs });
     }
   } catch (e) {
-    res.status(500).json({ error: "Erreur de serveur : " + e.message });
+    res.status(500).json({ error: "Erreur serveur", details: e.message });
   }
 }
