@@ -29,18 +29,18 @@ export default function Generate() {
   }, [concerts]);
 
   const handleSpotify = () => {
-    const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    // Doit correspondre EXACTEMENT à ton Dashboard Spotify
-    const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
-    const scope = "playlist-modify-public";
-    
-    localStorage.setItem('pending_songs', JSON.stringify(songs));
-    
-    // LA VRAIE URL OFFICIELLE DE SPOTIFY
-    const spotifyAuthUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
-    
-    window.location.href = spotifyAuthUrl;
-  };
+  const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
+  // On force l'URL propre sans se poser de questions
+  const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
+  const scope = "playlist-modify-public";
+  
+  localStorage.setItem('pending_songs', JSON.stringify(songs));
+  
+  // URL OFFICIELLE de connexion Spotify
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
+  
+  window.location.href = authUrl;
+};
 
   return (
     <div className="min-h-screen bg-black text-white pt-24 px-4 text-center font-sans">
