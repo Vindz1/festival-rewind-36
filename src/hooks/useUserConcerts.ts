@@ -4,21 +4,23 @@ export const useUserConcerts = () => {
   const [concerts, setConcerts] = useState<any[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('my_concerts');
+    const saved = localStorage.getItem('selected_concerts');
     if (saved) setConcerts(JSON.parse(saved));
   }, []);
 
   const toggleConcert = (concert: any) => {
     const exists = concerts.find(c => c.id === concert.id);
-    let newSelection;
-    if (exists) {
-      newSelection = concerts.filter(c => c.id !== concert.id);
-    } else {
-      newSelection = [...concerts, concert];
-    }
+    const newSelection = exists 
+      ? concerts.filter(c => c.id !== concert.id) 
+      : [...concerts, { id: concert.id, artist: concert.artist.name, date: concert.eventDate }];
+    
     setConcerts(newSelection);
-    localStorage.setItem('my_concerts', JSON.stringify(newSelection));
+    localStorage.setItem('selected_concerts', JSON.stringify(newSelection));
   };
 
-  return { concerts, toggleConcert, isSelected: (id: string) => concerts.some(c => c.id === id) };
+  return { 
+    concerts, 
+    toggleConcert, 
+    isSelected: (id: string) => concerts.some(c => c.id === id) 
+  };
 };
