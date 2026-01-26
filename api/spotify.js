@@ -1,5 +1,7 @@
 export default async function handler(req, res) {
   const { action, code, uris, accessToken, playlistName } = req.body;
+  
+  // Vercel va lire ces variables directement dans tes paramètres Settings
   const client_id = process.env.SPOTIFY_CLIENT_ID;
   const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
   const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
@@ -27,11 +29,11 @@ export default async function handler(req, res) {
       const createRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playlistName, public: true })
+        body: JSON.stringify({ name: playlistName || "Ma Time Capsule", public: true })
       });
       const playlist = await createRes.json();
 
-      if (uris.length > 0) {
+      if (uris && uris.length > 0) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
