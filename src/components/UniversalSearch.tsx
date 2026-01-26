@@ -1,85 +1,65 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Loader2, Music, MapPin, Calendar } from 'lucide-react';
+import { Loader2, Import, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from 'sonner';
 
 export const UniversalSearch = () => {
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: '', city: '', year: '' });
   const navigate = useNavigate();
 
-  const handleSearch = async (mode: 'searchFestivals' | 'searchArtists') => {
-    if (!form.name.trim()) return;
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim()) return;
+
     setLoading(true);
     try {
-      const params = new URLSearchParams({ 
-        action: mode, 
-        name: form.name, 
-        city: form.city, 
-        year: form.year 
-      });
-      const res = await fetch(`/api/search?${params.toString()}`);
+      const res = await fetch(`/api/search?action=getUserConcerts&username=${encodeURIComponent(username)}`);
       const data = await res.json();
-      navigate(`/search-results?q=${encodeURIComponent(form.name)}`, { state: { results: data.results, query: form.name } });
+
+      if (res.ok && data.concerts) {
+        // On envoie vers la page de résultats avec la liste des concerts de l'utilisateur
+        navigate('/search-results', { state: { results: data.concerts, username } });
+      } else {
+        toast.error(data.error || "Utilisateur introuvable");
+      }
     } catch (err) {
-      console.error(err);
+      toast.error("Erreur lors de l'importation");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto w-full bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800 shadow-2xl backdrop-blur-sm">
-      <Tabs defaultValue="festival" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 bg-black/40">
-          <TabsTrigger value="festival">Rechercher un Festival</TabsTrigger>
-          <TabsTrigger value="artist">Rechercher un Artiste</TabsTrigger>
-        </TabsList>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="md:col-span-1">
-            <label className="text-xs text-zinc-500 ml-2 mb-1 block uppercase font-bold">Nom</label>
-            <Input 
-              placeholder="Hellfest, Gojira..." 
-              value={form.name} 
-              onChange={e => setForm({...form, name: e.target.value})}
-              className="bg-black/50 border-zinc-700 h-12"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-zinc-500 ml-2 mb-1 block uppercase font-bold">Ville (Optionnel)</label>
-            <Input 
-              placeholder="Clisson, Paris..." 
-              value={form.city} 
-              onChange={e => setForm({...form, city: e.target.value})}
-              className="bg-black/50 border-zinc-700 h-12"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-zinc-500 ml-2 mb-1 block uppercase font-bold">Année (Optionnel)</label>
-            <Input 
-              placeholder="2016, 2024..." 
-              value={form.year} 
-              onChange={e => setForm({...form, year: e.target.value})}
-              className="bg-black/50 border-zinc-700 h-12"
-            />
-          </div>
+    <div className="max-w-xl mx-auto w-full bg-zinc-900/80 p-8 rounded-3xl border border-zinc-800 shadow-2xl backdrop-blur-md">
+      <div className="flex items-center gap-3 mb-6 text-primary">
+        <User className="h-6 w-6" />
+        <h2 className="text-xl font-bold text-white">Importe ton historique Setlist.fm</h2>
+      </div>
+      
+      <form onSubmit={handleImport} className="space-y-4">
+        <div className="relative">
+          <Input
+            placeholder="Ton nom d'utilisateur (ex: JohnDoe)"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="h-14 pl-4 bg-black border-zinc-700 text-white rounded-xl focus:ring-primary"
+          />
         </div>
-
-        <TabsContent value="festival">
-          <Button onClick={() => handleSearch('searchFestivals')} disabled={loading} className="w-full h-14 text-lg font-bold bg-primary">
-            {loading ? <Loader2 className="animate-spin" /> : "Explorer les éditions"}
-          </Button>
-        </TabsContent>
-
-        <TabsContent value="artist">
-          <Button onClick={() => handleSearch('searchArtists')} disabled={loading} className="w-full h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700">
-            {loading ? <Loader2 className="animate-spin" /> : "Trouver les concerts"}
-          </Button>
-        </TabsContent>
-      </Tabs>
+        <Button 
+          type="submit" 
+          disabled={loading} 
+          className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-bold text-lg rounded-xl transition-all"
+        >
+          {loading ? <Loader2 className="animate-spin mr-2" /> : <Import className="mr-2" />}
+          Récupérer mes concerts
+        </Button>
+      </form>
+      <p className="mt-4 text-xs text-center text-zinc-500 italic">
+        Note : Ton profil Setlist.fm doit être public.
+      </p>
     </div>
   );
 };
