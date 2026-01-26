@@ -30,34 +30,34 @@ export default function Generate() {
 
   const handleSpotify = () => {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    // ATTENTION : Cette URL doit être IDENTIQUE à celle du Dashboard Spotify
+    // Doit correspondre EXACTEMENT à ton Dashboard Spotify
     const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
     const scope = "playlist-modify-public";
     
     localStorage.setItem('pending_songs', JSON.stringify(songs));
     
-    // URL OFFICIELLE DE SPOTIFY (Pas de googleusercontent ici)
+    // LA VRAIE URL OFFICIELLE DE SPOTIFY
     const spotifyAuthUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
     
     window.location.href = spotifyAuthUrl;
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pt-24 px-4 text-center">
+    <div className="min-h-screen bg-black text-white pt-24 px-4 text-center font-sans">
       <Header />
       <div className="max-w-xl mx-auto">
         <h1 className="text-4xl font-bold mb-10 italic text-primary">Ma Time Capsule</h1>
         {loading ? (
-          <div className="py-20 text-center">
+          <div className="py-20">
             <Loader2 className="animate-spin h-12 w-12 mx-auto text-primary mb-4" />
-            <p className="text-zinc-500">Préparation des morceaux...</p>
+            <p className="text-zinc-500">Récupération des setlists...</p>
           </div>
         ) : (
           <div className="bg-zinc-900 p-10 rounded-3xl border border-zinc-800 shadow-2xl">
             <p className="text-6xl font-bold text-white mb-2">{songs.length}</p>
-            <p className="text-zinc-500 uppercase tracking-widest mb-10 font-bold">Titres prêts</p>
+            <p className="text-zinc-500 uppercase tracking-widest mb-10 font-bold text-sm">Titres prêts pour ton mix</p>
             <Button onClick={handleSpotify} variant="fire" className="w-full h-16 text-xl font-bold rounded-2xl">
-              <Music className="mr-3" /> RELIER À SPOTIFY
+              <Music className="mr-3 h-6 w-6" /> RELIER À SPOTIFY
             </Button>
           </div>
         )}
