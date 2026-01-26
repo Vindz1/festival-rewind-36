@@ -1,49 +1,36 @@
 export default async function handler(req, res) {
-  // Test de vie : si on tape /api/spotify dans le navigateur
-  if (req.method === 'GET') {
-    return res.status(200).json({ message: "L'API Spotify est en ligne !" });
-  }
-
   const { action, code, uris, accessToken, playlistName } = req.body;
-  // ... (le reste du code précédent)
-}
   const client_id = process.env.SPOTIFY_CLIENT_ID;
   const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
   const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
 
   try {
-    // 1. Échange du code contre un Token
     if (action === 'token') {
-      const authOptions = {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
           'Authorization': 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({ code, redirect_uri, grant_type: 'authorization_code' })
-      };
-      const response = await fetch('https://accounts.spotify.com/api/token', authOptions);
+      });
       const data = await response.json();
       return res.status(200).json(data);
     }
 
-    // 2. Création de la playlist et ajout de titres
     if (action === 'create') {
-      // Obtenir l'ID utilisateur
       const userRes = await fetch('https://api.spotify.com/v1/me', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       const user = await userRes.json();
 
-      // Créer la playlist
       const createRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playlistName, description: 'Généré par Festival Rewind', public: true })
+        body: JSON.stringify({ name: playlistName, public: true })
       });
       const playlist = await createRes.json();
 
-      // Ajouter les titres (par paquets de 100)
       if (uris.length > 0) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
           method: 'POST',
@@ -51,7 +38,6 @@ export default async function handler(req, res) {
           body: JSON.stringify({ uris: uris.slice(0, 100) })
         });
       }
-
       return res.status(200).json({ url: playlist.external_urls.spotify });
     }
   } catch (e) {
