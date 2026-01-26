@@ -5,27 +5,19 @@ export default async function handler(req, res) {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   try {
+    // 1. RECHERCHE FESTIVALS
     if (action === 'searchFestivals') {
       const resultsMap = new Map();
-      // On scanne 15 pages pour remonter loin dans le temps (2016, 2012, etc.)
-      for (let page = 1; page <= 15; page++) {
-        let url = `https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(name)}&p=${page}`;
-        if (city) url += `&cityName=${encodeURIComponent(city)}`;
-        if (year) url += `&year=${year}`;
-
-        const response = await fetch(url, { headers });
+      for (let page = 1; page <= 10; page++) {
+        const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueName=${encodeURIComponent(name)}${city ? `&cityName=${encodeURIComponent(city)}` : ''}${year ? `&year=${year}` : ''}&p=${page}`, { headers });
         if (!response.ok) break;
         const data = await response.json();
         if (!data.setlist) break;
-
         data.setlist.forEach(s => {
           const y = s.eventDate.split('-')[2];
           const key = `${s.venue.id}-${y}`;
           if (!resultsMap.has(key)) {
-            resultsMap.set(key, {
-              id: s.venue.id, name: `${s.venue.name} ${y}`,
-              city: s.venue.city.name, year: y, type: 'festival'
-            });
+            resultsMap.set(key, { id: s.venue.id, name: `${s.venue.name} ${y}`, city: s.venue.city.name, year: y, type: 'festival' });
           }
         });
         if (data.total <= page * 20) break;
@@ -34,34 +26,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: Array.from(resultsMap.values()).sort((a,b) => b.year - a.year) });
     }
 
+    // 2. RECHERCHE ARTISTES
     if (action === 'searchArtists') {
-      const results = [];
-      // On cherche Gojira sur plusieurs pages si nécessaire
-      for (let page = 1; page <= 3; page++) {
-        let url = `https://api.setlist.fm/rest/1.0/search/setlists?artistName=${encodeURIComponent(name)}&p=${page}`;
-        if (city) url += `&cityName=${encodeURIComponent(city)}`;
-        if (year) url += `&year=${year}`;
-
-        const response = await fetch(url, { headers });
-        if (!response.ok) break;
-        const data = await response.json();
-        if (!data.setlist) break;
-
-        data.setlist.forEach(s => {
-          results.push({
-            id: s.id, name: s.artist.name, venue: s.venue.name,
-            city: s.venue.city.name, date: s.eventDate, type: 'setlist'
-          });
-        });
-        if (data.total <= page * 20) break;
-        await sleep(50);
-      }
+      const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?artistName=${encodeURIComponent(name)}${city ? `&cityName=${encodeURIComponent(city)}` : ''}${year ? `&year=${year}` : ''}&p=1`, { headers });
+      const data = await response.json();
+      const results = (data.setlist || []).map(s => ({
+        id: s.id, name: s.artist.name, venue: s.venue.name, city: s.venue.city.name, date: s.eventDate, type: 'setlist'
+      }));
       return res.status(200).json({ results });
     }
 
+    // 3. ARTISTES D'UN FESTIVAL
     if (action === 'getFestivalArtists') {
       const artists = new Map();
-      for (let page = 1; page <= 10; page++) {
+      for (let page = 1; page <= 8; page++) {
         const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?venueId=${venueId}&year=${year}&p=${page}`, { headers });
         if (!response.ok) break;
         const data = await response.json();
@@ -76,11 +54,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ artists: Array.from(artists.values()).sort((a,b) => a.name.localeCompare(b.name)) });
     }
 
+    // 4. RÉCUPÉRATION SETLIST (CORRIGÉ)
     if (action === 'getSetlist') {
       const response = await fetch(`https://api.setlist.fm/rest/1.0/setlist/${setlistId}`, { headers });
       const s = await response.json();
-      const songs = s.sets?.set?.flatMap(set => set.song?.map(so => so.name)) || [];
+      if (!s.artist) return res.status(404).json({ error: "Non trouvé" });
+      
+      // Extraction sécurisée des chansons
+      const songs = [];
+      if (s.sets && s.sets.set) {
+        s.sets.set.forEach(set => {
+          if (set.song) {
+            set.song.forEach(song => { if (song.name) songs.push(song.name); });
+          }
+        });
+      }
       return res.status(200).json({ setlist: { artistName: s.artist.name, eventDate: s.eventDate, songs } });
     }
-  } catch (e) { return res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 }
