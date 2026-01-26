@@ -1,78 +1,78 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Flame, Check, X } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useSpotify } from '@/hooks/useSpotify';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-const SpotifyCallback = () => {
-  const [searchParams] = useSearchParams();
+export default function SpotifyCallback() {
   const navigate = useNavigate();
-  const { exchangeCode } = useSpotify();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState('Connexion à Spotify...');
+  const [playlistUrl, setPlaylistUrl] = useState('');
 
   useEffect(() => {
-    const code = searchParams.get('code');
-    const error = searchParams.get('error');
+    const processPlaylist = async () => {
+      const code = new URLSearchParams(window.location.search).get('code');
+      const pendingSongs = JSON.parse(localStorage.getItem('pending_songs') || '[]');
 
-    if (error) {
-      setStatus('error');
-      toast.error('Connexion Spotify annulée');
-      setTimeout(() => navigate('/festivals'), 2000);
-      return;
-    }
+      if (code) {
+        try {
+          setStatus('Récupération de l\'accès...');
+          const tokenRes = await fetch('/api/spotify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'token', code })
+          });
+          const { access_token } = await tokenRes.json();
 
-    if (code) {
-      exchangeCode(code)
-        .then(() => {
-          setStatus('success');
-          toast.success('Spotify connecté avec succès !');
-          setTimeout(() => navigate('/festivals'), 2000);
-        })
-        .catch(() => {
-          setStatus('error');
-          toast.error('Erreur de connexion Spotify');
-          setTimeout(() => navigate('/festivals'), 2000);
-        });
-    }
-  }, [searchParams, exchangeCode, navigate]);
+          setStatus('Recherche des titres sur Spotify...');
+          // On cherche les URIs Spotify pour chaque chanson
+          const uris = [];
+          for (const s of pendingSongs.slice(0, 50)) { // Limite à 50 pour le test
+            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)} artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
+              headers: { 'Authorization': `Bearer ${access_token}` }
+            });
+            const searchData = await searchRes.json();
+            if (searchData.tracks?.items?.[0]) uris.push(searchData.tracks.items[0].uri);
+          }
+
+          setStatus('Création de la playlist...');
+          const createRes = await fetch('/api/spotify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              action: 'create', 
+              accessToken: access_token, 
+              playlistName: "Ma Time Capsule Live",
+              uris 
+            })
+          });
+          const finalData = await createRes.json();
+          setPlaylistUrl(finalData.url);
+          setStatus('Terminé !');
+        } catch (e) {
+          setStatus('Erreur lors de la création.');
+        }
+      }
+    };
+    processPlaylist();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background noise flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-dark" />
-      
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 text-center"
-      >
-        <motion.div
-          animate={status === 'loading' ? { rotate: 360 } : {}}
-          transition={{ duration: 2, repeat: status === 'loading' ? Infinity : 0, ease: 'linear' }}
-          className="inline-block mb-6"
-        >
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
-            status === 'success' ? 'bg-green-500' : status === 'error' ? 'bg-red-500' : 'bg-gradient-fire'
-          }`}>
-            {status === 'loading' && <Flame className="w-10 h-10 text-white" />}
-            {status === 'success' && <Check className="w-10 h-10 text-white" />}
-            {status === 'error' && <X className="w-10 h-10 text-white" />}
-          </div>
-        </motion.div>
-        
-        <h1 className="font-display text-3xl text-foreground mb-2">
-          {status === 'loading' && 'Connexion à Spotify...'}
-          {status === 'success' && 'Connecté !'}
-          {status === 'error' && 'Erreur de connexion'}
-        </h1>
-        <p className="text-muted-foreground">
-          {status === 'loading' && 'Veuillez patienter...'}
-          {status === 'success' && 'Redirection en cours...'}
-          {status === 'error' && 'Redirection en cours...'}
-        </p>
-      </motion.div>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
+      {!playlistUrl ? (
+        <>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-xl font-medium">{status}</p>
+        </>
+      ) : (
+        <div className="bg-zinc-900 p-10 rounded-3xl border border-primary/30 max-w-sm">
+          <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-6" />
+          <h1 className="text-3xl font-bold mb-4">C'est prêt !</h1>
+          <p className="text-zinc-400 mb-8">Ta playlist a été ajoutée à ton compte Spotify.</p>
+          <Button variant="fire" className="w-full h-14" onClick={() => window.open(playlistUrl, '_blank')}>
+            Ouvrir dans Spotify
+          </Button>
+        </div>
+      )}
     </div>
   );
-};
-
-export default SpotifyCallback;
+}
