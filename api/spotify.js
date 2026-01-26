@@ -1,5 +1,12 @@
 export default async function handler(req, res) {
-  const { action, code, playlistName, uris, accessToken } = req.body;
+  // Test de vie : si on tape /api/spotify dans le navigateur
+  if (req.method === 'GET') {
+    return res.status(200).json({ message: "L'API Spotify est en ligne !" });
+  }
+
+  const { action, code, uris, accessToken, playlistName } = req.body;
+  // ... (le reste du code précédent)
+}
   const client_id = process.env.SPOTIFY_CLIENT_ID;
   const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
   const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
