@@ -14,8 +14,7 @@ export default async function handler(req, res) {
         },
         body: new URLSearchParams({ code, redirect_uri, grant_type: 'authorization_code' })
       });
-      const data = await response.json();
-      return res.status(200).json(data);
+      return res.status(200).json(await response.json());
     }
 
     if (action === 'create') {
@@ -31,7 +30,7 @@ export default async function handler(req, res) {
       });
       const playlist = await createRes.json();
 
-      if (uris && uris.length > 0) {
+      if (uris?.length > 0) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
