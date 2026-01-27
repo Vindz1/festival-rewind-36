@@ -1,7 +1,5 @@
 export default async function handler(req, res) {
   const { action, code, uris, accessToken, playlistName } = req.body;
-  
-  // Vercel va lire ces variables directement dans tes paramètres Settings
   const client_id = process.env.SPOTIFY_CLIENT_ID;
   const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
   const redirect_uri = process.env.SPOTIFY_REDIRECT_URI;
