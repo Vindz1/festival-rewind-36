@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
 
-export default function SearchResults() {
+const SearchResults = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { toggleConcert, isSelected, concerts } = useUserConcerts();
@@ -20,19 +20,15 @@ export default function SearchResults() {
             Générer ma playlist ({concerts.length})
           </Button>
         </div>
-        <h1 className="text-3xl font-bold mb-6 italic text-primary">Concerts de {state?.username}</h1>
+        <h1 className="text-3xl font-bold mb-6 italic text-primary">Tes Concerts</h1>
         <div className="space-y-3">
           {results.map((c: any) => (
-            <div key={c.id} className="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 flex justify-between items-center">
+            <div key={c.id} className="bg-zinc-900 p-5 rounded-2xl flex justify-between items-center border border-zinc-800">
               <div>
-                <p className="font-bold">{c.artist.name}</p>
-                <p className="text-sm text-zinc-500">{c.eventDate} — {c.venue.name}</p>
+                <p className="font-bold">{c.artist?.name || c.artist}</p>
+                <p className="text-sm text-zinc-500">{c.eventDate || c.date}</p>
               </div>
-              <Button 
-                variant={isSelected(c.id) ? "fire" : "outline"} 
-                size="icon" 
-                onClick={() => toggleConcert(c)}
-              >
+              <Button variant={isSelected(c.id) ? "fire" : "outline"} size="icon" onClick={() => toggleConcert(c)}>
                 {isSelected(c.id) ? <Check/> : <Plus/>}
               </Button>
             </div>
@@ -41,4 +37,6 @@ export default function SearchResults() {
       </div>
     </div>
   );
-}
+};
+
+export default SearchResults;
