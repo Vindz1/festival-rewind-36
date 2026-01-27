@@ -30,15 +30,12 @@ export default function Generate() {
 
   const handleSpotify = () => {
   const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-  // On force l'URL propre sans se poser de questions
-  const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
+  const redirect_uri = "https://festival-rewind-36.vercel.app/"; // RETOUR À LA RACINE
   const scope = "playlist-modify-public";
   
   localStorage.setItem('pending_songs', JSON.stringify(songs));
   
-  // URL OFFICIELLE de connexion Spotify
   const authUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
-  
   window.location.href = authUrl;
 };
 
