@@ -3,17 +3,17 @@ import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function SpotifyCallback() {
-  const [status, setStatus] = useState('Finalisation...');
+  const [status, setStatus] = useState('Traitement...');
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    const run = async () => {
+    const process = async () => {
       const code = new URLSearchParams(window.location.search).get('code');
       const songs = JSON.parse(localStorage.getItem('pending_songs') || '[]');
 
       if (code) {
         try {
-          setStatus('Connexion Spotify...');
+          setStatus('Accès Spotify...');
           const res = await fetch('/api/spotify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -21,13 +21,13 @@ export default function SpotifyCallback() {
           });
           const { access_token } = await res.json();
 
-          setStatus('Recherche des titres...');
+          setStatus('Synchronisation des morceaux...');
           const uris = [];
-          for (const s of songs.slice(0, 30)) {
-            const sRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)}%20artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
+          for (const s of songs.slice(0, 25)) {
+            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)}%20artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
               headers: { 'Authorization': `Bearer ${access_token}` }
             });
-            const sData = await sRes.json();
+            const sData = await searchRes.json();
             if (sData.tracks?.items?.[0]) uris.push(sData.tracks.items[0].uri);
           }
 
@@ -39,22 +39,20 @@ export default function SpotifyCallback() {
           });
           const cData = await cRes.json();
           setUrl(cData.url);
-        } catch (e) {
-          setStatus('Erreur technique.');
-        }
+        } catch (e) { setStatus('Erreur de création.'); }
       }
     };
-    run();
+    process();
   }, []);
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
       {!url ? (
-        <><Loader2 className="animate-spin h-12 w-12 text-primary mb-4" /><p className="text-xl">{status}</p></>
+        <><Loader2 className="animate-spin h-12 w-12 text-primary mb-4" /><p>{status}</p></>
       ) : (
         <div className="bg-zinc-900 p-10 rounded-3xl border border-primary/20">
           <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-6" />
-          <h2 className="text-3xl font-bold mb-8">Playlist prête !</h2>
+          <h2 className="text-3xl font-bold mb-8 italic">C'est prêt !</h2>
           <Button variant="fire" className="w-full h-14" onClick={() => window.open(url, '_blank')}>Ouvrir Spotify</Button>
         </div>
       )}
