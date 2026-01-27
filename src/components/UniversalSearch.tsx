@@ -11,6 +11,7 @@ export const UniversalSearch = () => {
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!username) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/search?action=user&username=${username}`);
@@ -18,8 +19,10 @@ export const UniversalSearch = () => {
       if (res.ok) {
         navigate('/search-results', { state: { results: data.results, username } });
       } else {
-        alert("Utilisateur introuvable");
+        alert("Utilisateur non trouvé");
       }
+    } catch (err) {
+      alert("Erreur de connexion");
     } finally {
       setLoading(false);
     }
@@ -31,10 +34,10 @@ export const UniversalSearch = () => {
         placeholder="Ton pseudo Setlist.fm" 
         value={username} 
         onChange={e => setUsername(e.target.value)}
-        className="h-14 bg-zinc-900 border-zinc-800"
+        className="h-14 bg-zinc-900 border-zinc-800 text-white"
       />
-      <Button type="submit" disabled={loading} className="w-full h-14 bg-primary font-bold">
-        {loading ? <Loader2 className="animate-spin" /> : "Importer mes concerts"}
+      <Button type="submit" disabled={loading} className="w-full h-14 bg-primary text-black font-bold">
+        {loading ? <Loader2 className="animate-spin" /> : "Importer mes souvenirs"}
       </Button>
     </form>
   );
