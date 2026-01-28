@@ -26,7 +26,8 @@ export default function Generate() {
 
   const handleSpotify = () => {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    const redirectUri = `${window.location.origin}/spotify-callback`;
+    // Utiliser toujours le domaine de production
+    const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
     window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
   };
