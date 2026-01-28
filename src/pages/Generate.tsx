@@ -28,7 +28,7 @@ export default function Generate() {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = `${window.location.origin}/spotify-callback`;
     localStorage.setItem('pending_songs', JSON.stringify(songs));
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=playlist-modify-public`;
+    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
   };
 
   return (
