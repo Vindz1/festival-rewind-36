@@ -10,7 +10,7 @@ export default function Generate() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchAll = async () => {
+    const fetchSongs = async () => {
       setLoading(true);
       const all: any[] = [];
       for (const c of concerts) {
@@ -21,16 +21,15 @@ export default function Generate() {
       setSongs(all);
       setLoading(false);
     };
-    if (concerts.length > 0) fetchAll();
+    if (concerts.length > 0) fetchSongs();
   }, [concerts]);
 
   const handleSpotify = () => {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
+    const redirect_uri = window.location.origin + "/"; // On revient à la racine
     const scope = "playlist-modify-public";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
     
-    // URL OFFICIELLE
     window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
   };
 
