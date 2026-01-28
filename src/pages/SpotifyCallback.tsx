@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 export default function SpotifyCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('Connexion à Spotify...');
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -59,8 +61,12 @@ export default function SpotifyCallback() {
             const songs = JSON.parse(pendingSongs);
             
             // Chercher chaque chanson sur Spotify pour obtenir son URI
+            setStatusMessage('Recherche des morceaux sur Spotify...');
             const trackUris: string[] = [];
-            for (const song of songs) {
+            for (let i = 0; i < songs.length; i++) {
+              const song = songs[i];
+              setProgress(Math.round(((i + 1) / songs.length) * 80)); // 80% pour la recherche
+              
               try {
                 const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
                 const searchRes = await fetch(
@@ -80,6 +86,8 @@ export default function SpotifyCallback() {
             }
             
             // Créer la playlist
+            setStatusMessage('Création de la playlist...');
+            setProgress(90);
             const createResponse = await fetch('/api/spotify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -95,8 +103,12 @@ export default function SpotifyCallback() {
             if (playlist.url) {
               // Nettoyer le localStorage
               localStorage.removeItem('pending_songs');
+              setStatusMessage('Playlist créée avec succès !');
+              setProgress(100);
               // Rediriger vers Spotify
-              window.location.href = playlist.url;
+              setTimeout(() => {
+                window.location.href = playlist.url;
+              }, 500);
             } else {
               navigate('/generate');
             }
@@ -117,8 +129,8 @@ export default function SpotifyCallback() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="text-center">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+      <div className="text-center max-w-md w-full">
         {error ? (
           <>
             <p className="text-red-500 text-xl mb-4">{error}</p>
@@ -127,7 +139,16 @@ export default function SpotifyCallback() {
         ) : (
           <>
             <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-xl">Connexion à Spotify en cours...</p>
+            <p className="text-xl mb-2">{statusMessage}</p>
+            {progress > 0 && (
+              <div className="w-full bg-zinc-800 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            )}
+            {progress > 0 && <p className="text-sm text-gray-400">{progress}%</p>}
           </>
         )}
       </div>
