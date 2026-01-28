@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
-import { Loader2, Music } from 'lucide-react';
+import { Music, Loader2 } from 'lucide-react';
 
 export default function Generate() {
   const { concerts } = useUserConcerts();
@@ -26,11 +26,9 @@ export default function Generate() {
 
   const handleSpotify = () => {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    const redirect_uri = window.location.origin + "/"; // On revient à la racine
-    const scope = "playlist-modify-public";
+    const redirect_uri = "https://festival-rewind-36.vercel.app/spotify-callback";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
-    
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
+    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=playlist-modify-public`;
   };
 
   return (
@@ -39,7 +37,7 @@ export default function Generate() {
       <div className="max-w-xl mx-auto py-20 bg-zinc-900 rounded-3xl border border-zinc-800">
         <h1 className="text-5xl font-bold mb-4 italic text-primary">{songs.length} TITRES</h1>
         <Button onClick={handleSpotify} variant="fire" className="w-full h-16 text-xl font-bold">
-          <Music className="mr-3" /> RELIER À SPOTIFY
+          <Music className="mr-3" /> GÉNÉRER SUR SPOTIFY
         </Button>
       </div>
     </div>
