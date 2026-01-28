@@ -5,10 +5,6 @@
       "destination": "/api/:path*"
     },
     {
-      "source": "/spotify-callback",
-      "destination": "/api/spotify-callback"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
