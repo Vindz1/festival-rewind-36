@@ -3,46 +3,44 @@ import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function SpotifyCallback() {
-  const [status, setStatus] = useState('Traitement...');
+  const [status, setStatus] = useState('Initialisation...');
   const [url, setUrl] = useState('');
 
   useEffect(() => {
-    const process = async () => {
+    const run = async () => {
       const code = new URLSearchParams(window.location.search).get('code');
       const songs = JSON.parse(localStorage.getItem('pending_songs') || '[]');
 
-      if (code) {
-        try {
-          setStatus('Accès Spotify...');
-          const res = await fetch('/api/spotify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'token', code })
-          });
-          const { access_token } = await res.json();
+      try {
+        setStatus('Connexion Spotify...');
+        const res = await fetch('/api/spotify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'token', code })
+        });
+        const { access_token } = await res.json();
 
-          setStatus('Synchronisation des morceaux...');
-          const uris = [];
-          for (const s of songs.slice(0, 25)) {
-            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)}%20artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
-              headers: { 'Authorization': `Bearer ${access_token}` }
-            });
-            const sData = await searchRes.json();
-            if (sData.tracks?.items?.[0]) uris.push(sData.tracks.items[0].uri);
-          }
-
-          setStatus('Création de la playlist...');
-          const cRes = await fetch('/api/spotify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', accessToken: access_token, uris })
+        setStatus('Recherche des morceaux...');
+        const uris = [];
+        for (const s of songs.slice(0, 30)) {
+          const sRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)}%20artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
+            headers: { 'Authorization': `Bearer ${access_token}` }
           });
-          const cData = await cRes.json();
-          setUrl(cData.url);
-        } catch (e) { setStatus('Erreur de création.'); }
-      }
+          const sData = await sRes.json();
+          if (sData.tracks?.items?.[0]) uris.push(sData.tracks.items[0].uri);
+        }
+
+        setStatus('Création de la playlist...');
+        const cRes = await fetch('/api/spotify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'create', accessToken: access_token, uris })
+        });
+        const cData = await cRes.json();
+        setUrl(cData.url);
+      } catch (e) { setStatus('Erreur lors du traitement.'); }
     };
-    process();
+    run();
   }, []);
 
   return (
