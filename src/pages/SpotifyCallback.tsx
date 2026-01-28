@@ -1,56 +1,110 @@
 import { useEffect, useState } from 'react';
-import { Loader2, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
 export default function SpotifyCallback() {
-  const [status, setStatus] = useState('Chargement...');
-  const [url, setUrl] = useState('');
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const run = async () => {
-      const code = new URLSearchParams(window.location.search).get('code');
-      const songs = JSON.parse(localStorage.getItem('pending_songs') || '[]');
-      if (!code) return;
+    const handleCallback = async () => {
+      // Récupérer le code depuis l'URL
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const errorParam = params.get('error');
+
+      if (errorParam) {
+        setError('Vous avez refusé l\'autorisation Spotify');
+        setTimeout(() => navigate('/generate'), 3000);
+        return;
+      }
+
+      if (!code) {
+        setError('Aucun code d\'autorisation reçu');
+        setTimeout(() => navigate('/generate'), 3000);
+        return;
+      }
 
       try {
-        setStatus('Récupération du token...');
-        const res = await fetch('/api/spotify', {
+        // Échanger le code contre un access token
+        const response = await fetch('/api/spotify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'token', code })
+          body: JSON.stringify({
+            action: 'token',
+            code: code
+          })
         });
-        const { access_token } = await res.json();
 
-        setStatus('Recherche et Création...');
-        const uris = [];
-        for (const s of songs.slice(0, 20)) {
-          const sRes = await fetch(`https://api.spotify.com/v1/search?q=track:${encodeURIComponent(s.title)}%20artist:${encodeURIComponent(s.artist)}&type=track&limit=1`, {
-            headers: { 'Authorization': `Bearer ${access_token}` }
-          });
-          const sData = await sRes.json();
-          if (sData.tracks?.items?.[0]) uris.push(sData.tracks.items[0].uri);
+        if (!response.ok) {
+          throw new Error('Erreur lors de l\'échange du code');
         }
 
-        const cRes = await fetch('/api/spotify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'create', accessToken: access_token, uris })
-        });
-        const cData = await cRes.json();
-        setUrl(cData.url);
-      } catch (e) { setStatus('Erreur.'); }
+        const data = await response.json();
+
+        if (data.access_token) {
+          // Stocker le token
+          localStorage.setItem('spotify_access_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('spotify_refresh_token', data.refresh_token);
+          }
+
+          // Récupérer les chansons en attente
+          const pendingSongs = localStorage.getItem('pending_songs');
+          
+          if (pendingSongs) {
+            const songs = JSON.parse(pendingSongs);
+            
+            // Créer la playlist
+            const createResponse = await fetch('/api/spotify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'create',
+                accessToken: data.access_token,
+                uris: songs.map((s: any) => `spotify:track:${s.id}`).filter(Boolean)
+              })
+            });
+
+            const playlist = await createResponse.json();
+            
+            if (playlist.url) {
+              // Rediriger vers Spotify
+              window.location.href = playlist.url;
+            } else {
+              navigate('/generate');
+            }
+          } else {
+            navigate('/generate');
+          }
+        } else {
+          throw new Error('Pas de token reçu');
+        }
+      } catch (err) {
+        console.error('Erreur callback:', err);
+        setError('Erreur lors de la connexion à Spotify');
+        setTimeout(() => navigate('/generate'), 3000);
+      }
     };
-    run();
-  }, []);
+
+    handleCallback();
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
-      {!url ? <><Loader2 className="animate-spin h-12 w-12 text-primary mb-4" /><p>{status}</p></> : (
-        <div className="bg-zinc-900 p-10 rounded-3xl border border-primary/20">
-          <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-6" />
-          <Button variant="fire" className="w-full h-14" onClick={() => window.open(url, '_blank')}>Ouvrir Spotify</Button>
-        </div>
-      )}
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="text-center">
+        {error ? (
+          <>
+            <p className="text-red-500 text-xl mb-4">{error}</p>
+            <p className="text-gray-400">Redirection...</p>
+          </>
+        ) : (
+          <>
+            <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-xl">Connexion à Spotify en cours...</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
