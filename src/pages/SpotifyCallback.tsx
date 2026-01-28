@@ -36,11 +36,14 @@ export default function SpotifyCallback() {
           })
         });
 
-        if (!response.ok) {
-          throw new Error('Erreur lors de l\'échange du code');
-        }
-
         const data = await response.json();
+        
+        // Afficher la réponse pour debug
+        console.log('Réponse Spotify:', data);
+
+        if (!response.ok || data.error) {
+          throw new Error(data.error_description || data.error || 'Erreur lors de l\'échange du code');
+        }
 
         if (data.access_token) {
           // Stocker le token
@@ -55,6 +58,27 @@ export default function SpotifyCallback() {
           if (pendingSongs) {
             const songs = JSON.parse(pendingSongs);
             
+            // Chercher chaque chanson sur Spotify pour obtenir son URI
+            const trackUris: string[] = [];
+            for (const song of songs) {
+              try {
+                const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
+                const searchRes = await fetch(
+                  `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
+                  {
+                    headers: { 'Authorization': `Bearer ${data.access_token}` }
+                  }
+                );
+                const searchData = await searchRes.json();
+                
+                if (searchData.tracks?.items?.[0]) {
+                  trackUris.push(searchData.tracks.items[0].uri);
+                }
+              } catch (err) {
+                console.error(`Erreur recherche: ${song.title}`, err);
+              }
+            }
+            
             // Créer la playlist
             const createResponse = await fetch('/api/spotify', {
               method: 'POST',
@@ -62,13 +86,15 @@ export default function SpotifyCallback() {
               body: JSON.stringify({
                 action: 'create',
                 accessToken: data.access_token,
-                uris: songs.map((s: any) => `spotify:track:${s.id}`).filter(Boolean)
+                uris: trackUris
               })
             });
 
             const playlist = await createResponse.json();
             
             if (playlist.url) {
+              // Nettoyer le localStorage
+              localStorage.removeItem('pending_songs');
               // Rediriger vers Spotify
               window.location.href = playlist.url;
             } else {
