@@ -10,20 +10,18 @@ export default function Generate() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchSongs = async () => {
+    const fetchAll = async () => {
       setLoading(true);
       const all: any[] = [];
       for (const c of concerts) {
-        try {
-          const res = await fetch(`/api/search?action=songs&setlistId=${c.id}`);
-          const data = await res.json();
-          if (data.songs) data.songs.forEach((s: string) => all.push({ artist: c.artist, title: s }));
-        } catch (e) { console.error(e); }
+        const res = await fetch(`/api/search?action=songs&setlistId=${c.id}`);
+        const data = await res.json();
+        if (data.songs) data.songs.forEach((s: string) => all.push({ artist: c.artist, title: s }));
       }
       setSongs(all);
       setLoading(false);
     };
-    if (concerts.length > 0) fetchSongs();
+    if (concerts.length > 0) fetchAll();
   }, [concerts]);
 
   const handleSpotify = () => {
@@ -32,22 +30,18 @@ export default function Generate() {
     const scope = "playlist-modify-public";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
     
-    // URL OFFICIELLE SPOTIFY
+    // URL OFFICIELLE
     window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${encodeURIComponent(scope)}`;
   };
 
   return (
     <div className="min-h-screen bg-black text-white pt-24 px-4 text-center">
       <Header />
-      <div className="max-w-xl mx-auto py-20">
-        {loading ? <Loader2 className="animate-spin h-12 w-12 mx-auto text-primary" /> : (
-          <div className="bg-zinc-900 p-10 rounded-3xl border border-zinc-800">
-            <h1 className="text-5xl font-bold mb-4 italic text-primary">{songs.length} TITRES</h1>
-            <Button onClick={handleSpotify} variant="fire" className="w-full h-16 text-xl font-bold rounded-2xl">
-              <Music className="mr-3" /> RELIER À SPOTIFY
-            </Button>
-          </div>
-        )}
+      <div className="max-w-xl mx-auto py-20 bg-zinc-900 rounded-3xl border border-zinc-800">
+        <h1 className="text-5xl font-bold mb-4 italic text-primary">{songs.length} TITRES</h1>
+        <Button onClick={handleSpotify} variant="fire" className="w-full h-16 text-xl font-bold">
+          <Music className="mr-3" /> RELIER À SPOTIFY
+        </Button>
       </div>
     </div>
   );
