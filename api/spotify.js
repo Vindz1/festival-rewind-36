@@ -18,18 +18,21 @@ export default async function handler(req, res) {
     }
 
     if (action === 'create') {
+      // 1. Récupérer l'ID utilisateur
       const userRes = await fetch('https://api.spotify.com/v1/me', {
         headers: { 'Authorization': `Bearer ${accessToken}` }
       });
       const user = await userRes.json();
 
+      // 2. Créer la playlist
       const createRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playlistName || "Ma Time Capsule", public: true })
+        body: JSON.stringify({ name: playlistName || "Ma Time Capsule Live", public: true })
       });
       const playlist = await createRes.json();
 
+      // 3. Ajouter les morceaux
       if (uris?.length > 0) {
         await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
           method: 'POST',
