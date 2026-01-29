@@ -29,6 +29,7 @@ export default function Generate() {
   const [showPreview, setShowPreview] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [playlistName, setPlaylistName] = useState(`Setlist Live - ${new Date().getFullYear()}`);
 
   // Charger les infos d'abonnement
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function Generate() {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
+    localStorage.setItem('playlist_name', playlistName || `Setlist Live - ${new Date().getFullYear()}`);
     window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
   };
 
@@ -140,6 +142,15 @@ export default function Generate() {
           </Alert>
         )}
 
+        {user && subscription?.subscription_type === 'admin' && (
+          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
+            <Crown className="h-4 w-4 text-purple-400" />
+            <AlertDescription>
+              <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
+            </AlertDescription>
+          </Alert>
+        )}
+
         {user && subscription?.subscription_type === 'free' && (
           <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-yellow-500/30">
             <Crown className="h-4 w-4 text-yellow-500" />
@@ -168,9 +179,41 @@ export default function Generate() {
           </Alert>
         )}
 
+        {/* Playlist name input */}
+        <div className="max-w-xl mx-auto mb-6">
+          <label className="block text-sm font-medium mb-2 text-gray-300">
+            Nom de la playlist
+          </label>
+          <input
+            type="text"
+            value={playlistName}
+            onChange={(e) => setPlaylistName(e.target.value)}
+            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            placeholder="Ma Time Capsule Live"
+          />
+        </div>
+
         {/* Boutons d'action */}
         {!showPreview ? (
           <div className="max-w-xl mx-auto space-y-4">
+            {/* Input nom de playlist */}
+            <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+              <label htmlFor="playlistName" className="block text-sm font-medium text-gray-300 mb-2">
+                Nom de la playlist
+              </label>
+              <input
+                id="playlistName"
+                type="text"
+                value={playlistName}
+                onChange={(e) => setPlaylistName(e.target.value)}
+                placeholder="Ma Time Capsule Live"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Ce nom apparaîtra sur votre Spotify
+              </p>
+            </div>
+
             <Button 
               onClick={fetchDetailedInfo} 
               disabled={searching}
