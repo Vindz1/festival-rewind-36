@@ -88,7 +88,20 @@ export default function SpotifyCallback() {
             // Créer la playlist
             setStatusMessage('Création de la playlist...');
             setProgress(90);
+            
+            // Récupérer le nom personnalisé
+            const customName = localStorage.getItem('playlist_name') || 'Setlist Live';
+            
             const createResponse = await fetch('/api/spotify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'create',
+                accessToken: data.access_token,
+                uris: trackUris,
+                playlistName: customName
+              })
+            });
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -103,6 +116,7 @@ export default function SpotifyCallback() {
             if (playlist.url) {
               // Nettoyer le localStorage
               localStorage.removeItem('pending_songs');
+              localStorage.removeItem('playlist_name');
               setStatusMessage('Playlist créée avec succès !');
               setProgress(100);
               // Rediriger vers Spotify
