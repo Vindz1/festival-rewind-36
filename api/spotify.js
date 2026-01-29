@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { action, code, uris, accessToken } = req.body;
+  const { action, code, uris, accessToken, playlistName } = req.body;
   const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI } = process.env;
   
   try {
@@ -32,7 +32,8 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ 
-          name: "Ma Time Capsule Live", 
+          name: playlistName || 'Setlist Live',
+          description: 'Généré avec setlist.live',
           public: true 
         })
       });
