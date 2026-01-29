@@ -102,14 +102,6 @@ export default function SpotifyCallback() {
                 playlistName: customName
               })
             });
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'create',
-                accessToken: data.access_token,
-                uris: trackUris
-              })
-            });
 
             const playlist = await createResponse.json();
             
