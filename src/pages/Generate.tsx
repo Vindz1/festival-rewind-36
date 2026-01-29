@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
-import { Music, Loader2, Play, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { getUserSubscription, UserSubscription } from '@/lib/subscription';
+import { Music, Loader2, Play, ArrowRight, Lock, Crown } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Link } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface TrackInfo {
   title: string;
@@ -16,12 +20,29 @@ interface TrackInfo {
 
 export default function Generate() {
   const { concerts } = useUserConcerts();
+  const { user } = useAuth();
   const [songs, setSongs] = useState<any[]>([]);
   const [tracksWithInfo, setTracksWithInfo] = useState<TrackInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+
+  // Charger les infos d'abonnement
+  useEffect(() => {
+    if (user) {
+      getUserSubscription(user.id).then((sub) => {
+        setSubscription(sub);
+        setLoadingSubscription(false);
+      });
+    } else {
+      setLoadingSubscription(false);
+    }
+  }, [user]);
+
+  const canExport = user && subscription?.can_export;
 
   // Étape 1 : Récupérer les chansons depuis setlist.fm
   useEffect(() => {
@@ -41,11 +62,11 @@ export default function Generate() {
     if (concerts.length > 0) fetchSongs();
   }, [concerts]);
 
-  // Étape 2 : Chercher les infos détaillées sur Spotify (quand on clique sur "Prévisualiser")
+  // Étape 2 : Prévisualiser
   const fetchDetailedInfo = async () => {
     if (tracksWithInfo.length > 0) {
       setShowPreview(true);
-      return; // Déjà chargé
+      return;
     }
 
     setSearching(true);
@@ -55,15 +76,11 @@ export default function Generate() {
       for (let i = 0; i < songs.length; i++) {
         const song = songs[i];
         setExportProgress(Math.round(((i + 1) / songs.length) * 100));
-
-        // Pour l'instant, afficher juste les infos de base
-        // Tu pourras ajouter une vraie recherche Spotify plus tard
         detailedTracks.push({
           title: song.title,
           artist: song.artist,
         });
       }
-
       setTracksWithInfo(detailedTracks);
       setShowPreview(true);
     } catch (err) {
@@ -76,6 +93,8 @@ export default function Generate() {
 
   // Étape 3 : Exporter vers Spotify
   const handleSpotifyExport = () => {
+    if (!canExport) return;
+    
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     localStorage.setItem('pending_songs', JSON.stringify(songs));
@@ -108,6 +127,47 @@ export default function Generate() {
           </p>
         </div>
 
+        {/* Auth warnings */}
+        {!user && (
+          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-primary/30">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
+              <Link to="/auth" className="ml-2 underline text-primary">
+                Se connecter
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {user && subscription?.subscription_type === 'free' && (
+          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-yellow-500/30">
+            <Crown className="h-4 w-4 text-yellow-500" />
+            <AlertDescription>
+              <strong>Offre gratuite</strong> : {subscription.exports_this_year}/2 playlists utilisées cette année.
+              {!subscription.can_export && (
+                <span className="block mt-1 text-yellow-500">
+                  Limite atteinte. Passez à Premium pour des exports illimités !
+                </span>
+              )}
+              {subscription.can_export && subscription.remaining_exports !== undefined && (
+                <span className="block mt-1 text-gray-400">
+                  Il vous reste {subscription.remaining_exports} export{subscription.remaining_exports > 1 ? 's' : ''}.
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {user && subscription?.subscription_type === 'premium' && (
+          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-500/50">
+            <Crown className="h-4 w-4 text-yellow-500" />
+            <AlertDescription>
+              <strong className="text-yellow-500">Premium</strong> : Exports illimités ! 🎉
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Boutons d'action */}
         {!showPreview ? (
           <div className="max-w-xl mx-auto space-y-4">
@@ -136,12 +196,23 @@ export default function Generate() {
 
             <Button 
               onClick={handleSpotifyExport}
+              disabled={!canExport}
               variant="fire"
-              className="w-full h-16 text-xl font-bold"
+              className="w-full h-16 text-xl font-bold relative"
             >
+              {!user && <Lock className="mr-3" />}
               <Music className="mr-3" />
-              Exporter directement vers Spotify
+              {!user ? 'Se connecter pour exporter' : 'Exporter vers Spotify'}
             </Button>
+
+            {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
+              <div className="text-center">
+                <Button variant="outline" className="gap-2">
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                  Passer à Premium
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -158,7 +229,6 @@ export default function Generate() {
                     key={index}
                     className="flex items-center gap-4 p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
                   >
-                    {/* Album art placeholder */}
                     <div className="w-12 h-12 bg-zinc-700 rounded flex-shrink-0 flex items-center justify-center">
                       {track.albumArt ? (
                         <img 
@@ -170,8 +240,6 @@ export default function Generate() {
                         <Music className="w-6 h-6 text-zinc-500" />
                       )}
                     </div>
-
-                    {/* Track info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white truncate">{track.title}</p>
                       <p className="text-sm text-gray-400 truncate">
@@ -180,8 +248,6 @@ export default function Generate() {
                         {track.year && <> ({track.year})</>}
                       </p>
                     </div>
-
-                    {/* Number */}
                     <div className="text-sm text-gray-500 font-mono">
                       #{index + 1}
                     </div>
@@ -191,16 +257,27 @@ export default function Generate() {
             </div>
 
             {/* Bouton export */}
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-xl mx-auto space-y-4">
               <Button 
                 onClick={handleSpotifyExport}
+                disabled={!canExport}
                 variant="fire"
                 className="w-full h-16 text-xl font-bold"
               >
+                {!user && <Lock className="mr-3" />}
                 <Music className="mr-3" />
-                Créer la playlist sur Spotify
-                <ArrowRight className="ml-3" />
+                {!user ? 'Se connecter pour exporter' : 'Créer la playlist sur Spotify'}
+                {user && <ArrowRight className="ml-3" />}
               </Button>
+
+              {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
+                <div className="text-center">
+                  <Button variant="outline" className="gap-2">
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                    Passer à Premium pour plus d'exports
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
