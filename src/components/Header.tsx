@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion';
-import { Flame, Music, LogOut, User } from 'lucide-react';
+import { Music, LogOut, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useSpotify } from '@/hooks/useSpotify';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +14,7 @@ import {
 export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const isHome = location.pathname === '/';
   const { user, signOut, loading: authLoading } = useAuth();
-  const { isConnected: spotifyConnected, connect: connectSpotify, loading: spotifyLoading } = useSpotify();
 
   const handleSignOut = async () => {
     await signOut();
@@ -45,44 +42,29 @@ export const Header = () => {
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <Link 
-              to="/festivals" 
+              to="/my-concerts?tab=past" 
               className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/festivals' ? 'text-primary' : 'text-muted-foreground'
+                location.pathname === '/my-concerts' && location.search.includes('tab=past') 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
               }`}
             >
-              Festivals
+              I Was There
             </Link>
             <Link 
-              to="/my-concerts" 
+              to="/my-concerts?tab=future" 
               className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/my-concerts' ? 'text-primary' : 'text-muted-foreground'
+                location.pathname === '/my-concerts' && location.search.includes('tab=future')
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
               }`}
             >
-              Mes Concerts
+              I'm Going
             </Link>
           </nav>
 
-          {/* Right section - Auth & Spotify */}
+          {/* Right section - Auth */}
           <div className="flex items-center gap-3">
-            {/* Spotify status indicator */}
-            {user && !authLoading && !spotifyLoading && (
-              <button
-                onClick={() => !spotifyConnected && connectSpotify()}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  spotifyConnected
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-muted text-muted-foreground border border-border hover:border-primary/50 hover:text-primary cursor-pointer'
-                }`}
-                title={spotifyConnected ? 'Spotify connecté' : 'Cliquez pour connecter Spotify'}
-              >
-                <div className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                <span className="hidden sm:inline">
-                  {spotifyConnected ? 'Spotify lié' : 'Lier Spotify'}
-                </span>
-              </button>
-            )}
-
-            {/* User menu or login button */}
             {!authLoading && (
               <>
                 {user ? (
@@ -100,20 +82,8 @@ export const Header = () => {
                     <DropdownMenuContent align="end" className="w-56">
                       <div className="px-2 py-1.5">
                         <p className="text-sm font-medium truncate">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className={`w-2 h-2 rounded-full ${spotifyConnected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                          <span className="text-xs text-muted-foreground">
-                            {spotifyConnected ? 'Spotify connecté' : 'Spotify non lié'}
-                          </span>
-                        </div>
                       </div>
                       <DropdownMenuSeparator />
-                      {!spotifyConnected && (
-                        <DropdownMenuItem onClick={connectSpotify}>
-                          <Music className="w-4 h-4 mr-2" />
-                          Connecter Spotify
-                        </DropdownMenuItem>
-                      )}
                       <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                         <LogOut className="w-4 h-4 mr-2" />
                         Déconnexion
@@ -121,23 +91,12 @@ export const Header = () => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
-                  <>
-                    {isHome ? (
-                      <Link to="/festivals">
-                        <Button variant="fire" size="sm" className="gap-2">
-                          <Music className="w-4 h-4" />
-                          Commencer
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Link to="/auth">
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <User className="w-4 h-4" />
-                          Connexion
-                        </Button>
-                      </Link>
-                    )}
-                  </>
+                  <Link to="/auth">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <User className="w-4 h-4" />
+                      Connexion
+                    </Button>
+                  </Link>
                 )}
               </>
             )}
