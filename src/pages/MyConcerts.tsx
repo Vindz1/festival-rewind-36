@@ -19,6 +19,25 @@ const MyConcerts = () => {
   const [loading, setLoading] = useState(true);
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
 
+  // Toggle sélection d'un concert
+  const toggleConcert = (concert: any) => {
+    const newSelection = new Set(selectedConcerts);
+    if (newSelection.has(concert.id)) {
+      newSelection.delete(concert.id);
+    } else {
+      newSelection.add(concert.id);
+    }
+    setSelectedConcerts(newSelection);
+    
+    // Sauvegarder dans localStorage pour Generate.tsx
+    const selectedArray = concerts.filter(c => newSelection.has(c.id)).map(c => ({
+      id: c.id,
+      artist: c.artist.name,
+      date: c.eventDate
+    }));
+    localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
+  };
+
   // Charger les concerts depuis setlist.fm
   useEffect(() => {
     const fetchConcerts = async () => {
@@ -32,11 +51,18 @@ const MyConcerts = () => {
 
       setLoading(true);
       try {
+        // Nettoyer l'ancien système de sélection
+        localStorage.removeItem('selected_concerts');
+        
         const response = await fetch(`/api/search?action=user&username=${username}`);
         if (!response.ok) throw new Error('Erreur de chargement');
         
         const data = await response.json();
-        setConcerts(data.results || []);
+        
+        // L'API setlist.fm retourne les concerts dans data.results
+        const fetchedConcerts = data.results || [];
+        console.log('Concerts récupérés:', fetchedConcerts);
+        setConcerts(fetchedConcerts);
       } catch (error) {
         console.error('Error fetching concerts:', error);
         toast.error('Erreur lors du chargement de vos concerts');
@@ -47,34 +73,6 @@ const MyConcerts = () => {
 
     fetchConcerts();
   }, [navigate]);
-
-  // Charger les sélections depuis localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('selected_concerts');
-    if (saved) {
-      const savedConcerts = JSON.parse(saved);
-      setSelectedConcerts(new Set(savedConcerts.map((c: any) => c.id)));
-    }
-  }, []);
-
-  // Toggle sélection d'un concert
-  const toggleConcert = (concert: any) => {
-    const newSelection = new Set(selectedConcerts);
-    if (newSelection.has(concert.id)) {
-      newSelection.delete(concert.id);
-    } else {
-      newSelection.add(concert.id);
-    }
-    setSelectedConcerts(newSelection);
-    
-    // Sauvegarder dans localStorage
-    const selectedArray = concerts.filter(c => newSelection.has(c.id)).map(c => ({
-      id: c.id,
-      artist: c.artist.name,
-      date: c.eventDate
-    }));
-    localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
-  };
 
   // Séparer les concerts passés et futurs
   const now = new Date();
