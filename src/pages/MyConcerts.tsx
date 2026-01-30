@@ -76,14 +76,24 @@ const MyConcerts = () => {
 
   // Séparer les concerts passés et futurs
   const now = new Date();
+  
+  // Fonction pour convertir DD-MM-YYYY en Date
+  const parseDate = (dateString: string) => {
+    if (!dateString) return null;
+    const [day, month, year] = dateString.split('-');
+    return new Date(`${year}-${month}-${day}`);
+  };
+  
   const pastConcerts = concerts.filter(concert => {
-    if (!concert.eventDate) return true;
-    return new Date(concert.eventDate) < now;
+    if (!concert.eventDate) return true; // Si pas de date, considérer comme passé
+    const concertDate = parseDate(concert.eventDate);
+    return concertDate && concertDate < now;
   });
   
   const futureConcerts = concerts.filter(concert => {
     if (!concert.eventDate) return false;
-    return new Date(concert.eventDate) >= now;
+    const concertDate = parseDate(concert.eventDate);
+    return concertDate && concertDate >= now;
   });
 
   const selectedCount = selectedConcerts.size;
@@ -131,11 +141,15 @@ const MyConcerts = () => {
                 {concert.eventDate && (
                   <>
                     {concert.venue?.name && <span>•</span>}
-                    <span>{new Date(concert.eventDate).toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}</span>
+                    <span>{(() => {
+                      const [day, month, year] = concert.eventDate.split('-');
+                      const date = new Date(`${year}-${month}-${day}`);
+                      return date.toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      });
+                    })()}</span>
                   </>
                 )}
               </div>
