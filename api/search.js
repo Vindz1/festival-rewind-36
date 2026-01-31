@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       let page = 1;
       let hasMore = true;
       
-      while (hasMore && page <= 10) { // Limite à 10 pages (200 concerts) pour éviter timeout
+      while (hasMore) { // Pas de limite, récupère TOUT
         const response = await fetch(`https://api.setlist.fm/rest/1.0/user/${username}/attended?p=${page}`, { headers });
         if (!response.ok) {
           if (page === 1) {
