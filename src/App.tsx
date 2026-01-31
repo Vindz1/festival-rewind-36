@@ -10,6 +10,7 @@ import SearchResults from "./pages/SearchResults";
 import EventPage from "./pages/EventPage";
 import Generate from "./pages/Generate";
 import MyConcerts from "./pages/MyConcerts";
+import ImGoing from "./pages/ImGoing";
 import Auth from "./pages/Auth";
 import SpotifyCallback from "./pages/SpotifyCallback";
 import NotFound from "./pages/NotFound";
