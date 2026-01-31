@@ -43,18 +43,39 @@ const MyConcerts = () => {
         console.log('Concerts récupérés:', fetchedConcerts);
         setConcerts(fetchedConcerts);
 
-        // Fetch concerts à venir (Supabase) - seulement si connecté
-        if (user) {
-          const { data: upcoming, error } = await supabase
-            .from('upcoming_concerts')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('event_date', { ascending: true });
+        // Fetch concerts à venir (setlist.fm scraping)
+        try {
+          const upcomingResponse = await fetch(`/api/upcoming-shows?username=${username}`);
+          const upcomingData = await upcomingResponse.json();
+          
+          if (upcomingData.results && upcomingData.results.length > 0) {
+            console.log('Upcoming shows récupérés:', upcomingData.results);
+            setUpcomingConcerts(upcomingData.results);
+          } else if (user) {
+            // Fallback: charger depuis Supabase si rien trouvé
+            const { data: upcoming, error } = await supabase
+              .from('upcoming_concerts')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('event_date', { ascending: true });
 
-          if (error) {
-            console.error('Error fetching upcoming:', error);
-          } else {
-            setUpcomingConcerts(upcoming || []);
+            if (!error && upcoming) {
+              setUpcomingConcerts(upcoming);
+            }
+          }
+        } catch (upcomingError) {
+          console.error('Error fetching upcoming shows:', upcomingError);
+          // Fallback to Supabase
+          if (user) {
+            const { data: upcoming, error } = await supabase
+              .from('upcoming_concerts')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('event_date', { ascending: true });
+
+            if (!error && upcoming) {
+              setUpcomingConcerts(upcoming);
+            }
           }
         }
       } catch (error) {
@@ -174,37 +195,54 @@ const MyConcerts = () => {
 
   const UpcomingConcertsList = () => (
     <div className="max-w-2xl mx-auto space-y-4">
-      {upcomingConcerts.map((concert, index) => (
-        <motion.div
-          key={concert.id}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: index * 0.05 }}
-          className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors"
-        >
-          <div className="w-12 h-12 rounded-lg bg-gradient-fire flex items-center justify-center shadow-fire shrink-0">
-            <Music className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display text-xl text-foreground truncate">
-              {concert.artist_name}
-            </h3>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {concert.event_name && <span>{concert.event_name}</span>}
-              {concert.event_date && (
-                <>
-                  {concert.event_name && <span>•</span>}
-                  <span>{new Date(concert.event_date).toLocaleDateString('fr-FR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}</span>
-                </>
-              )}
+      {upcomingConcerts.map((concert, index) => {
+        // Handle both setlist.fm scraped format and Supabase format
+        const artistName = concert.artist?.name || concert.artist_name;
+        const eventName = concert.event_name;
+        const venueName = concert.venue?.name || concert.venue_name;
+        const eventDate = concert.eventDate || concert.event_date;
+        
+        return (
+          <motion.div
+            key={concert.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors"
+          >
+            <div className="w-12 h-12 rounded-lg bg-gradient-fire flex items-center justify-center shadow-fire shrink-0">
+              <Music className="w-6 h-6 text-primary-foreground" />
             </div>
-          </div>
-        </motion.div>
-      ))}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-display text-xl text-foreground truncate">
+                {artistName}
+              </h3>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {eventName && <span>{eventName}</span>}
+                {venueName && (
+                  <>
+                    {eventName && <span>•</span>}
+                    <span>{venueName}</span>
+                  </>
+                )}
+                {eventDate && (
+                  <>
+                    {(eventName || venueName) && <span>•</span>}
+                    <span>{typeof eventDate === 'string' && eventDate.includes('-') && eventDate.length === 10
+                      ? new Date(eventDate).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : eventDate
+                    }</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 
@@ -322,24 +360,41 @@ const MyConcerts = () => {
 
                 {/* Future Concerts Tab */}
                 <TabsContent value="future">
-                  <div className="text-center mb-6">
-                    <Link to="/im-going">
-                      <Button variant="fire" className="gap-2">
-                        <Plus className="w-4 h-4" />
-                        Ajouter des concerts à venir
-                      </Button>
-                    </Link>
-                  </div>
-
                   {upcomingConcerts.length > 0 ? (
-                    <UpcomingConcertsList />
+                    <>
+                      <UpcomingConcertsList />
+                      {user && (
+                        <div className="text-center mt-6">
+                          <Link to="/im-going">
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Plus className="w-4 h-4" />
+                              Ajouter manuellement
+                            </Button>
+                          </Link>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center py-16">
                       <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground mb-4">Aucun concert à venir</p>
-                      <p className="text-sm text-muted-foreground">
-                        Cliquez sur "Ajouter des concerts à venir" pour commencer
-                      </p>
+                      <p className="text-muted-foreground mb-4">Aucun concert à venir trouvé</p>
+                      {user ? (
+                        <>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Ajoutez vos concerts à venir manuellement
+                          </p>
+                          <Link to="/im-going">
+                            <Button variant="fire" className="gap-2">
+                              <Plus className="w-4 h-4" />
+                              Ajouter des concerts
+                            </Button>
+                          </Link>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Connectez-vous pour ajouter des concerts à venir
+                        </p>
+                      )}
                     </div>
                   )}
                 </TabsContent>
