@@ -41,25 +41,37 @@ export const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6">
+            <a 
+              href="https://www.emp.fr" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Boutique
+            </a>
+            <a 
+              href="https://www.discogs.com" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Vinyles
+            </a>
+            <a 
+              href="https://www.bandsintown.com" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Concerts
+            </a>
             <Link 
-              to="/my-concerts?tab=past" 
+              to="/my-concerts" 
               className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/my-concerts' && location.search.includes('tab=past') 
-                  ? 'text-primary' 
-                  : 'text-muted-foreground'
+                location.pathname === '/my-concerts' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              I Was There
-            </Link>
-            <Link 
-              to="/my-concerts?tab=future" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/my-concerts' && location.search.includes('tab=future')
-                  ? 'text-primary' 
-                  : 'text-muted-foreground'
-              }`}
-            >
-              I'm Going
+              Mes Concerts
             </Link>
           </nav>
 
