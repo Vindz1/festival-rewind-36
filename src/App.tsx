@@ -31,6 +31,7 @@ const App = () => (
           <Route path="/concerts" element={<Concerts />} />
           <Route path="/generate" element={<Generate />} />
           <Route path="/my-concerts" element={<MyConcerts />} />
+          <Route path="/im-going" element={<ImGoing />} />
           <Route path="/spotify-callback" element={<SpotifyCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
