@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Music, Calendar, Flame, ArrowRight, ChevronRight, Clock, ArrowLeft } from 'lucide-react';
+import { Music, Calendar, Flame, ArrowRight, ChevronRight, Clock, ArrowLeft, Plus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MyConcerts = () => {
@@ -16,8 +17,56 @@ const MyConcerts = () => {
     searchParams.get('tab') === 'future' ? 'future' : 'past'
   );
   const [concerts, setConcerts] = useState<any[]>([]);
+  const [upcomingConcerts, setUpcomingConcerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
+
+  // Charger les concerts depuis setlist.fm ET Supabase
+  useEffect(() => {
+    const fetchAllConcerts = async () => {
+      const username = localStorage.getItem('setlistfm_username');
+      
+      if (!username) {
+        toast.error('Veuillez d\'abord connecter votre compte setlist.fm');
+        navigate('/');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Fetch concerts passés (setlist.fm)
+        const response = await fetch(`/api/search?action=user&username=${username}`);
+        if (!response.ok) throw new Error('Erreur de chargement');
+        
+        const data = await response.json();
+        const fetchedConcerts = data.results || [];
+        console.log('Concerts récupérés:', fetchedConcerts);
+        setConcerts(fetchedConcerts);
+
+        // Fetch concerts à venir (Supabase) - seulement si connecté
+        if (user) {
+          const { data: upcoming, error } = await supabase
+            .from('upcoming_concerts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('event_date', { ascending: true });
+
+          if (error) {
+            console.error('Error fetching upcoming:', error);
+          } else {
+            setUpcomingConcerts(upcoming || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching concerts:', error);
+        toast.error('Erreur lors du chargement de vos concerts');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllConcerts();
+  }, [navigate, user]);
 
   // Toggle sélection d'un concert
   const toggleConcert = (concert: any) => {
@@ -38,42 +87,6 @@ const MyConcerts = () => {
     localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
   };
 
-  // Charger les concerts depuis setlist.fm
-  useEffect(() => {
-    const fetchConcerts = async () => {
-      const username = localStorage.getItem('setlistfm_username');
-      
-      if (!username) {
-        toast.error('Veuillez d\'abord connecter votre compte setlist.fm');
-        navigate('/');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        // Nettoyer l'ancien système de sélection
-        localStorage.removeItem('selected_concerts');
-        
-        const response = await fetch(`/api/search?action=user&username=${username}`);
-        if (!response.ok) throw new Error('Erreur de chargement');
-        
-        const data = await response.json();
-        
-        // L'API setlist.fm retourne les concerts dans data.results
-        const fetchedConcerts = data.results || [];
-        console.log('Concerts récupérés:', fetchedConcerts);
-        setConcerts(fetchedConcerts);
-      } catch (error) {
-        console.error('Error fetching concerts:', error);
-        toast.error('Erreur lors du chargement de vos concerts');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchConcerts();
-  }, [navigate]);
-
   // Séparer les concerts passés et futurs
   const now = new Date();
   
@@ -85,15 +98,9 @@ const MyConcerts = () => {
   };
   
   const pastConcerts = concerts.filter(concert => {
-    if (!concert.eventDate) return true; // Si pas de date, considérer comme passé
+    if (!concert.eventDate) return true;
     const concertDate = parseDate(concert.eventDate);
     return concertDate && concertDate < now;
-  });
-  
-  const futureConcerts = concerts.filter(concert => {
-    if (!concert.eventDate) return false;
-    const concertDate = parseDate(concert.eventDate);
-    return concertDate && concertDate >= now;
   });
 
   const selectedCount = selectedConcerts.size;
@@ -165,6 +172,42 @@ const MyConcerts = () => {
     </div>
   );
 
+  const UpcomingConcertsList = () => (
+    <div className="max-w-2xl mx-auto space-y-4">
+      {upcomingConcerts.map((concert, index) => (
+        <motion.div
+          key={concert.id}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.05 }}
+          className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors"
+        >
+          <div className="w-12 h-12 rounded-lg bg-gradient-fire flex items-center justify-center shadow-fire shrink-0">
+            <Music className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-xl text-foreground truncate">
+              {concert.artist_name}
+            </h3>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {concert.event_name && <span>{concert.event_name}</span>}
+              {concert.event_date && (
+                <>
+                  {concert.event_name && <span>•</span>}
+                  <span>{new Date(concert.event_date).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background noise">
       <Header />
@@ -207,7 +250,7 @@ const MyConcerts = () => {
             )}
           </motion.div>
 
-          {concerts.length === 0 ? (
+          {concerts.length === 0 && upcomingConcerts.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -244,9 +287,9 @@ const MyConcerts = () => {
                   <TabsTrigger value="future" className="gap-2">
                     <Clock className="w-4 h-4" />
                     I'm Going
-                    {futureConcerts.length > 0 && (
+                    {upcomingConcerts.length > 0 && (
                       <span className="ml-1 text-xs bg-primary/20 px-2 py-0.5 rounded-full">
-                        {futureConcerts.length}
+                        {upcomingConcerts.length}
                       </span>
                     )}
                   </TabsTrigger>
@@ -279,12 +322,24 @@ const MyConcerts = () => {
 
                 {/* Future Concerts Tab */}
                 <TabsContent value="future">
-                  {futureConcerts.length > 0 ? (
-                    <ConcertList concerts={futureConcerts} />
+                  <div className="text-center mb-6">
+                    <Link to="/im-going">
+                      <Button variant="fire" className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Ajouter des concerts à venir
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {upcomingConcerts.length > 0 ? (
+                    <UpcomingConcertsList />
                   ) : (
                     <div className="text-center py-16">
                       <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Aucun concert à venir</p>
+                      <p className="text-muted-foreground mb-4">Aucun concert à venir</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cliquez sur "Ajouter des concerts à venir" pour commencer
+                      </p>
                     </div>
                   )}
                 </TabsContent>
