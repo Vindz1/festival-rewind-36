@@ -21,54 +21,77 @@ export default async function handler(req, res) {
     const html = await response.text();
     const $ = cheerio.load(html);
     
-    const upcomingShows = [];
-    let inUpcomingSection = false;
-
-    // Parse each element in order
-    $('body *').each((i, elem) => {
+    const upcomingArtists = [];
+    
+    // Find all text nodes and headings
+    const allText = $('body').text();
+    
+    // Split by the two section headers
+    const upcomingIndex = allText.indexOf('Upcoming Shows');
+    const attendedIndex = allText.indexOf('Attended Shows');
+    
+    if (upcomingIndex === -1 || attendedIndex === -1) {
+      console.log('❌ Could not find section markers');
+      return res.status(200).json({ results: [], scraped: true });
+    }
+    
+    // Extract the text between the two sections
+    const upcomingSection = allText.substring(upcomingIndex, attendedIndex);
+    
+    console.log('📄 Upcoming section text (first 500 chars):', upcomingSection.substring(0, 500));
+    
+    // Now find all <strong> tags in the HTML between these sections
+    // We'll search for the actual HTML elements
+    let foundUpcoming = false;
+    let foundAttended = false;
+    
+    $('*').each((i, elem) => {
       const $elem = $(elem);
       const text = $elem.text().trim();
       
-      // Check if we're entering the Upcoming Shows section
-      if (text.startsWith('Upcoming Shows')) {
-        console.log('✅ Entering Upcoming Shows section');
-        inUpcomingSection = true;
-        return; // continue
+      // Detect section boundaries
+      if (text === 'Upcoming Shows' || text.startsWith('Upcoming Shows (')) {
+        foundUpcoming = true;
+        console.log('✅ Found Upcoming Shows marker');
+        return;
       }
       
-      // Check if we're leaving the Upcoming Shows section
-      if (inUpcomingSection && text.startsWith('Attended Shows')) {
-        console.log('❌ Leaving Upcoming Shows section, entering Attended');
-        inUpcomingSection = false;
+      if (foundUpcoming && (text === 'Attended Shows' || text.startsWith('Attended Shows ('))) {
+        foundAttended = true;
+        console.log('✅ Found Attended Shows marker, stopping');
         return false; // break
       }
       
-      // If we're in the upcoming section and this is a setlist link
-      if (inUpcomingSection && $elem.is('a') && $elem.attr('href')?.includes('/setlist/')) {
-        const artistName = $elem.find('strong').first().text().trim();
+      // If we're in the upcoming section and this is a <strong> tag
+      if (foundUpcoming && !foundAttended && $elem.is('strong')) {
+        const artistName = $elem.text().trim();
         
-        if (artistName) {
-          const fullText = $elem.text().trim();
+        // Filter out non-artist text (dates, venues, etc.)
+        if (artistName && 
+            !artistName.match(/^\d/) && // Not starting with number
+            !artistName.includes('Hellfest') && // Not venue
+            !artistName.includes('2026') && // Not year
+            artistName.length > 2 && // At least 3 chars
+            !upcomingArtists.includes(artistName)) { // Not duplicate
           
-          // Extract event info (everything after the artist name)
-          const eventInfo = fullText.replace(artistName, '').trim();
-          
-          console.log(`Found concert: ${artistName} | ${eventInfo}`);
-          
-          upcomingShows.push({
-            id: `upcoming-${upcomingShows.length}`,
-            artist: { name: artistName },
-            eventDate: eventInfo || 'Date à venir',
-            venue: { name: eventInfo.split('•')[0]?.trim() || null }
-          });
+          console.log(`🎸 Found artist: ${artistName}`);
+          upcomingArtists.push(artistName);
         }
       }
     });
-
-    console.log(`✅ Total: ${upcomingShows.length} upcoming shows`);
+    
+    console.log(`✅ Total artists found: ${upcomingArtists.length}`);
+    
+    // Convert to expected format
+    const results = upcomingArtists.map((name, idx) => ({
+      id: `upcoming-${idx}`,
+      artist: { name },
+      eventDate: 'À venir',
+      venue: { name: null }
+    }));
 
     return res.status(200).json({ 
-      results: upcomingShows,
+      results,
       scraped: true
     });
 
