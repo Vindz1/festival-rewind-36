@@ -24,70 +24,81 @@ export default async function handler(req, res) {
     
     const upcomingShows = [];
 
-    // Parse the "Upcoming Shows" section
-    // The structure is typically in a section with upcoming concerts
-    $('.upcomingConcert, .setlistPreview').each((i, elem) => {
-      try {
-        const $elem = $(elem);
+    // Debug: Log page title to confirm we got the right page
+    console.log('Page title:', $('title').text());
+
+    // Method 1: Look for the "Upcoming Shows" section specifically
+    let upcomingSection = null;
+    $('h2, h3').each((i, elem) => {
+      const text = $(elem).text().trim();
+      if (text.toLowerCase().includes('upcoming')) {
+        upcomingSection = $(elem).parent();
+        console.log('Found upcoming section:', text);
+        return false; // break
+      }
+    });
+
+    if (upcomingSection) {
+      // Find all concert rows within this section
+      upcomingSection.find('.setlistPreview, .vevent, tr').each((idx, row) => {
+        const $row = $(row);
         
-        // Extract artist name
-        const artistName = $elem.find('.artistName a, h3.artistName a').first().text().trim();
+        // Try multiple patterns for artist name
+        const artistName = 
+          $row.find('.headliner a').first().text().trim() ||
+          $row.find('a[href*="/setlist/"]').first().text().trim() ||
+          $row.find('.summary').first().text().trim() ||
+          '';
         
-        // Extract date
-        const dateText = $elem.find('.dateBlock, .concertDate').first().text().trim();
+        // Try multiple patterns for date
+        const dateElem = $row.find('.dateBlock, .concertDate, time, .dtstart').first();
+        const dateText = dateElem.text().trim() || dateElem.attr('datetime') || '';
         
-        // Extract venue
-        const venueName = $elem.find('.venueName, .venue a').first().text().trim();
-        
-        // Extract event ID for linking
-        const setlistLink = $elem.find('a[href*="/setlist/"]').first().attr('href');
-        const eventId = setlistLink ? setlistLink.split('/setlist/')[1]?.split('-')[0] : null;
+        // Try multiple patterns for venue
+        const venueName = 
+          $row.find('.venueName a').first().text().trim() ||
+          $row.find('.location').first().text().trim() ||
+          '';
 
         if (artistName) {
+          console.log('Found concert:', { artistName, dateText, venueName });
           upcomingShows.push({
-            id: eventId || `upcoming-${i}`,
+            id: `upcoming-${idx}`,
             artist: { name: artistName },
             eventDate: dateText,
             venue: { name: venueName || null }
           });
         }
-      } catch (err) {
-        console.error('Error parsing concert:', err);
-      }
-    });
-
-    // If no upcoming shows found with class selectors, try alternative parsing
-    if (upcomingShows.length === 0) {
-      // Look for "Upcoming Shows" heading and parse following elements
-      $('h2, h3').each((i, heading) => {
-        const headingText = $(heading).text().trim();
-        if (headingText.includes('Upcoming') || headingText.includes('upcoming')) {
-          // Get the parent container
-          const container = $(heading).parent();
-          
-          // Find all concert entries after this heading
-          container.find('.vevent, [itemtype*="Event"]').each((idx, event) => {
-            try {
-              const $event = $(event);
-              const artistName = $event.find('[itemprop="name"], .summary').first().text().trim();
-              const dateText = $event.find('[itemprop="startDate"], .dtstart').first().text().trim();
-              const venueName = $event.find('[itemprop="location"], .location').first().text().trim();
-              
-              if (artistName) {
-                upcomingShows.push({
-                  id: `upcoming-${idx}`,
-                  artist: { name: artistName },
-                  eventDate: dateText,
-                  venue: { name: venueName || null }
-                });
-              }
-            } catch (err) {
-              console.error('Error parsing event:', err);
-            }
-          });
-        }
       });
     }
+
+    // Method 2: If nothing found, try direct table parsing
+    if (upcomingShows.length === 0) {
+      console.log('Trying alternative method: direct table parsing');
+      
+      $('table tr, .setlistList .setlistPreview').each((idx, row) => {
+        const $row = $(row);
+        const allLinks = $row.find('a');
+        
+        allLinks.each((i, link) => {
+          const href = $(link).attr('href') || '';
+          if (href.includes('/setlist/')) {
+            const artistName = $(link).text().trim();
+            if (artistName && !artistName.toLowerCase().includes('edit')) {
+              console.log('Found via table method:', artistName);
+              upcomingShows.push({
+                id: `upcoming-table-${idx}`,
+                artist: { name: artistName },
+                eventDate: $row.find('.dateBlock, time').first().text().trim() || 'Date à venir',
+                venue: { name: $row.find('.venueName').first().text().trim() || null }
+              });
+            }
+          }
+        });
+      });
+    }
+
+    console.log(`Total upcoming shows found: ${upcomingShows.length}`);
 
     return res.status(200).json({ 
       results: upcomingShows,
