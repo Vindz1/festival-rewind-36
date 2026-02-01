@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Skull, Filter, ArrowRight, Check, Flame } from 'lucide-react'; // Skull pour l'ambiance Metal
+import { Filter, Flame, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Artist {
@@ -18,8 +18,8 @@ const HellfestPage = () => {
   const navigate = useNavigate();
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // États pour les filtres
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [availableStages, setAvailableStages] = useState<string[]>([]);
   
@@ -27,22 +27,27 @@ const HellfestPage = () => {
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
 
-  // Charger le lineup
+  // Récupération DYNAMIQUE via l'API
   useEffect(() => {
     const fetchLineup = async () => {
       try {
         const res = await fetch('/api/hellfest-lineup');
+        
+        if (!res.ok) throw new Error("Erreur serveur");
+        
         const data = await res.json();
         
-        if (data.artists) {
+        if (data.artists && data.artists.length > 0) {
           setArtists(data.artists);
           setAvailableDays(data.days || []);
           setAvailableStages(data.stages || []);
-          
-          // Par défaut, tout sélectionner ou rien ? Commençons par rien.
+        } else {
+          setError("Impossible de lire le site officiel automatiquement pour le moment.");
         }
       } catch (error) {
-        toast.error("Impossible de charger le lineup Hellfest");
+        console.error(error);
+        setError("Erreur de connexion au site Hellfest.");
+        toast.error("Impossible de charger le lineup en direct");
       } finally {
         setLoading(false);
       }
@@ -50,7 +55,6 @@ const HellfestPage = () => {
     fetchLineup();
   }, []);
 
-  // Gestion des filtres Jours
   const toggleDay = (day: string) => {
     const newDays = new Set(selectedDays);
     if (newDays.has(day)) newDays.delete(day);
@@ -59,7 +63,6 @@ const HellfestPage = () => {
     autoSelectArtists(newDays, selectedStages);
   };
 
-  // Gestion des filtres Scènes
   const toggleStage = (stage: string) => {
     const newStages = new Set(selectedStages);
     if (newStages.has(stage)) newStages.delete(stage);
@@ -68,36 +71,23 @@ const HellfestPage = () => {
     autoSelectArtists(selectedDays, newStages);
   };
 
-  // Fonction intelligente : Sélectionne les artistes selon les filtres actifs
   const autoSelectArtists = (days: Set<string>, stages: Set<string>) => {
-    // Si aucun filtre n'est activé, on ne sélectionne rien automatiquement (ou tout, au choix)
-    // Ici : Si on coche "Mainstage 1", ça coche tous les artistes de Mainstage 1
-    
     const newSelection = new Set<string>();
     
     artists.forEach(artist => {
       const dayMatch = days.size === 0 || days.has(artist.day);
       const stageMatch = stages.size === 0 || stages.has(artist.stage);
       
-      // Si les filtres correspondent, on ajoute l'artiste
-      if (days.size > 0 && stages.size > 0) {
-         if (dayMatch && stageMatch) newSelection.add(artist.id);
-      } else if (days.size > 0) {
-         if (dayMatch) newSelection.add(artist.id);
-      } else if (stages.size > 0) {
-         if (stageMatch) newSelection.add(artist.id);
+      if ((days.size > 0 || stages.size > 0) && dayMatch && stageMatch) {
+        newSelection.add(artist.id);
       }
     });
     
-    // Si aucun filtre coché, on garde la sélection manuelle précédente ou on vide
-    if (days.size === 0 && stages.size === 0) {
-        // Optionnel : ne rien faire pour laisser la sélection manuelle
-    } else {
-        setSelectedArtists(newSelection);
+    if (days.size > 0 || stages.size > 0) {
+      setSelectedArtists(newSelection);
     }
   };
 
-  // Toggle manuel d'un artiste
   const toggleArtist = (id: string) => {
     const newSet = new Set(selectedArtists);
     if (newSet.has(id)) newSet.delete(id);
@@ -111,23 +101,17 @@ const HellfestPage = () => {
       return;
     }
 
-    // On prépare les données pour la page de génération
-    // On utilise le même format que "selected_upcoming" pour simuler des concerts futurs
     const selectedArray = artists
       .filter(a => selectedArtists.has(a.id))
       .map(a => ({
         id: a.id,
-        artist: a.name, // Le générateur a besoin de ce champ
+        artist: a.name,
         eventDate: a.day + " - Hellfest 2026"
       }));
 
     localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
     navigate('/generate?mode=upcoming');
   };
-
-  // Artistes filtrés pour l'affichage (pas pour la sélection)
-  // On affiche tout, mais on met en surbrillance ceux qui sont sélectionnés
-  const displayedArtists = artists; 
 
   return (
     <div className="min-h-screen bg-background noise">
@@ -139,12 +123,21 @@ const HellfestPage = () => {
             HELLFEST <span className="text-red-600">2026</span>
           </h1>
           <p className="text-muted-foreground">
-            Composez votre programmation idéale
+            Line-up en direct du site officiel
           </p>
         </div>
 
         {loading ? (
-           <div className="flex justify-center py-20"><Flame className="animate-spin w-10 h-10 text-red-600"/></div>
+           <div className="flex justify-center py-20">
+             <Flame className="animate-spin w-10 h-10 text-red-600"/>
+           </div>
+        ) : error ? (
+           <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+             <AlertTriangle className="w-12 h-12 text-yellow-500"/>
+             <p className="text-xl font-bold">Oups !</p>
+             <p className="text-muted-foreground max-w-md">{error}</p>
+             <p className="text-sm text-muted-foreground">Le site Hellfest a peut-être renforcé sa sécurité anti-robot.</p>
+           </div>
         ) : (
           <div className="grid lg:grid-cols-[300px_1fr] gap-8">
             
@@ -153,11 +146,12 @@ const HellfestPage = () => {
               <div className="bg-card border border-border p-6 rounded-xl sticky top-24">
                 <div className="flex items-center gap-2 mb-4 text-xl font-display">
                   <Filter className="w-5 h-5" />
-                  Filtres Rapides
+                  Filtres
                 </div>
                 
                 <div className="space-y-6">
                   {/* Jours */}
+                  {availableDays.length > 0 && (
                   <div>
                     <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Jours</h3>
                     <div className="space-y-2">
@@ -175,8 +169,10 @@ const HellfestPage = () => {
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* Scènes */}
+                  {availableStages.length > 0 && (
                   <div>
                     <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Scènes</h3>
                     <div className="space-y-2">
@@ -194,6 +190,7 @@ const HellfestPage = () => {
                       ))}
                     </div>
                   </div>
+                  )}
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-border">
@@ -206,7 +203,7 @@ const HellfestPage = () => {
                     disabled={selectedArtists.size === 0}
                   >
                     <Flame className="w-4 h-4" />
-                    Générer la Playlist
+                    Générer Playlist
                   </Button>
                 </div>
               </div>
@@ -214,8 +211,13 @@ const HellfestPage = () => {
 
             {/* Grille des Artistes */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-              {displayedArtists.map((artist, index) => {
+              {artists.map((artist, index) => {
                 const isSelected = selectedArtists.has(artist.id);
+                const showDay = selectedDays.size === 0 || selectedDays.has(artist.day);
+                const showStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
+                
+                if (!showDay || !showStage) return null;
+
                 return (
                   <motion.div
                     key={artist.id}
@@ -235,9 +237,10 @@ const HellfestPage = () => {
                         <h3 className={`font-display text-lg ${isSelected ? 'text-red-500' : 'text-foreground'}`}>
                           {artist.name}
                         </h3>
+                        {/* On affiche les infos même si "Unknown" pour debug */}
                         <div className="text-xs text-muted-foreground mt-1 flex flex-col gap-0.5">
-                          <span className="flex items-center gap-1">📅 {artist.day}</span>
-                          <span className="flex items-center gap-1">📍 {artist.stage}</span>
+                          {artist.day !== "Jours Inconnus" && <span className="flex items-center gap-1">📅 {artist.day}</span>}
+                          {artist.stage !== "Scène Inconnue" && <span className="flex items-center gap-1">📍 {artist.stage}</span>}
                         </div>
                       </div>
                       <div className={`
