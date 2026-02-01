@@ -1,56 +1,58 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Music } from "lucide-react";
+import { useAuth } from "@/AuthContext"; // IMPORT CORRIGÉ
 
-// 1. IMPORT DU FICHIER QU'ON VIENT DE CRÉER
-import { AuthProvider } from "@/AuthContext"
+const Auth = () => {
+  const navigate = useNavigate();
+  const { session } = useAuth();
 
-import Index from "./pages/Index";
-import Concerts from "./pages/Concerts";
-import SearchResults from "./pages/SearchResults";
-import EventPage from "./pages/EventPage";
-import Generate from "./pages/Generate"; // Assurez-vous que votre fichier s'appelle bien Generate.tsx
-import MyConcerts from "./pages/MyConcerts";
-import ImGoing from "./pages/ImGoing";
-import Auth from "./pages/Auth";
-import SpotifyCallback from "./pages/SpotifyCallback";
-import HellfestPage from './pages/HellfestPage';
-import NotFound from "./pages/NotFound";
+  useEffect(() => {
+    if (session) {
+      navigate("/");
+    }
+  }, [session, navigate]);
 
-const queryClient = new QueryClient();
+  const handleSpotifyLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "spotify",
+        options: {
+          // Important : rediriger vers la page Callback qu'on vient de réparer
+          redirectTo: `${window.location.origin}/spotify-callback`,
+          scopes: "user-read-email playlist-modify-public playlist-modify-private user-top-read",
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error("Erreur de connexion:", error);
+    }
+  };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      
-      {/* 2. LE MOTEUR DOIT ENGLOBER L'APPLICATION */}
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/search-results" element={<SearchResults />} />
-            <Route path="/event/:eventId" element={<EventPage />} />
-            <Route path="/concerts" element={<Concerts />} />
-            
-            <Route path="/generate" element={<Generate />} />
-            
-            <Route path="/my-concerts" element={<MyConcerts />} />
-            <Route path="/im-going" element={<ImGoing />} />
-            <Route path="/spotify-callback" element={<SpotifyCallback />} />
-            <Route path="/hellfest-2026" element={<HellfestPage />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 noise">
+      <Card className="w-full max-w-md bg-card/50 backdrop-blur border-primary/20">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-display">Connexion</CardTitle>
+          <CardDescription>
+            Connectez-vous pour générer vos playlists
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={handleSpotifyLogin}
+            className="w-full h-12 text-lg font-bold gap-3 bg-[#1DB954] hover:bg-[#1ed760] text-black"
+          >
+            <Music className="w-5 h-5" />
+            Continuer avec Spotify
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+export default Auth;
