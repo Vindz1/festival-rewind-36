@@ -27,22 +27,16 @@ const GeneratePlaylist = () => {
   const [totalTracks, setTotalTracks] = useState(0);
 
   useEffect(() => {
-    if (loading) return; // On attend que l'auth soit chargée
-
-    // 1. Tout est bon : on lance
+    // Si on a le token Spotify, on lance la machine
     if (status === 'idle' && session?.provider_token) {
       startGeneration();
     } 
-    // 2. Connecté mais Token perdu (le bug du blocage)
-    else if (status === 'idle' && session && !session.provider_token) {
-      setStatus('token_missing');
+    // Si on est Visiteur (pas de session) ou loggué par email mais sans Spotify
+    else if (status === 'idle' && !session?.provider_token) {
+      setStatus('error');
+      addLog("⚠️ Export réservé aux membres. Connectez-vous avec Spotify.");
     }
-    // 3. Pas connecté
-    else if (status === 'idle' && !session) {
-      const timer = setTimeout(() => setStatus('error'), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [session, loading, status]);
+  }, [session]);
 
   const addLog = (msg: string) => setLogs(prev => [msg, ...prev].slice(0, 5));
 
