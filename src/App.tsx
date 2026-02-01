@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // 1. IMPORT DU FICHIER QU'ON VIENT DE CRÉER
-import { useAuth } from '@/AuthContext';
+import { useAuth } from "@/AuthContext";
 
 import Index from "./pages/Index";
 import Festivals from "./pages/Festivals";
