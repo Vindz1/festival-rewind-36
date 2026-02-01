@@ -1,15 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
 
-const AuthContext = createContext<{
-  session: Session | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
-}>({ session: null, loading: true, signOut: async () => {} });
+const AuthContext = createContext<any>({ session: null, loading: true });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,21 +12,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setLoading(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   return (
-    <AuthContext.Provider value={{ session, loading, signOut }}>
+    <AuthContext.Provider value={{ session, loading }}>
       {children}
     </AuthContext.Provider>
   );
