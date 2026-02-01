@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Music, CheckCircle, AlertTriangle, Loader2, Home } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { AuthProvider, useAuth } from "@/AuthContext";
 import { toast } from 'sonner';
 
 // CONFIGURATION UNIVERSELLE
