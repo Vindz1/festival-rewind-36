@@ -4,7 +4,7 @@ import { Music, Calendar, Plus, Trash2, ArrowLeft, Search, Loader2, ArrowRight }
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useAuth } from '@/hooks/useAuth';
+import { AuthProvider, useAuth } from "@/AuthContext";
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
