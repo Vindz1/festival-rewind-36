@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Flame, Check } from 'lucide-react';
+import { Filter, Flame, Check, XCircle } from 'lucide-react'; // Ajout de XCircle
 import { toast } from 'sonner';
 // IMPORT CRUCIAL : On importe les données statiques
 import { HELLFEST_LINEUP, ArtistData } from '@/data/hellfestData';
@@ -13,11 +13,11 @@ const HellfestPage = () => {
   const navigate = useNavigate();
   // On charge directement les données importées
   const [artists] = useState<ArtistData[]>(HELLFEST_LINEUP);
-  
+   
   // États des filtres
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [availableStages, setAvailableStages] = useState<string[]>([]);
-  
+   
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
@@ -68,10 +68,15 @@ const HellfestPage = () => {
     // Mise à jour de la sélection
     if (days.size > 0 || stages.size > 0) {
       setSelectedArtists(newSelection);
-    } else {
-       // Si on décoche tout, on vide la sélection (ou on laisse tel quel, au choix)
-       // setSelectedArtists(new Set()); 
     }
+  };
+
+  // NOUVELLE FONCTION : Tout vider
+  const handleClearSelection = () => {
+    setSelectedArtists(new Set());
+    // Optionnel : Réinitialiser aussi les filtres si on veut repartir de zéro
+    // setSelectedDays(new Set());
+    // setSelectedStages(new Set());
   };
 
   const toggleArtist = (id: string) => {
@@ -103,7 +108,7 @@ const HellfestPage = () => {
   return (
     <div className="min-h-screen bg-background noise">
       <Header />
-      
+       
       <main className="pt-24 pb-16 container px-4 mx-auto">
         <div className="text-center mb-10">
           <h1 className="font-display text-5xl md:text-7xl text-foreground mb-4">
@@ -115,7 +120,7 @@ const HellfestPage = () => {
         </div>
 
         <div className="grid lg:grid-cols-[300px_1fr] gap-8">
-            
+             
           {/* Sidebar Filtres */}
           <div className="space-y-8">
             <div className="bg-card border border-border p-6 rounded-xl sticky top-24">
@@ -123,7 +128,7 @@ const HellfestPage = () => {
                 <Filter className="w-5 h-5" />
                 Filtres
               </div>
-              
+               
               <div className="space-y-6">
                 {/* Jours */}
                 <div>
@@ -168,6 +173,18 @@ const HellfestPage = () => {
                 <div className="flex justify-between items-center mb-4">
                   <span className="font-bold">{selectedArtists.size} groupes</span>
                 </div>
+                
+                {/* BOUTON TOUT DÉSELECTIONNER */}
+                <Button 
+                  variant="outline"
+                  onClick={handleClearSelection} 
+                  className="w-full mb-3 gap-2 text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/10"
+                  disabled={selectedArtists.size === 0}
+                >
+                  <XCircle className="w-4 h-4" />
+                  Tout désélectionner
+                </Button>
+
                 <Button 
                   onClick={handleGenerate} 
                   className="w-full bg-red-600 hover:bg-red-700 text-white gap-2"
@@ -188,7 +205,7 @@ const HellfestPage = () => {
               // Si aucun filtre n'est coché, on affiche tout par défaut
               const showDay = selectedDays.size === 0 || selectedDays.has(artist.day);
               const showStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
-              
+               
               if (!showDay || !showStage) return null;
 
               return (
