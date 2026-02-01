@@ -43,18 +43,34 @@ const MyConcerts = () => {
         console.log('Concerts récupérés:', fetchedConcerts);
         setConcerts(fetchedConcerts);
 
-        // Fetch concerts à venir depuis Supabase (pour l'instant)
-        if (user) {
-          const { data: upcoming, error } = await supabase
-            .from('upcoming_concerts')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('event_date', { ascending: true });
+        // Fetch concerts à venir (setlist.fm scraping)
+        try {
+          const upcomingResponse = await fetch(`/api/upcoming-shows?username=${username}`);
+          const upcomingData = await upcomingResponse.json();
+          
+          console.log('Upcoming shows response:', upcomingData);
+          
+          if (upcomingData.results && upcomingData.results.length > 0) {
+            console.log('✅ Upcoming shows trouvés:', upcomingData.results);
+            setUpcomingConcerts(upcomingData.results);
+          } else {
+            console.log('❌ Aucun upcoming show trouvé, essai Supabase...');
+            // Fallback: charger depuis Supabase si rien trouvé
+            if (user) {
+              const { data: upcoming, error } = await supabase
+                .from('upcoming_concerts')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('event_date', { ascending: true });
 
-          if (!error && upcoming) {
-            console.log('Upcoming concerts Supabase:', upcoming);
-            setUpcomingConcerts(upcoming);
+              if (!error && upcoming) {
+                console.log('Concerts Supabase:', upcoming);
+                setUpcomingConcerts(upcoming);
+              }
+            }
           }
+        } catch (upcomingError) {
+          console.error('Error fetching upcoming shows:', upcomingError);
         }
       } catch (error) {
         console.error('Error fetching concerts:', error);
