@@ -8,7 +8,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/AuthContext"
 
 import Index from "./pages/Index";
-import Festivals from "./pages/Festivals";
 import Concerts from "./pages/Concerts";
 import SearchResults from "./pages/SearchResults";
 import EventPage from "./pages/EventPage";
@@ -34,7 +33,6 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/festivals" element={<Festivals />} />
             <Route path="/search-results" element={<SearchResults />} />
             <Route path="/event/:eventId" element={<EventPage />} />
             <Route path="/concerts" element={<Concerts />} />
