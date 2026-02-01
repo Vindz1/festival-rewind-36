@@ -9,6 +9,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+// On crée le contexte vide par défaut
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
@@ -16,19 +17,21 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+// Le composant "Fournisseur" (Le Moteur)
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Démarrage : on regarde si une session existe
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
       } catch (error) {
-        console.error("Auth error:", error);
+        console.error("Erreur Auth:", error);
       } finally {
         setLoading(false);
       }
@@ -36,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initializeAuth();
 
+    // 2. Écoute : on surveille les connexions/déconnexions
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Le Hook pour utiliser l'auth dans les pages
 export const useAuth = () => {
   return useContext(AuthContext);
 };
