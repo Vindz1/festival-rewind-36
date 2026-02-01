@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, Flame, Check, XCircle } from 'lucide-react'; // Ajout de XCircle
 import { toast } from 'sonner';
+import { AuthProvider, useAuth } from "@/AuthContext";
 // IMPORT CRUCIAL : On importe les données statiques
 import { HELLFEST_LINEUP, ArtistData } from '@/data/hellfestData';
 
