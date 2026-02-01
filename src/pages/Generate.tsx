@@ -3,46 +3,53 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Music, CheckCircle, AlertTriangle, Loader2, Home } from 'lucide-react';
-import { toast } from 'sonner';
+import { Music, CheckCircle, AlertTriangle, Loader2, Home, LogIn } from 'lucide-react';
 
-// 1. CORRECTION DU CHEMIN D'IMPORT (Vers la racine src/)
-import { useAuth } from "@/AuthContext";
+// C'EST ICI QUE TOUT SE JOUE : On importe depuis la racine
+import { useAuth } from '@/AuthContext';
 
-// 2. RÉGLAGE DE SÉCURITÉ POUR ÉVITER LE BLOCAGE
 const BATCH_SIZE = 4; 
-const DELAY_BETWEEN_BATCHES = 2000; // Pause de 2 secondes : plus lent mais plus sûr !
+const DELAY_BETWEEN_BATCHES = 1500; 
 
 const GeneratePlaylist = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
-  const { session } = useAuth();
   
-  const [status, setStatus] = useState<'idle' | 'creating_playlist' | 'processing' | 'finished' | 'error'>('idle');
+  // On récupère tout ce qu'il faut du moteur d'authentification
+  const { session, loading, signOut } = useAuth();
+  
+  const [status, setStatus] = useState<'idle' | 'creating_playlist' | 'processing' | 'finished' | 'error' | 'token_missing'>('idle');
   const [progress, setProgress] = useState(0);
   const [currentArtist, setCurrentArtist] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [totalTracks, setTotalTracks] = useState(0);
-  const [failedArtists, setFailedArtists] = useState<string[]>([]);
 
   useEffect(() => {
+    if (loading) return; // On attend que l'auth soit chargée
+
+    // 1. Tout est bon : on lance
     if (status === 'idle' && session?.provider_token) {
       startGeneration();
-    } else if (status === 'idle' && !session) {
-      const timer = setTimeout(() => {
-         if (!session) {
-             // On attend un peu avant de déclarer l'erreur, au cas où le chargement est lent
-             setStatus('error');
-             addLog("❌ Erreur : Connexion Spotify requise.");
-         }
-      }, 3000);
+    } 
+    // 2. Connecté mais Token perdu (le bug du blocage)
+    else if (status === 'idle' && session && !session.provider_token) {
+      setStatus('token_missing');
+    }
+    // 3. Pas connecté
+    else if (status === 'idle' && !session) {
+      const timer = setTimeout(() => setStatus('error'), 2000);
       return () => clearTimeout(timer);
     }
-  }, [session]);
+  }, [session, loading, status]);
 
   const addLog = (msg: string) => setLogs(prev => [msg, ...prev].slice(0, 5));
+
+  const handleReLogin = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const startGeneration = async () => {
     try {
@@ -57,7 +64,7 @@ const GeneratePlaylist = () => {
 
       const artistsToProcess = JSON.parse(storedData);
       
-      // Choix du nom
+      // Choix du nom de la playlist
       const isHellfest = artistsToProcess.some((a: any) => 
         (a.eventDate && a.eventDate.includes('Hellfest')) || 
         (a.date && a.date.includes('Hellfest'))
@@ -66,10 +73,10 @@ const GeneratePlaylist = () => {
         ? "Hellfest 2026 - Official Selection" 
         : `My Concerts - ${new Date().toLocaleDateString('fr-FR')}`;
 
-      // ÉTAPE A : CRÉATION
       setStatus('creating_playlist');
-      addLog(`🔨 Création playlist : "${playlistName}"...`);
+      addLog(`🔨 Création : "${playlistName}"...`);
 
+      // ÉTAPE 1 : CRÉATION
       const createRes = await fetch('/api/top-tracks', {
         method: 'POST',
         headers: {
@@ -82,14 +89,17 @@ const GeneratePlaylist = () => {
         }),
       });
 
-      if (!createRes.ok) throw new Error("Échec création playlist");
+      if (!createRes.ok) throw new Error("Erreur lors de la création");
       const createData = await createRes.json();
+      
+      if (!createData.playlistId) throw new Error("ID Playlist manquant");
+
       const playlistId = createData.playlistId;
       setPlaylistUrl(createData.playlistUrl);
       
-      addLog("✅ Playlist créée ! Remplissage...");
+      addLog("✅ Playlist créée ! Ajout des titres...");
 
-      // ÉTAPE B : REMPLISSAGE
+      // ÉTAPE 2 : REMPLISSAGE
       setStatus('processing');
       await processBatches(artistsToProcess, playlistId);
 
@@ -128,24 +138,18 @@ const GeneratePlaylist = () => {
         });
 
         const data = await response.json();
-
         if (data.success) {
             tracksCount += data.tracksAdded;
             setTotalTracks(tracksCount);
             if (data.found.length > 0) addLog(`✅ Ajouté : ${data.found[0]}...`);
-            if (data.notFound && data.notFound.length > 0) {
-                setFailedArtists(prev => [...prev, ...data.notFound]);
-            }
         } 
       } catch (err) {
         console.error("Erreur réseau", err);
-        addLog(`⚠️ Pause réseau... on continue.`);
       }
 
       processedCount += batch.length;
       setProgress(Math.round((processedCount / allArtists.length) * 100));
 
-      // PAUSE DE SÉCURITÉ
       if (i + BATCH_SIZE < allArtists.length) {
           await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
       }
@@ -169,8 +173,8 @@ const GeneratePlaylist = () => {
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
             ) : status === 'finished' ? (
               <CheckCircle className="w-10 h-10 text-green-500" />
-            ) : status === 'error' ? (
-              <AlertTriangle className="w-10 h-10 text-destructive" />
+            ) : status === 'token_missing' ? (
+              <AlertTriangle className="w-10 h-10 text-yellow-500" />
             ) : (
               <Music className="w-10 h-10 text-primary" />
             )}
@@ -178,17 +182,24 @@ const GeneratePlaylist = () => {
           
           <h2 className="text-2xl font-display font-bold mb-2">
             {status === 'creating_playlist' && 'Initialisation...'}
-            {status === 'processing' && `Traitement en cours (${progress}%)`}
+            {status === 'processing' && `Traitement... (${progress}%)`}
             {status === 'finished' && 'Playlist Prête !'}
-            {status === 'error' && 'Une erreur est survenue'}
+            {status === 'token_missing' && 'Session Expirée'}
+            {status === 'error' && 'Erreur'}
             {status === 'idle' && 'Connexion...'}
           </h2>
+
+          {status === 'token_missing' && (
+             <p className="text-sm text-muted-foreground mb-4">
+               La connexion avec Spotify a été perdue.
+             </p>
+          )}
         </div>
 
         {(status === 'processing' || status === 'finished') && (
           <div className="space-y-2 mb-6">
             <div className="flex justify-between text-sm font-medium">
-              <span>Progression</span>
+              <span>{progress}%</span>
               <span>{totalTracks} titres</span>
             </div>
             <div className="h-3 bg-secondary rounded-full overflow-hidden">
@@ -202,7 +213,7 @@ const GeneratePlaylist = () => {
 
         <div className="bg-black/40 rounded-lg p-4 mb-6 h-32 overflow-hidden text-xs font-mono text-muted-foreground space-y-1 border border-border/50">
           {logs.map((log, i) => (
-            <div key={i} className={log.includes('❌') ? 'text-destructive' : log.includes('⚠️') ? 'text-yellow-500' : 'text-green-500'}>
+            <div key={i} className={log.includes('❌') ? 'text-destructive' : 'text-green-500'}>
               {log}
             </div>
           ))}
@@ -217,6 +228,14 @@ const GeneratePlaylist = () => {
               </Button>
             </a>
           )}
+          
+          {/* BOUTON SAUVETAGE */}
+          {(status === 'token_missing' || status === 'error') && (
+             <Button onClick={handleReLogin} variant="destructive" className="w-full gap-2">
+               <LogIn className="w-4 h-4"/> Me reconnecter
+             </Button>
+          )}
+
           <Button variant="ghost" onClick={() => navigate('/')} className="w-full gap-2">
             <Home className="w-4 h-4"/> Retour à l'accueil
           </Button>
