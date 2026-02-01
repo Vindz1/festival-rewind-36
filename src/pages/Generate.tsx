@@ -47,21 +47,27 @@ const GeneratePlaylist = () => {
 
   const startGeneration = async () => {
     try {
-      // 1. DÉTERMINER LA SOURCE DES DONNÉES
-      // Hellfest et 'I'm Going' utilisent 'selected_upcoming'
-      // 'I was there' utilise 'selected_concerts'
       const storageKey = mode === 'upcoming' ? 'selected_upcoming' : 'selected_concerts';
       const storedData = localStorage.getItem(storageKey);
       
+      // SÉCURITÉ ANTI-CRASH
       if (!storedData) {
         setStatus('error');
-        addLog("❌ Aucune donnée de concert trouvée.");
+        addLog("❌ Erreur : Aucune donnée trouvée à générer.");
         return;
       }
 
-      const artistsToProcess = JSON.parse(storedData);
-      
-      if (artistsToProcess.length === 0) {
+      let artistsToProcess;
+      try {
+        artistsToProcess = JSON.parse(storedData);
+      } catch (e) {
+        setStatus('error');
+        addLog("❌ Erreur : Les données du navigateur sont corrompues.");
+        return;
+      }
+
+      // Si la liste est vide, on arrête tout de suite
+      if (!artistsToProcess || artistsToProcess.length === 0) {
          setStatus('error');
          addLog("❌ La liste des artistes est vide.");
          return;
