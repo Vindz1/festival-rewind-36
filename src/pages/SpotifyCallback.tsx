@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 // CORRECTION DE L'IMPORT :
-import { useAuth } from "@/AuthContext";
+import { useAuth } from "../AuthContext";
 
 const SpotifyCallback = () => {
   const navigate = useNavigate();
