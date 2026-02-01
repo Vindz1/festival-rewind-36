@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Music, LogOut, User } from 'lucide-react';
+import { Music, LogOut, User, Skull } from 'lucide-react'; // Ajout de Skull ici
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,6 +65,18 @@ export const Header = () => {
             >
               Concerts
             </a>
+            
+            {/* Lien Hellfest 2026 Special */}
+            <Link 
+              to="/hellfest-2026" 
+              className={`flex items-center gap-2 text-sm font-bold transition-colors ${
+                location.pathname === '/hellfest-2026' ? 'text-red-500' : 'text-red-600 hover:text-red-500'
+              }`}
+            >
+              <Skull className="w-4 h-4" />
+              HF 2026
+            </Link>
+
             <Link 
               to="/my-concerts" 
               className={`text-sm font-medium transition-colors hover:text-primary ${
