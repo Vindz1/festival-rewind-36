@@ -18,6 +18,12 @@ export default async function handler(req, res) {
     });
 
     const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      console.error('Spotify Auth Error:', tokenData);
+      throw new Error('Failed to get access token');
+    }
+    
     const accessToken = tokenData.access_token;
 
     const artistsWithTracks = [];
