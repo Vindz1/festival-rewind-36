@@ -3,129 +3,183 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress'; // Assurez-vous d'avoir ce composant ou utilisez une div simple
-import { Music, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Music, CheckCircle, AlertTriangle, Loader2, Home } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
-// Configuration
-const BATCH_SIZE = 4; // On traite 4 groupes à la fois pour être sûr de ne pas timeout
-const DELAY_BETWEEN_BATCHES = 500; // Petite pause pour ne pas spammer Spotify
+// CONFIGURATION UNIVERSELLE
+// 4 groupes par paquet = Bon compromis vitesse/sécurité
+const BATCH_SIZE = 4; 
+// 1 seconde de pause entre les paquets = Spotify reste calme
+const DELAY_BETWEEN_BATCHES = 1000; 
 
 const GeneratePlaylist = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode');
-  const { user } = useAuth(); // Supposant que vous avez un hook d'auth qui donne le token provider
+  const mode = searchParams.get('mode'); // 'upcoming' ou 'past' (par défaut)
+  const { session } = useAuth();
   
-  const [status, setStatus] = useState<'idle' | 'creating' | 'processing' | 'finished' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'creating_playlist' | 'processing' | 'finished' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [currentArtist, setCurrentArtist] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [playlistUrl, setPlaylistUrl] = useState('');
-  const [totalTracksAdded, setTotalTracksAdded] = useState(0);
+  const [totalTracks, setTotalTracks] = useState(0);
+  const [failedArtists, setFailedArtists] = useState<string[]>([]);
 
+  // Démarrage automatique quand la session est prête
   useEffect(() => {
-    if (status === 'idle') {
+    if (status === 'idle' && session?.provider_token) {
       startGeneration();
+    } else if (status === 'idle' && !session) {
+      // Attente du chargement de la session ou redirection si pas connecté
+      const timer = setTimeout(() => {
+         if (!session) {
+             setStatus('error');
+             addLog("❌ Erreur : Vous devez être connecté à Spotify.");
+         }
+      }, 2000);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [session]);
 
-  const addLog = (msg: string) => setLogs(prev => [...prev.slice(-4), msg]);
+  const addLog = (msg: string) => setLogs(prev => [msg, ...prev].slice(0, 5));
 
   const startGeneration = async () => {
     try {
-      // 1. Récupérer les données du localStorage
+      // 1. DÉTERMINER LA SOURCE DES DONNÉES
+      // Hellfest et 'I'm Going' utilisent 'selected_upcoming'
+      // 'I was there' utilise 'selected_concerts'
       const storageKey = mode === 'upcoming' ? 'selected_upcoming' : 'selected_concerts';
       const storedData = localStorage.getItem(storageKey);
       
       if (!storedData) {
         setStatus('error');
-        addLog("Aucune donnée trouvée. Retournez à la sélection.");
+        addLog("❌ Aucune donnée de concert trouvée.");
         return;
       }
 
       const artistsToProcess = JSON.parse(storedData);
-      const totalArtists = artistsToProcess.length;
       
-      setStatus('creating');
-      addLog(`Démarrage pour ${totalArtists} groupes...`);
+      if (artistsToProcess.length === 0) {
+         setStatus('error');
+         addLog("❌ La liste des artistes est vide.");
+         return;
+      }
 
-      // 2. Créer la Playlist vide (On le fait depuis le front pour avoir l'ID tout de suite)
-      // Note: Cela nécessite que votre système d'auth expose le token Spotify. 
-      // Si ce n'est pas le cas, vous devrez peut-être faire un appel API dédié '/api/create-playlist'
+      // 2. CHOISIR LE NOM DE LA PLAYLIST
+      // Si c'est le Hellfest, on force un nom, sinon on met une date
+      const isHellfest = artistsToProcess.some((a: any) => 
+        (a.eventDate && a.eventDate.includes('Hellfest')) || 
+        (a.date && a.date.includes('Hellfest'))
+      );
       
-      // SOLUTION SIMPLE: On demande à votre API existante de créer la playlist
-      // On va supposer que vous avez une route pour ça, sinon on utilise 'top-tracks' astucieusement
-      
-      // Pour cet exemple, je vais simuler la création via votre API existante ou une nouvelle.
-      // Le mieux est de traiter par paquets et d'envoyer à votre API backend existante.
-      
-      processBatches(artistsToProcess);
+      const playlistName = isHellfest 
+        ? "Hellfest 2026 - Official Selection" 
+        : `My Concerts - ${new Date().toLocaleDateString('fr-FR')}`;
 
-    } catch (error) {
+      // ÉTAPE 3 : CRÉATION DE LA PLAYLIST VIDE
+      setStatus('creating_playlist');
+      addLog(`🔨 Création de la playlist "${playlistName}"...`);
+
+      const createRes = await fetch('/api/top-tracks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.provider_token}`
+        },
+        body: JSON.stringify({ 
+          mode: 'create', // On active le mode séquentiel du backend
+          playlistName: playlistName
+        }),
+      });
+
+      if (!createRes.ok) throw new Error("Erreur lors de la création de la playlist");
+      
+      const createData = await createRes.json();
+      const playlistId = createData.playlistId;
+      setPlaylistUrl(createData.playlistUrl);
+      
+      addLog("✅ Playlist créée ! Remplissage en cours...");
+
+      // ÉTAPE 4 : REMPLISSAGE PAR PAQUETS
+      setStatus('processing');
+      await processBatches(artistsToProcess, playlistId);
+
+    } catch (error: any) {
       console.error(error);
       setStatus('error');
+      addLog(`❌ Erreur critique : ${error.message}`);
     }
   };
 
-  const processBatches = async (allArtists: any[]) => {
-    setStatus('processing');
+  const processBatches = async (allArtists: any[], playlistId: string) => {
     let processedCount = 0;
-    let playlistId = null;
     let tracksCount = 0;
 
-    // On découpe en petits paquets
+    // Boucle par paquets (Batching)
     for (let i = 0; i < allArtists.length; i += BATCH_SIZE) {
       const batch = allArtists.slice(i, i + BATCH_SIZE);
-      const artistNames = batch.map((a: any) => a.artist || a.name); // Adapté à vos données
       
-      setCurrentArtist(artistNames[0]); // Affiche le groupe en cours
+      // Extraction sécurisée du nom de l'artiste (gère les différents formats de données)
+      const artistNames = batch.map((a: any) => {
+          if (typeof a === 'string') return a;
+          return a.artist || a.name || "Artiste Inconnu";
+      });
+      
+      setCurrentArtist(artistNames[0]);
       
       try {
-        // Appel à votre API existante 'top-tracks'
         const response = await fetch('/api/top-tracks', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.provider_token}`
+          },
           body: JSON.stringify({ 
+            mode: 'add', // On active le mode ajout du backend
             artists: artistNames,
-            // Astuce: on envoie l'ID playlist si on l'a déjà pour que le backend ajoute les titres
-            playlistId: playlistId, 
-            isFirstBatch: i === 0,
-            playlistName: "Hellfest 2026 - Official Selection" // Nom de la playlist
+            playlistId: playlistId
           }),
         });
 
         const data = await response.json();
 
-        if (!response.ok) throw new Error(data.error || "Erreur API");
-
-        // Le premier appel nous donne l'ID de la playlist créée
-        if (data.playlistId) {
-          playlistId = data.playlistId;
-          setPlaylistUrl(data.playlistUrl);
+        if (data.success) {
+            tracksCount += data.tracksAdded;
+            setTotalTracks(tracksCount);
+            
+            // Log intelligent : on n'affiche que le premier du groupe pour pas spammer
+            if (data.found.length > 0) {
+               addLog(`✅ ${data.found[0]} et ${data.found.length - 1} autres...`);
+            }
+            
+            if (data.notFound && data.notFound.length > 0) {
+                setFailedArtists(prev => [...prev, ...data.notFound]);
+                // On ne loggue les erreurs que si c'est important
+                addLog(`⚠️ ${data.notFound.length} introuvable(s) dans ce lot`);
+            }
+        } else {
+            addLog(`⚠️ Erreur mineure sur un paquet : ${data.error}`);
         }
-        
-        // Mise à jour des stats
-        if (data.tracksAdded) tracksCount += data.tracksAdded;
-        
-        // Progression
-        processedCount += batch.length;
-        const percent = Math.round((processedCount / allArtists.length) * 100);
-        setProgress(percent);
-        setTotalTracksAdded(tracksCount);
-        addLog(`✅ Ajouté : ${artistNames.join(', ')}`);
 
       } catch (err) {
-        console.error("Erreur sur le paquet :", err);
-        addLog(`❌ Erreur sur ${artistNames[0]}... on continue.`);
+        console.error("Erreur réseau", err);
+        addLog(`❌ Erreur réseau temporaire. On continue...`);
       }
 
-      // Petite pause pour respirer
-      await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
+      // Mise à jour progression
+      processedCount += batch.length;
+      setProgress(Math.round((processedCount / allArtists.length) * 100));
+
+      // PAUSE (pour éviter l'erreur 429 Too Many Requests)
+      if (i + BATCH_SIZE < allArtists.length) {
+          await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
+      }
     }
 
     setStatus('finished');
+    addLog("✨ Génération terminée avec succès !");
   };
 
   return (
@@ -133,79 +187,88 @@ const GeneratePlaylist = () => {
       <Header />
       
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-lg bg-card border border-border rounded-xl p-8 shadow-2xl"
+        className="w-full max-w-xl bg-card border border-border rounded-xl p-8 shadow-2xl mt-16"
       >
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            {status === 'processing' ? (
+            {status === 'processing' || status === 'creating_playlist' ? (
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
             ) : status === 'finished' ? (
               <CheckCircle className="w-10 h-10 text-green-500" />
+            ) : status === 'error' ? (
+              <AlertTriangle className="w-10 h-10 text-destructive" />
             ) : (
               <Music className="w-10 h-10 text-primary" />
             )}
           </div>
           
           <h2 className="text-2xl font-display font-bold mb-2">
-            {status === 'processing' ? 'Génération en cours...' : 
-             status === 'finished' ? 'Playlist Prête !' : 
-             'Préparation...'}
+            {status === 'creating_playlist' && 'Initialisation...'}
+            {status === 'processing' && `Traitement : ${currentArtist}`}
+            {status === 'finished' && 'Playlist Prête !'}
+            {status === 'error' && 'Oups !'}
+            {status === 'idle' && 'Connexion...'}
           </h2>
           
           {status === 'processing' && (
-            <p className="text-muted-foreground animate-pulse">
-              Recherche des titres pour <span className="text-primary font-bold">{currentArtist}</span>...
+            <p className="text-muted-foreground animate-pulse text-sm">
+              Spotify analyse vos goûts musicaux...
             </p>
           )}
         </div>
 
         {/* Barre de progression */}
-        <div className="space-y-2 mb-6">
-          <div className="flex justify-between text-sm">
-            <span>Progression</span>
-            <span>{progress}%</span>
+        {(status === 'processing' || status === 'finished') && (
+          <div className="space-y-2 mb-6">
+            <div className="flex justify-between text-sm font-medium">
+              <span>{progress}%</span>
+              <span>{totalTracks} titres ajoutés</span>
+            </div>
+            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
-          {/* Si vous n'avez pas le composant Progress, utilisez une div grise avec une div colorée dedans */}
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Logs */}
-        <div className="bg-black/20 rounded-lg p-4 mb-6 h-32 overflow-hidden text-xs font-mono text-muted-foreground space-y-1">
+        <div className="bg-black/40 rounded-lg p-4 mb-6 h-32 overflow-hidden text-xs font-mono text-muted-foreground space-y-1 border border-border/50">
           {logs.map((log, i) => (
-            <div key={i}>{log}</div>
+            <div key={i} className={log.includes('❌') ? 'text-destructive' : log.includes('⚠️') ? 'text-yellow-500' : 'text-green-500'}>
+              {log}
+            </div>
           ))}
         </div>
 
-        <div className="text-center">
-          {status === 'finished' && (
-            <div className="space-y-4">
-              <p className="text-lg font-bold text-green-500">
-                🎉 {totalTracksAdded} titres ajoutés avec succès !
-              </p>
-              <a href={playlistUrl} target="_blank" rel="noopener noreferrer">
-                <Button className="w-full gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold">
-                  <Music className="w-4 h-4" />
-                  Ouvrir dans Spotify
-                </Button>
-              </a>
-              <Button variant="ghost" onClick={() => navigate('/')}>
-                Retour à l'accueil
-              </Button>
-            </div>
-          )}
+        {/* Résumé des échecs (si terminé) */}
+        {status === 'finished' && failedArtists.length > 0 && (
+             <div className="mb-6 p-3 bg-yellow-950/30 border border-yellow-600/30 rounded-lg max-h-24 overflow-y-auto">
+                 <p className="text-yellow-500 text-xs font-bold mb-1 sticky top-0 bg-yellow-950/90 p-1">
+                    Groupes non trouvés sur Spotify ({failedArtists.length}) :
+                 </p>
+                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    {failedArtists.join(', ')}
+                 </p>
+             </div>
+        )}
 
-          {status === 'error' && (
-            <Button variant="destructive" onClick={() => window.location.reload()}>
-              Réessayer
-            </Button>
+        <div className="text-center space-y-3">
+          {status === 'finished' && (
+            <a href={playlistUrl} target="_blank" rel="noopener noreferrer" className="block w-full">
+              <Button className="w-full gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold h-12 text-lg">
+                <Music className="w-5 h-5" />
+                Ouvrir dans Spotify
+              </Button>
+            </a>
           )}
+          
+          <Button variant="ghost" onClick={() => navigate('/')} className="w-full gap-2">
+            <Home className="w-4 h-4"/> Retour à l'accueil
+          </Button>
         </div>
       </motion.div>
     </div>
