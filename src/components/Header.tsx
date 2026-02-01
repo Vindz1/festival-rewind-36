@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Music, LogOut, User, Skull } from 'lucide-react'; // Ajout de Skull ici
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from "@/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
