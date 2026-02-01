@@ -3,6 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+// AJOUTEZ CET IMPORT :
+import { AuthProvider } from "@/contexts/AuthContext"; 
+
 import Index from "./pages/Index";
 import Festivals from "./pages/Festivals";
 import Concerts from "./pages/Concerts";
@@ -23,23 +26,25 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/festivals" element={<Festivals />} />
-          <Route path="/search-results" element={<SearchResults />} />
-          <Route path="/event/:eventId" element={<EventPage />} />
-          <Route path="/concerts" element={<Concerts />} />
-          <Route path="/generate" element={<Generate />} />
-          <Route path="/my-concerts" element={<MyConcerts />} />
-          <Route path="/im-going" element={<ImGoing />} />
-          <Route path="/spotify-callback" element={<SpotifyCallback />} />
-          <Route path="/hellfest-2026" element={<HellfestPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      {/* AJOUTEZ AuthProvider ICI, POUR ENGLOBER TOUTES LES ROUTES */}
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/festivals" element={<Festivals />} />
+            <Route path="/search-results" element={<SearchResults />} />
+            <Route path="/event/:eventId" element={<EventPage />} />
+            <Route path="/concerts" element={<Concerts />} />
+            <Route path="/generate" element={<Generate />} />
+            <Route path="/my-concerts" element={<MyConcerts />} />
+            <Route path="/im-going" element={<ImGoing />} />
+            <Route path="/spotify-callback" element={<SpotifyCallback />} />
+            <Route path="/hellfest-2026" element={<HellfestPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
