@@ -4,19 +4,19 @@ import { motion } from 'framer-motion';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Music, CheckCircle, AlertTriangle, Loader2, Home } from 'lucide-react';
-import { AuthProvider, useAuth } from "@/AuthContext";
 import { toast } from 'sonner';
 
-// CONFIGURATION UNIVERSELLE
-// 4 groupes par paquet = Bon compromis vitesse/sécurité
+// 1. CORRECTION DU CHEMIN D'IMPORT (Vers la racine src/)
+import { useAuth } from '../../AuthContext'; 
+
+// 2. RÉGLAGE DE SÉCURITÉ POUR ÉVITER LE BLOCAGE
 const BATCH_SIZE = 4; 
-// 1 seconde de pause entre les paquets = Spotify reste calme
-const DELAY_BETWEEN_BATCHES = 1000; 
+const DELAY_BETWEEN_BATCHES = 2000; // Pause de 2 secondes : plus lent mais plus sûr !
 
 const GeneratePlaylist = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode'); // 'upcoming' ou 'past' (par défaut)
+  const mode = searchParams.get('mode');
   const { session } = useAuth();
   
   const [status, setStatus] = useState<'idle' | 'creating_playlist' | 'processing' | 'finished' | 'error'>('idle');
@@ -27,18 +27,17 @@ const GeneratePlaylist = () => {
   const [totalTracks, setTotalTracks] = useState(0);
   const [failedArtists, setFailedArtists] = useState<string[]>([]);
 
-  // Démarrage automatique quand la session est prête
   useEffect(() => {
     if (status === 'idle' && session?.provider_token) {
       startGeneration();
     } else if (status === 'idle' && !session) {
-      // Attente du chargement de la session ou redirection si pas connecté
       const timer = setTimeout(() => {
          if (!session) {
+             // On attend un peu avant de déclarer l'erreur, au cas où le chargement est lent
              setStatus('error');
-             addLog("❌ Erreur : Vous devez être connecté à Spotify.");
+             addLog("❌ Erreur : Connexion Spotify requise.");
          }
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [session]);
@@ -50,43 +49,26 @@ const GeneratePlaylist = () => {
       const storageKey = mode === 'upcoming' ? 'selected_upcoming' : 'selected_concerts';
       const storedData = localStorage.getItem(storageKey);
       
-      // SÉCURITÉ ANTI-CRASH
       if (!storedData) {
         setStatus('error');
-        addLog("❌ Erreur : Aucune donnée trouvée à générer.");
+        addLog("❌ Aucune donnée trouvée.");
         return;
       }
 
-      let artistsToProcess;
-      try {
-        artistsToProcess = JSON.parse(storedData);
-      } catch (e) {
-        setStatus('error');
-        addLog("❌ Erreur : Les données du navigateur sont corrompues.");
-        return;
-      }
-
-      // Si la liste est vide, on arrête tout de suite
-      if (!artistsToProcess || artistsToProcess.length === 0) {
-         setStatus('error');
-         addLog("❌ La liste des artistes est vide.");
-         return;
-      }
-
-      // 2. CHOISIR LE NOM DE LA PLAYLIST
-      // Si c'est le Hellfest, on force un nom, sinon on met une date
+      const artistsToProcess = JSON.parse(storedData);
+      
+      // Choix du nom
       const isHellfest = artistsToProcess.some((a: any) => 
         (a.eventDate && a.eventDate.includes('Hellfest')) || 
         (a.date && a.date.includes('Hellfest'))
       );
-      
       const playlistName = isHellfest 
         ? "Hellfest 2026 - Official Selection" 
         : `My Concerts - ${new Date().toLocaleDateString('fr-FR')}`;
 
-      // ÉTAPE 3 : CRÉATION DE LA PLAYLIST VIDE
+      // ÉTAPE A : CRÉATION
       setStatus('creating_playlist');
-      addLog(`🔨 Création de la playlist "${playlistName}"...`);
+      addLog(`🔨 Création playlist : "${playlistName}"...`);
 
       const createRes = await fetch('/api/top-tracks', {
         method: 'POST',
@@ -95,27 +77,26 @@ const GeneratePlaylist = () => {
           'Authorization': `Bearer ${session?.provider_token}`
         },
         body: JSON.stringify({ 
-          mode: 'create', // On active le mode séquentiel du backend
+          mode: 'create',
           playlistName: playlistName
         }),
       });
 
-      if (!createRes.ok) throw new Error("Erreur lors de la création de la playlist");
-      
+      if (!createRes.ok) throw new Error("Échec création playlist");
       const createData = await createRes.json();
       const playlistId = createData.playlistId;
       setPlaylistUrl(createData.playlistUrl);
       
-      addLog("✅ Playlist créée ! Remplissage en cours...");
+      addLog("✅ Playlist créée ! Remplissage...");
 
-      // ÉTAPE 4 : REMPLISSAGE PAR PAQUETS
+      // ÉTAPE B : REMPLISSAGE
       setStatus('processing');
       await processBatches(artistsToProcess, playlistId);
 
     } catch (error: any) {
       console.error(error);
       setStatus('error');
-      addLog(`❌ Erreur critique : ${error.message}`);
+      addLog(`❌ Erreur : ${error.message}`);
     }
   };
 
@@ -123,14 +104,11 @@ const GeneratePlaylist = () => {
     let processedCount = 0;
     let tracksCount = 0;
 
-    // Boucle par paquets (Batching)
     for (let i = 0; i < allArtists.length; i += BATCH_SIZE) {
       const batch = allArtists.slice(i, i + BATCH_SIZE);
-      
-      // Extraction sécurisée du nom de l'artiste (gère les différents formats de données)
       const artistNames = batch.map((a: any) => {
           if (typeof a === 'string') return a;
-          return a.artist || a.name || "Artiste Inconnu";
+          return a.artist || a.name || "Inconnu";
       });
       
       setCurrentArtist(artistNames[0]);
@@ -143,7 +121,7 @@ const GeneratePlaylist = () => {
             'Authorization': `Bearer ${session?.provider_token}`
           },
           body: JSON.stringify({ 
-            mode: 'add', // On active le mode ajout du backend
+            mode: 'add',
             artists: artistNames,
             playlistId: playlistId
           }),
@@ -154,44 +132,32 @@ const GeneratePlaylist = () => {
         if (data.success) {
             tracksCount += data.tracksAdded;
             setTotalTracks(tracksCount);
-            
-            // Log intelligent : on n'affiche que le premier du groupe pour pas spammer
-            if (data.found.length > 0) {
-               addLog(`✅ ${data.found[0]} et ${data.found.length - 1} autres...`);
-            }
-            
+            if (data.found.length > 0) addLog(`✅ Ajouté : ${data.found[0]}...`);
             if (data.notFound && data.notFound.length > 0) {
                 setFailedArtists(prev => [...prev, ...data.notFound]);
-                // On ne loggue les erreurs que si c'est important
-                addLog(`⚠️ ${data.notFound.length} introuvable(s) dans ce lot`);
             }
-        } else {
-            addLog(`⚠️ Erreur mineure sur un paquet : ${data.error}`);
-        }
-
+        } 
       } catch (err) {
         console.error("Erreur réseau", err);
-        addLog(`❌ Erreur réseau temporaire. On continue...`);
+        addLog(`⚠️ Pause réseau... on continue.`);
       }
 
-      // Mise à jour progression
       processedCount += batch.length;
       setProgress(Math.round((processedCount / allArtists.length) * 100));
 
-      // PAUSE (pour éviter l'erreur 429 Too Many Requests)
+      // PAUSE DE SÉCURITÉ
       if (i + BATCH_SIZE < allArtists.length) {
           await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
       }
     }
 
     setStatus('finished');
-    addLog("✨ Génération terminée avec succès !");
+    addLog("✨ Terminé !");
   };
 
   return (
     <div className="min-h-screen bg-background noise flex flex-col items-center justify-center p-4">
       <Header />
-      
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -212,25 +178,18 @@ const GeneratePlaylist = () => {
           
           <h2 className="text-2xl font-display font-bold mb-2">
             {status === 'creating_playlist' && 'Initialisation...'}
-            {status === 'processing' && `Traitement : ${currentArtist}`}
+            {status === 'processing' && `Traitement en cours (${progress}%)`}
             {status === 'finished' && 'Playlist Prête !'}
-            {status === 'error' && 'Oups !'}
+            {status === 'error' && 'Une erreur est survenue'}
             {status === 'idle' && 'Connexion...'}
           </h2>
-          
-          {status === 'processing' && (
-            <p className="text-muted-foreground animate-pulse text-sm">
-              Spotify analyse vos goûts musicaux...
-            </p>
-          )}
         </div>
 
-        {/* Barre de progression */}
         {(status === 'processing' || status === 'finished') && (
           <div className="space-y-2 mb-6">
             <div className="flex justify-between text-sm font-medium">
-              <span>{progress}%</span>
-              <span>{totalTracks} titres ajoutés</span>
+              <span>Progression</span>
+              <span>{totalTracks} titres</span>
             </div>
             <div className="h-3 bg-secondary rounded-full overflow-hidden">
               <div 
@@ -241,7 +200,6 @@ const GeneratePlaylist = () => {
           </div>
         )}
 
-        {/* Logs */}
         <div className="bg-black/40 rounded-lg p-4 mb-6 h-32 overflow-hidden text-xs font-mono text-muted-foreground space-y-1 border border-border/50">
           {logs.map((log, i) => (
             <div key={i} className={log.includes('❌') ? 'text-destructive' : log.includes('⚠️') ? 'text-yellow-500' : 'text-green-500'}>
@@ -249,18 +207,6 @@ const GeneratePlaylist = () => {
             </div>
           ))}
         </div>
-
-        {/* Résumé des échecs (si terminé) */}
-        {status === 'finished' && failedArtists.length > 0 && (
-             <div className="mb-6 p-3 bg-yellow-950/30 border border-yellow-600/30 rounded-lg max-h-24 overflow-y-auto">
-                 <p className="text-yellow-500 text-xs font-bold mb-1 sticky top-0 bg-yellow-950/90 p-1">
-                    Groupes non trouvés sur Spotify ({failedArtists.length}) :
-                 </p>
-                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    {failedArtists.join(', ')}
-                 </p>
-             </div>
-        )}
 
         <div className="text-center space-y-3">
           {status === 'finished' && (
@@ -271,7 +217,6 @@ const GeneratePlaylist = () => {
               </Button>
             </a>
           )}
-          
           <Button variant="ghost" onClick={() => navigate('/')} className="w-full gap-2">
             <Home className="w-4 h-4"/> Retour à l'accueil
           </Button>
