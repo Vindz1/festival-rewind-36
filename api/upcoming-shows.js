@@ -8,7 +8,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch the HTML page
     const response = await fetch(`https://www.setlist.fm/attended/${username}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -23,73 +22,58 @@ export default async function handler(req, res) {
     const $ = cheerio.load(html);
     
     const upcomingShows = [];
+    let inUpcomingSection = false;
 
-    // Find the "Upcoming Shows" heading
-    let foundUpcomingSection = false;
-    
-    $('h2, h3').each((i, heading) => {
-      const headingText = $(heading).text().trim();
+    // Parse each element in order
+    $('body *').each((i, elem) => {
+      const $elem = $(elem);
+      const text = $elem.text().trim();
       
-      if (headingText.includes('Upcoming Shows')) {
-        foundUpcomingSection = true;
-        console.log('Found Upcoming Shows section:', headingText);
+      // Check if we're entering the Upcoming Shows section
+      if (text.startsWith('Upcoming Shows')) {
+        console.log('✅ Entering Upcoming Shows section');
+        inUpcomingSection = true;
+        return; // continue
+      }
+      
+      // Check if we're leaving the Upcoming Shows section
+      if (inUpcomingSection && text.startsWith('Attended Shows')) {
+        console.log('❌ Leaving Upcoming Shows section, entering Attended');
+        inUpcomingSection = false;
+        return false; // break
+      }
+      
+      // If we're in the upcoming section and this is a setlist link
+      if (inUpcomingSection && $elem.is('a') && $elem.attr('href')?.includes('/setlist/')) {
+        const artistName = $elem.find('strong').first().text().trim();
         
-        // Get the next div after the heading which contains the concerts
-        let currentElement = $(heading).next();
-        
-        // Look through siblings until we hit the next section
-        while (currentElement.length > 0 && !currentElement.is('h2, h3')) {
-          // Find all links to setlists within this element
-          currentElement.find('a[href*="/setlist/"]').each((idx, link) => {
-            const $link = $(link);
-            
-            // Artist name is in the <strong> tag
-            const artistName = $link.find('strong').text().trim();
-            
-            // Get all text from the link (includes venue and date)
-            const fullText = $link.text().trim();
-            
-            // The date/event info comes after the artist name
-            // Format: "Artist\nVenue • Date"
-            const lines = fullText.split('\n').map(l => l.trim()).filter(Boolean);
-            
-            let eventInfo = '';
-            if (lines.length > 1) {
-              eventInfo = lines.slice(1).join(' ');
-            }
-            
-            if (artistName) {
-              console.log('Found upcoming concert:', { 
-                artist: artistName, 
-                info: eventInfo 
-              });
-              
-              upcomingShows.push({
-                id: `upcoming-${idx}`,
-                artist: { name: artistName },
-                eventDate: eventInfo || 'Date à venir',
-                venue: { name: eventInfo.split('•')[0]?.trim() || null }
-              });
-            }
-          });
+        if (artistName) {
+          const fullText = $elem.text().trim();
           
-          currentElement = currentElement.next();
+          // Extract event info (everything after the artist name)
+          const eventInfo = fullText.replace(artistName, '').trim();
+          
+          console.log(`Found concert: ${artistName} | ${eventInfo}`);
+          
+          upcomingShows.push({
+            id: `upcoming-${upcomingShows.length}`,
+            artist: { name: artistName },
+            eventDate: eventInfo || 'Date à venir',
+            venue: { name: eventInfo.split('•')[0]?.trim() || null }
+          });
         }
-        
-        return false; // Stop after finding the section
       }
     });
 
-    console.log(`Total upcoming shows found: ${upcomingShows.length}`);
+    console.log(`✅ Total: ${upcomingShows.length} upcoming shows`);
 
     return res.status(200).json({ 
       results: upcomingShows,
-      scraped: true,
-      found_section: foundUpcomingSection
+      scraped: true
     });
 
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('❌ Scraping error:', error);
     return res.status(500).json({ 
       error: 'Failed to fetch upcoming shows',
       results: []
