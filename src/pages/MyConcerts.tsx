@@ -21,7 +21,6 @@ const MyConcerts = () => {
   const [loading, setLoading] = useState(true);
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
-  const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
 
   // Charger les concerts depuis setlist.fm ET Supabase
   useEffect(() => {
@@ -123,23 +122,6 @@ const MyConcerts = () => {
   };
 
   // Toggle sélection upcoming concert
-  const toggleUpcomingConcert = (concert: any) => {
-    const newSelection = new Set(selectedUpcoming);
-    if (newSelection.has(concert.id)) {
-      newSelection.delete(concert.id);
-    } else {
-      newSelection.add(concert.id);
-    }
-    setSelectedUpcoming(newSelection);
-    
-    // Sauvegarder dans localStorage
-    const selectedArray = upcomingConcerts.filter(c => newSelection.has(c.id)).map(c => ({
-      id: c.id,
-      artist: c.artist?.name || c.artist_name
-    }));
-    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
-  };
-
   // Séparer les concerts passés et futurs
   const now = new Date();
   
