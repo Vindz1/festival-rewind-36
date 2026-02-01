@@ -332,16 +332,26 @@ const MyConcerts = () => {
                   {pastConcerts.length > 0 ? (
                     <>
                       <ConcertList concerts={pastConcerts} />
+                      
+                      {/* Floating Action Button */}
                       {selectedCount > 0 && (
-                        <div className="text-center mt-8">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="fixed bottom-8 right-8 z-50"
+                        >
                           <Link to="/generate">
-                            <Button variant="fire" size="lg" className="gap-2">
+                            <Button 
+                              variant="fire" 
+                              size="lg" 
+                              className="gap-2 shadow-lg hover:shadow-xl transition-shadow rounded-full px-6 py-6"
+                            >
                               <Music className="w-5 h-5" />
-                              Générer ma playlist ({selectedCount} concert{selectedCount > 1 ? 's' : ''})
+                              Générer ({selectedCount})
                               <ArrowRight className="w-4 h-4" />
                             </Button>
                           </Link>
-                        </div>
+                        </motion.div>
                       )}
                     </>
                   ) : (
