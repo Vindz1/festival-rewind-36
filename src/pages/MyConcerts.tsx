@@ -20,6 +20,8 @@ const MyConcerts = () => {
   const [upcomingConcerts, setUpcomingConcerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
+  const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
+  const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
 
   // Charger les concerts depuis setlist.fm ET Supabase
   useEffect(() => {
@@ -100,6 +102,42 @@ const MyConcerts = () => {
       date: c.eventDate
     }));
     localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
+  };
+
+  // Toggle sélection upcoming concert
+  const toggleUpcomingConcert = (concert: any) => {
+    const newSelection = new Set(selectedUpcoming);
+    if (newSelection.has(concert.id)) {
+      newSelection.delete(concert.id);
+    } else {
+      newSelection.add(concert.id);
+    }
+    setSelectedUpcoming(newSelection);
+    
+    // Sauvegarder dans localStorage
+    const selectedArray = upcomingConcerts.filter(c => newSelection.has(c.id)).map(c => ({
+      id: c.id,
+      artist: c.artist?.name || c.artist_name
+    }));
+    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
+  };
+
+  // Toggle sélection upcoming concert
+  const toggleUpcomingConcert = (concert: any) => {
+    const newSelection = new Set(selectedUpcoming);
+    if (newSelection.has(concert.id)) {
+      newSelection.delete(concert.id);
+    } else {
+      newSelection.add(concert.id);
+    }
+    setSelectedUpcoming(newSelection);
+    
+    // Sauvegarder dans localStorage
+    const selectedArray = upcomingConcerts.filter(c => newSelection.has(c.id)).map(c => ({
+      id: c.id,
+      artist: c.artist?.name || c.artist_name
+    }));
+    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
   };
 
   // Séparer les concerts passés et futurs
@@ -195,6 +233,7 @@ const MyConcerts = () => {
         const eventName = concert.event_name;
         const venueName = concert.venue?.name || concert.venue_name;
         const eventDate = concert.eventDate || concert.event_date;
+        const isSelected = selectedUpcoming.has(concert.id);
         
         return (
           <motion.div
@@ -202,13 +241,22 @@ const MyConcerts = () => {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/50 transition-colors"
+            onClick={() => toggleUpcomingConcert(concert)}
+            className={`bg-card border rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer group ${
+              isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+            }`}
           >
-            <div className="w-12 h-12 rounded-lg bg-gradient-fire flex items-center justify-center shadow-fire shrink-0">
-              <Music className="w-6 h-6 text-primary-foreground" />
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-fire shrink-0 transition-all ${
+              isSelected ? 'bg-gradient-fire' : 'bg-muted'
+            }`}>
+              {isSelected ? (
+                <ChevronRight className="w-6 h-6 text-primary-foreground" />
+              ) : (
+                <Music className="w-6 h-6 text-muted-foreground" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-display text-xl text-foreground truncate">
+              <h3 className="font-display text-xl text-foreground truncate group-hover:text-primary transition-colors">
                 {artistName}
               </h3>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -234,6 +282,11 @@ const MyConcerts = () => {
                 )}
               </div>
             </div>
+            {isSelected && (
+              <div className="text-primary font-medium text-sm shrink-0">
+                ✓ Sélectionné
+              </div>
+            )}
           </motion.div>
         );
       })}
@@ -367,6 +420,28 @@ const MyConcerts = () => {
                   {upcomingConcerts.length > 0 ? (
                     <>
                       <UpcomingConcertsList />
+                      
+                      {/* Floating Action Button for Upcoming */}
+                      {selectedUpcoming.size > 0 && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="fixed bottom-8 right-8 z-50"
+                        >
+                          <Link to="/generate?mode=upcoming">
+                            <Button 
+                              variant="fire" 
+                              size="lg" 
+                              className="gap-2 shadow-lg hover:shadow-xl transition-shadow rounded-full px-6 py-6"
+                            >
+                              <Music className="w-5 h-5" />
+                              Générer ({selectedUpcoming.size})
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        </motion.div>
+                      )}
+                      
                       {user && (
                         <div className="text-center mt-6">
                           <Link to="/im-going">
