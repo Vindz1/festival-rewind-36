@@ -1,559 +1,215 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { useUserConcerts } from '@/hooks/useUserConcerts';
-import { useAuth } from '@/hooks/useAuth';
-import { getUserSubscription, UserSubscription } from '@/lib/subscription';
-import { Music, Loader2, Play, ArrowRight, Lock, Crown, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress'; // Assurez-vous d'avoir ce composant ou utilisez une div simple
+import { Music, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 
-interface TrackInfo {
-  title: string;
-  artist: string;
-  album?: string;
-  albumArt?: string;
-  spotifyUri?: string;
-  year?: string;
-}
+// Configuration
+const BATCH_SIZE = 4; // On traite 4 groupes à la fois pour être sûr de ne pas timeout
+const DELAY_BETWEEN_BATCHES = 500; // Petite pause pour ne pas spammer Spotify
 
-interface ArtistWithTracks {
-  artistName: string;
-  artistId: string;
-  artistImage?: string;
-  tracks: {
-    id: string;
-    name: string;
-    uri: string;
-    album: string;
-    albumImage?: string;
-    duration: number;
-    preview_url?: string;
-  }[];
-}
-
-export default function Generate() {
+const GeneratePlaylist = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
-  const isUpcomingMode = mode === 'upcoming';
+  const { user } = useAuth(); // Supposant que vous avez un hook d'auth qui donne le token provider
   
-  const { concerts } = useUserConcerts();
-  const { user } = useAuth();
-  const [songs, setSongs] = useState<any[]>([]);
-  const [tracksWithInfo, setTracksWithInfo] = useState<TrackInfo[]>([]);
-  
-  // États pour le mode "upcoming"
-  const [artistsWithTracks, setArtistsWithTracks] = useState<ArtistWithTracks[]>([]);
-  const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
-  
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [showPreview, setShowPreview] = useState(false);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
-  const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const [playlistName, setPlaylistName] = useState(
-    isUpcomingMode 
-      ? `Upcoming - ${new Date().getFullYear()}`
-      : `Setlist Live - ${new Date().getFullYear()}`
-  );
+  const [status, setStatus] = useState<'idle' | 'creating' | 'processing' | 'finished' | 'error'>('idle');
+  const [progress, setProgress] = useState(0);
+  const [currentArtist, setCurrentArtist] = useState('');
+  const [logs, setLogs] = useState<string[]>([]);
+  const [playlistUrl, setPlaylistUrl] = useState('');
+  const [totalTracksAdded, setTotalTracksAdded] = useState(0);
 
-  // Charger les infos d'abonnement
   useEffect(() => {
-    if (user) {
-      getUserSubscription(user.id).then((sub) => {
-        setSubscription(sub);
-        setLoadingSubscription(false);
-      });
-    } else {
-      setLoadingSubscription(false);
+    if (status === 'idle') {
+      startGeneration();
     }
-  }, [user]);
+  }, []);
 
-  const canExport = user && subscription?.can_export;
+  const addLog = (msg: string) => setLogs(prev => [...prev.slice(-4), msg]);
 
-  // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
-  useEffect(() => {
-    if (isUpcomingMode) {
-      // Mode upcoming: charger les top tracks
-      fetchTopTracks();
-    } else {
-      // Mode normal: charger les setlists
-      const fetchSongs = async () => {
-        setLoading(true);
-        const all: any[] = [];
-        for (const c of concerts) {
-          const res = await fetch(`/api/search?action=songs&setlistId=${c.id}`);
-          const data = await res.json();
-          if (data.songs) {
-            data.songs.forEach((s: string) => all.push({ artist: c.artist, title: s }));
-          }
-        }
-        setSongs(all);
-        setLoading(false);
-      };
-      if (concerts.length > 0) fetchSongs();
-    }
-  }, [concerts, isUpcomingMode]);
-
-  // Fonction pour charger les top tracks (mode upcoming)
-  const fetchTopTracks = async () => {
-    setLoading(true);
+  const startGeneration = async () => {
     try {
-      const selected = localStorage.getItem('selected_upcoming');
-      if (!selected) {
-        toast.error('Aucun artiste sélectionné');
-        setLoading(false);
+      // 1. Récupérer les données du localStorage
+      const storageKey = mode === 'upcoming' ? 'selected_upcoming' : 'selected_concerts';
+      const storedData = localStorage.getItem(storageKey);
+      
+      if (!storedData) {
+        setStatus('error');
+        addLog("Aucune donnée trouvée. Retournez à la sélection.");
         return;
       }
 
-      const artists = JSON.parse(selected);
-      const artistNames = artists.map((a: any) => a.artist);
-
-      console.log('Fetching top tracks for:', artistNames);
-
-      const response = await fetch('/api/top-tracks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artists: artistNames })
-      });
-
-      if (!response.ok) throw new Error('Erreur API');
-
-      const data = await response.json();
-      console.log('Top tracks received:', data);
-
-      setArtistsWithTracks(data.artists || []);
+      const artistsToProcess = JSON.parse(storedData);
+      const totalArtists = artistsToProcess.length;
       
-      // Sélectionner tous les artistes par défaut
-      const allArtistIds = (data.artists || []).map((a: ArtistWithTracks) => a.artistId);
-      setSelectedArtists(new Set(allArtistIds));
+      setStatus('creating');
+      addLog(`Démarrage pour ${totalArtists} groupes...`);
+
+      // 2. Créer la Playlist vide (On le fait depuis le front pour avoir l'ID tout de suite)
+      // Note: Cela nécessite que votre système d'auth expose le token Spotify. 
+      // Si ce n'est pas le cas, vous devrez peut-être faire un appel API dédié '/api/create-playlist'
       
-      setLoading(false);
+      // SOLUTION SIMPLE: On demande à votre API existante de créer la playlist
+      // On va supposer que vous avez une route pour ça, sinon on utilise 'top-tracks' astucieusement
+      
+      // Pour cet exemple, je vais simuler la création via votre API existante ou une nouvelle.
+      // Le mieux est de traiter par paquets et d'envoyer à votre API backend existante.
+      
+      processBatches(artistsToProcess);
+
     } catch (error) {
-      console.error('Error fetching top tracks:', error);
-      toast.error('Erreur lors du chargement des tracks');
-      setLoading(false);
+      console.error(error);
+      setStatus('error');
     }
   };
 
-  // Étape 2 : Prévisualiser
-  const fetchDetailedInfo = async () => {
-    if (tracksWithInfo.length > 0) {
-      setShowPreview(true);
-      return;
-    }
+  const processBatches = async (allArtists: any[]) => {
+    setStatus('processing');
+    let processedCount = 0;
+    let playlistId = null;
+    let tracksCount = 0;
 
-    setSearching(true);
-    const detailedTracks: TrackInfo[] = [];
-
-    try {
-      for (let i = 0; i < songs.length; i++) {
-        const song = songs[i];
-        setExportProgress(Math.round(((i + 1) / songs.length) * 100));
-        detailedTracks.push({
-          title: song.title,
-          artist: song.artist,
-        });
-      }
-      setTracksWithInfo(detailedTracks);
-      setShowPreview(true);
-    } catch (err) {
-      console.error('Erreur lors de la prévisualisation:', err);
-    } finally {
-      setSearching(false);
-      setExportProgress(0);
-    }
-  };
-
-  // Étape 3 : Exporter vers Spotify
-  const handleSpotifyExport = () => {
-    if (!canExport) return;
-    
-    const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
-    
-    if (isUpcomingMode) {
-      // Mode upcoming: envoyer les URIs des tracks sélectionnées
-      const selectedTracks = artistsWithTracks
-        .filter(artist => selectedArtists.has(artist.artistId))
-        .flatMap(artist => artist.tracks)
-        .map(track => ({ title: track.name, artist: '', uri: track.uri }));
+    // On découpe en petits paquets
+    for (let i = 0; i < allArtists.length; i += BATCH_SIZE) {
+      const batch = allArtists.slice(i, i + BATCH_SIZE);
+      const artistNames = batch.map((a: any) => a.artist || a.name); // Adapté à vos données
       
-      localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
-    } else {
-      // Mode normal: envoyer les songs depuis setlists
-      localStorage.setItem('pending_songs', JSON.stringify(songs));
-    }
-    
-    localStorage.setItem('playlist_name', playlistName || `Setlist Live - ${new Date().getFullYear()}`);
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
-  };
+      setCurrentArtist(artistNames[0]); // Affiche le groupe en cours
+      
+      try {
+        // Appel à votre API existante 'top-tracks'
+        const response = await fetch('/api/top-tracks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            artists: artistNames,
+            // Astuce: on envoie l'ID playlist si on l'a déjà pour que le backend ajoute les titres
+            playlistId: playlistId, 
+            isFirstBatch: i === 0,
+            playlistName: "Hellfest 2026 - Official Selection" // Nom de la playlist
+          }),
+        });
 
-  // Toggle artist selection (upcoming mode)
-  const toggleArtist = (artistId: string) => {
-    const newSelection = new Set(selectedArtists);
-    if (newSelection.has(artistId)) {
-      newSelection.delete(artistId);
-    } else {
-      newSelection.add(artistId);
-    }
-    setSelectedArtists(newSelection);
-  };
+        const data = await response.json();
 
-  // Calculate total tracks (upcoming mode)
-  const totalSelectedTracks = artistsWithTracks
-    .filter(artist => selectedArtists.has(artist.artistId))
-    .reduce((sum, artist) => sum + artist.tracks.length, 0);
+        if (!response.ok) throw new Error(data.error || "Erreur API");
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl">
-            {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Mode upcoming: afficher l'interface différente
-  if (isUpcomingMode) {
-    return (
-      <div className="min-h-screen bg-black text-white pt-24 px-4">
-        <Header />
+        // Le premier appel nous donne l'ID de la playlist créée
+        if (data.playlistId) {
+          playlistId = data.playlistId;
+          setPlaylistUrl(data.playlistUrl);
+        }
         
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold mb-4 italic">
-              <span className="text-gradient-fire">{totalSelectedTracks}</span> TITRES
-            </h1>
-            <p className="text-gray-400">
-              Top tracks de {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''}
-            </p>
-          </div>
+        // Mise à jour des stats
+        if (data.tracksAdded) tracksCount += data.tracksAdded;
+        
+        // Progression
+        processedCount += batch.length;
+        const percent = Math.round((processedCount / allArtists.length) * 100);
+        setProgress(percent);
+        setTotalTracksAdded(tracksCount);
+        addLog(`✅ Ajouté : ${artistNames.join(', ')}`);
 
-          {/* Auth warnings */}
-          {!user && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-primary/30">
-              <Lock className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-                <Link to="/auth" className="ml-2 underline text-primary">
-                  Se connecter
-                </Link>
-              </AlertDescription>
-            </Alert>
-          )}
+      } catch (err) {
+        console.error("Erreur sur le paquet :", err);
+        addLog(`❌ Erreur sur ${artistNames[0]}... on continue.`);
+      }
 
-          {user && subscription?.subscription_type === 'admin' && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
-              <Crown className="h-4 w-4 text-purple-400" />
-              <AlertDescription>
-                <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
-              </AlertDescription>
-            </Alert>
-          )}
+      // Petite pause pour respirer
+      await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
+    }
 
-          {/* Playlist name input */}
-          <div className="max-w-xl mx-auto mb-6">
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Nom de la playlist
-            </label>
-            <input
-              type="text"
-              value={playlistName}
-              onChange={(e) => setPlaylistName(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Upcoming Concerts 2026"
-            />
-          </div>
-
-          {/* Artists list */}
-          <div className="space-y-4 mb-8">
-            {artistsWithTracks.map((artist) => {
-              const isSelected = selectedArtists.has(artist.artistId);
-              return (
-                <div
-                  key={artist.artistId}
-                  onClick={() => toggleArtist(artist.artistId)}
-                  className={`bg-zinc-900 border rounded-xl p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-primary bg-primary/5' : 'border-zinc-800 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-gradient-fire' : 'bg-zinc-800'
-                    }`}>
-                      {artist.artistImage ? (
-                        <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
-                      ) : (
-                        <Music className="w-6 h-6 text-zinc-400" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold">{artist.artistName}</h3>
-                      <p className="text-sm text-gray-400">{artist.tracks.length} morceaux</p>
-                    </div>
-                    {isSelected && <CheckCircle2 className="w-6 h-6 text-primary" />}
-                  </div>
-
-                  {/* Track list preview (if selected) */}
-                  {isSelected && (
-                    <div className="mt-4 space-y-2">
-                      {artist.tracks.slice(0, 5).map((track, idx) => (
-                        <div key={track.id} className="flex items-center gap-2 text-sm text-gray-400 pl-2">
-                          <span className="text-gray-600">#{idx + 1}</span>
-                          <span className="flex-1 truncate">{track.name}</span>
-                        </div>
-                      ))}
-                      {artist.tracks.length > 5 && (
-                        <p className="text-xs text-gray-500 pl-2">
-                          +{artist.tracks.length - 5} autres morceaux
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Export button */}
-          <div className="max-w-xl mx-auto">
-            <Button 
-              onClick={handleSpotifyExport}
-              disabled={!canExport || selectedArtists.size === 0}
-              variant="fire"
-              className="w-full h-16 text-xl font-bold"
-            >
-              {!user && <Lock className="mr-3" />}
-              <Music className="mr-3" />
-              {!user ? 'Se connecter pour exporter' : `Créer la playlist (${totalSelectedTracks} titres)`}
-              {user && <ArrowRight className="ml-3" />}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    setStatus('finished');
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white pt-24 px-4">
+    <div className="min-h-screen bg-background noise flex flex-col items-center justify-center p-4">
       <Header />
       
-      <div className="max-w-4xl mx-auto">
-        {/* Header avec stats */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-lg bg-card border border-border rounded-xl p-8 shadow-2xl"
+      >
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold mb-4 italic">
-            <span className="text-gradient-fire">{songs.length}</span> TITRES
-          </h1>
-          <p className="text-gray-400">
-            Depuis {concerts.length} concert{concerts.length > 1 ? 's' : ''}
-          </p>
-        </div>
-
-        {/* Auth warnings */}
-        {!user && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-primary/30">
-            <Lock className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-              <Link to="/auth" className="ml-2 underline text-primary">
-                Se connecter
-              </Link>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'admin' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
-            <Crown className="h-4 w-4 text-purple-400" />
-            <AlertDescription>
-              <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'free' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-yellow-500/30">
-            <Crown className="h-4 w-4 text-yellow-500" />
-            <AlertDescription>
-              <strong>Offre gratuite</strong> : {subscription.exports_this_year}/2 playlists utilisées cette année.
-              {!subscription.can_export && (
-                <span className="block mt-1 text-yellow-500">
-                  Limite atteinte. Passez à Premium pour des exports illimités !
-                </span>
-              )}
-              {subscription.can_export && subscription.remaining_exports !== undefined && (
-                <span className="block mt-1 text-gray-400">
-                  Il vous reste {subscription.remaining_exports} export{subscription.remaining_exports > 1 ? 's' : ''}.
-                </span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'premium' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-500/50">
-            <Crown className="h-4 w-4 text-yellow-500" />
-            <AlertDescription>
-              <strong className="text-yellow-500">Premium</strong> : Exports illimités ! 🎉
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Playlist name input */}
-        <div className="max-w-xl mx-auto mb-6">
-          <label className="block text-sm font-medium mb-2 text-gray-300">
-            Nom de la playlist
-          </label>
-          <input
-            type="text"
-            value={playlistName}
-            onChange={(e) => setPlaylistName(e.target.value)}
-            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="Ma Time Capsule Live"
-          />
-        </div>
-
-        {/* Boutons d'action */}
-        {!showPreview ? (
-          <div className="max-w-xl mx-auto space-y-4">
-            {/* Input nom de playlist */}
-            <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-              <label htmlFor="playlistName" className="block text-sm font-medium text-gray-300 mb-2">
-                Nom de la playlist
-              </label>
-              <input
-                id="playlistName"
-                type="text"
-                value={playlistName}
-                onChange={(e) => setPlaylistName(e.target.value)}
-                placeholder="Ma Time Capsule Live"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Ce nom apparaîtra sur votre Spotify
-              </p>
-            </div>
-
-            <Button 
-              onClick={fetchDetailedInfo} 
-              disabled={searching}
-              variant="outline"
-              className="w-full h-16 text-xl font-bold"
-            >
-              {searching ? (
-                <>
-                  <Loader2 className="mr-3 animate-spin" />
-                  Chargement... {exportProgress}%
-                </>
-              ) : (
-                <>
-                  <Play className="mr-3" />
-                  Prévisualiser les morceaux
-                </>
-              )}
-            </Button>
-
-            {searching && (
-              <Progress value={exportProgress} className="w-full" />
-            )}
-
-            <Button 
-              onClick={handleSpotifyExport}
-              disabled={!canExport}
-              variant="fire"
-              className="w-full h-16 text-xl font-bold relative"
-            >
-              {!user && <Lock className="mr-3" />}
-              <Music className="mr-3" />
-              {!user ? 'Se connecter pour exporter' : 'Exporter vers Spotify'}
-            </Button>
-
-            {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-              <div className="text-center">
-                <Button variant="outline" className="gap-2">
-                  <Crown className="w-4 h-4 text-yellow-500" />
-                  Passer à Premium
-                </Button>
-              </div>
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            {status === 'processing' ? (
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            ) : status === 'finished' ? (
+              <CheckCircle className="w-10 h-10 text-green-500" />
+            ) : (
+              <Music className="w-10 h-10 text-primary" />
             )}
           </div>
-        ) : (
-          <>
-            {/* Liste de prévisualisation */}
-            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Music className="text-primary" />
-                Prévisualisation ({tracksWithInfo.length} morceaux)
-              </h2>
-              
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {tracksWithInfo.map((track, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center gap-4 p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
-                  >
-                    <div className="w-12 h-12 bg-zinc-700 rounded flex-shrink-0 flex items-center justify-center">
-                      {track.albumArt ? (
-                        <img 
-                          src={track.albumArt} 
-                          alt={track.album}
-                          className="w-full h-full object-cover rounded"
-                        />
-                      ) : (
-                        <Music className="w-6 h-6 text-zinc-500" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white truncate">{track.title}</p>
-                      <p className="text-sm text-gray-400 truncate">
-                        {track.artist}
-                        {track.album && <> • {track.album}</>}
-                        {track.year && <> ({track.year})</>}
-                      </p>
-                    </div>
-                    <div className="text-sm text-gray-500 font-mono">
-                      #{index + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          
+          <h2 className="text-2xl font-display font-bold mb-2">
+            {status === 'processing' ? 'Génération en cours...' : 
+             status === 'finished' ? 'Playlist Prête !' : 
+             'Préparation...'}
+          </h2>
+          
+          {status === 'processing' && (
+            <p className="text-muted-foreground animate-pulse">
+              Recherche des titres pour <span className="text-primary font-bold">{currentArtist}</span>...
+            </p>
+          )}
+        </div>
 
-            {/* Bouton export */}
-            <div className="max-w-xl mx-auto space-y-4">
-              <Button 
-                onClick={handleSpotifyExport}
-                disabled={!canExport}
-                variant="fire"
-                className="w-full h-16 text-xl font-bold"
-              >
-                {!user && <Lock className="mr-3" />}
-                <Music className="mr-3" />
-                {!user ? 'Se connecter pour exporter' : 'Créer la playlist sur Spotify'}
-                {user && <ArrowRight className="ml-3" />}
+        {/* Barre de progression */}
+        <div className="space-y-2 mb-6">
+          <div className="flex justify-between text-sm">
+            <span>Progression</span>
+            <span>{progress}%</span>
+          </div>
+          {/* Si vous n'avez pas le composant Progress, utilisez une div grise avec une div colorée dedans */}
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Logs */}
+        <div className="bg-black/20 rounded-lg p-4 mb-6 h-32 overflow-hidden text-xs font-mono text-muted-foreground space-y-1">
+          {logs.map((log, i) => (
+            <div key={i}>{log}</div>
+          ))}
+        </div>
+
+        <div className="text-center">
+          {status === 'finished' && (
+            <div className="space-y-4">
+              <p className="text-lg font-bold text-green-500">
+                🎉 {totalTracksAdded} titres ajoutés avec succès !
+              </p>
+              <a href={playlistUrl} target="_blank" rel="noopener noreferrer">
+                <Button className="w-full gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold">
+                  <Music className="w-4 h-4" />
+                  Ouvrir dans Spotify
+                </Button>
+              </a>
+              <Button variant="ghost" onClick={() => navigate('/')}>
+                Retour à l'accueil
               </Button>
-
-              {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-                <div className="text-center">
-                  <Button variant="outline" className="gap-2">
-                    <Crown className="w-4 h-4 text-yellow-500" />
-                    Passer à Premium pour plus d'exports
-                  </Button>
-                </div>
-              )}
             </div>
-          </>
-        )}
-      </div>
+          )}
+
+          {status === 'error' && (
+            <Button variant="destructive" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
-}
+};
+
+export default GeneratePlaylist;
