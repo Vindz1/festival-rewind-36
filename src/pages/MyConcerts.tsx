@@ -4,7 +4,7 @@ import { Music, Calendar, Flame, ArrowRight, ChevronRight, Clock, ArrowLeft, Plu
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AuthProvider, useAuth } from "@/AuthContext";
+import { useAuth } from '@/AuthContext';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
