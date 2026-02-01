@@ -7,7 +7,7 @@ import { Music, CheckCircle, AlertTriangle, Loader2, Home } from 'lucide-react';
 import { toast } from 'sonner';
 
 // 1. CORRECTION DU CHEMIN D'IMPORT (Vers la racine src/)
-import { useAuth } from '../../AuthContext'; 
+import { useAuth } from '@/AuthContext';
 
 // 2. RÉGLAGE DE SÉCURITÉ POUR ÉVITER LE BLOCAGE
 const BATCH_SIZE = 4; 
