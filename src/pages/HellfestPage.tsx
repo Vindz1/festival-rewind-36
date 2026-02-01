@@ -4,22 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Flame, Check, AlertTriangle } from 'lucide-react';
+import { Filter, Flame, Check } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Artist {
-  id: string;
-  name: string;
-  stage: string;
-  day: string;
-}
+// IMPORT CRUCIAL : On importe les données statiques
+import { HELLFEST_LINEUP, ArtistData } from '@/data/hellfestData';
 
 const HellfestPage = () => {
   const navigate = useNavigate();
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // On charge directement les données importées
+  const [artists] = useState<ArtistData[]>(HELLFEST_LINEUP);
   
+  // États des filtres
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [availableStages, setAvailableStages] = useState<string[]>([]);
   
@@ -27,33 +22,15 @@ const HellfestPage = () => {
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
 
-  // Récupération DYNAMIQUE via l'API
+  // Initialisation des filtres au chargement
   useEffect(() => {
-    const fetchLineup = async () => {
-      try {
-        const res = await fetch('/api/hellfest-lineup');
-        
-        if (!res.ok) throw new Error("Erreur serveur");
-        
-        const data = await res.json();
-        
-        if (data.artists && data.artists.length > 0) {
-          setArtists(data.artists);
-          setAvailableDays(data.days || []);
-          setAvailableStages(data.stages || []);
-        } else {
-          setError("Impossible de lire le site officiel automatiquement pour le moment.");
-        }
-      } catch (error) {
-        console.error(error);
-        setError("Erreur de connexion au site Hellfest.");
-        toast.error("Impossible de charger le lineup en direct");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLineup();
-  }, []);
+    // On extrait la liste unique des jours et des scènes depuis nos données
+    const uniqueDays = Array.from(new Set(artists.map(a => a.day)));
+    const uniqueStages = Array.from(new Set(artists.map(a => a.stage)));
+    
+    setAvailableDays(uniqueDays);
+    setAvailableStages(uniqueStages);
+  }, [artists]);
 
   const toggleDay = (day: string) => {
     const newDays = new Set(selectedDays);
@@ -71,20 +48,29 @@ const HellfestPage = () => {
     autoSelectArtists(selectedDays, newStages);
   };
 
+  // La magie : coche automatiquement les groupes selon les filtres
   const autoSelectArtists = (days: Set<string>, stages: Set<string>) => {
     const newSelection = new Set<string>();
     
     artists.forEach(artist => {
+      // Logique : 
+      // Si aucun jour coché -> on considère qu'ils sont tous valides
+      // Si aucun stage coché -> on considère qu'ils sont tous valides
       const dayMatch = days.size === 0 || days.has(artist.day);
       const stageMatch = stages.size === 0 || stages.has(artist.stage);
       
+      // On sélectionne SEULEMENT si au moins un filtre est actif
       if ((days.size > 0 || stages.size > 0) && dayMatch && stageMatch) {
         newSelection.add(artist.id);
       }
     });
     
+    // Mise à jour de la sélection
     if (days.size > 0 || stages.size > 0) {
       setSelectedArtists(newSelection);
+    } else {
+       // Si on décoche tout, on vide la sélection (ou on laisse tel quel, au choix)
+       // setSelectedArtists(new Set()); 
     }
   };
 
@@ -106,6 +92,7 @@ const HellfestPage = () => {
       .map(a => ({
         id: a.id,
         artist: a.name,
+        // On passe l'info "Hellfest 2026" pour que la playlist soit bien nommée plus tard
         eventDate: a.day + " - Hellfest 2026"
       }));
 
@@ -123,139 +110,123 @@ const HellfestPage = () => {
             HELLFEST <span className="text-red-600">2026</span>
           </h1>
           <p className="text-muted-foreground">
-            Line-up en direct du site officiel
+            Programmation Officielle
           </p>
         </div>
 
-        {loading ? (
-           <div className="flex justify-center py-20">
-             <Flame className="animate-spin w-10 h-10 text-red-600"/>
-           </div>
-        ) : error ? (
-           <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-             <AlertTriangle className="w-12 h-12 text-yellow-500"/>
-             <p className="text-xl font-bold">Oups !</p>
-             <p className="text-muted-foreground max-w-md">{error}</p>
-             <p className="text-sm text-muted-foreground">Le site Hellfest a peut-être renforcé sa sécurité anti-robot.</p>
-           </div>
-        ) : (
-          <div className="grid lg:grid-cols-[300px_1fr] gap-8">
+        <div className="grid lg:grid-cols-[300px_1fr] gap-8">
             
-            {/* Sidebar Filtres */}
-            <div className="space-y-8">
-              <div className="bg-card border border-border p-6 rounded-xl sticky top-24">
-                <div className="flex items-center gap-2 mb-4 text-xl font-display">
-                  <Filter className="w-5 h-5" />
-                  Filtres
-                </div>
-                
-                <div className="space-y-6">
-                  {/* Jours */}
-                  {availableDays.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Jours</h3>
-                    <div className="space-y-2">
-                      {availableDays.map(day => (
-                        <div key={day} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`day-${day}`} 
-                            checked={selectedDays.has(day)}
-                            onCheckedChange={() => toggleDay(day)}
-                          />
-                          <label htmlFor={`day-${day}`} className="text-sm cursor-pointer select-none">
-                            {day}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
+          {/* Sidebar Filtres */}
+          <div className="space-y-8">
+            <div className="bg-card border border-border p-6 rounded-xl sticky top-24">
+              <div className="flex items-center gap-2 mb-4 text-xl font-display">
+                <Filter className="w-5 h-5" />
+                Filtres
+              </div>
+              
+              <div className="space-y-6">
+                {/* Jours */}
+                <div>
+                  <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Jours</h3>
+                  <div className="space-y-2">
+                    {availableDays.map(day => (
+                      <div key={day} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`day-${day}`} 
+                          checked={selectedDays.has(day)}
+                          onCheckedChange={() => toggleDay(day)}
+                        />
+                        <label htmlFor={`day-${day}`} className="text-sm cursor-pointer select-none">
+                          {day}
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                  )}
-
-                  {/* Scènes */}
-                  {availableStages.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Scènes</h3>
-                    <div className="space-y-2">
-                      {availableStages.map(stage => (
-                        <div key={stage} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`stage-${stage}`}
-                            checked={selectedStages.has(stage)}
-                            onCheckedChange={() => toggleStage(stage)}
-                          />
-                          <label htmlFor={`stage-${stage}`} className="text-sm cursor-pointer select-none">
-                            {stage}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  )}
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-border">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="font-bold">{selectedArtists.size} artistes</span>
+                {/* Scènes */}
+                <div>
+                  <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Scènes</h3>
+                  <div className="space-y-2">
+                    {availableStages.map(stage => (
+                      <div key={stage} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`stage-${stage}`}
+                          checked={selectedStages.has(stage)}
+                          onCheckedChange={() => toggleStage(stage)}
+                        />
+                        <label htmlFor={`stage-${stage}`} className="text-sm cursor-pointer select-none">
+                          {stage}
+                        </label>
+                      </div>
+                    ))}
                   </div>
-                  <Button 
-                    onClick={handleGenerate} 
-                    className="w-full bg-red-600 hover:bg-red-700 text-white gap-2"
-                    disabled={selectedArtists.size === 0}
-                  >
-                    <Flame className="w-4 h-4" />
-                    Générer Playlist
-                  </Button>
                 </div>
               </div>
-            </div>
 
-            {/* Grille des Artistes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-              {artists.map((artist, index) => {
-                const isSelected = selectedArtists.has(artist.id);
-                const showDay = selectedDays.size === 0 || selectedDays.has(artist.day);
-                const showStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
-                
-                if (!showDay || !showStage) return null;
-
-                return (
-                  <motion.div
-                    key={artist.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.01 }}
-                    onClick={() => toggleArtist(artist.id)}
-                    className={`
-                      relative p-4 rounded-lg border cursor-pointer group transition-all duration-200
-                      ${isSelected 
-                        ? 'bg-red-950/20 border-red-600/50' 
-                        : 'bg-card border-border hover:border-red-600/30'}
-                    `}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className={`font-display text-lg ${isSelected ? 'text-red-500' : 'text-foreground'}`}>
-                          {artist.name}
-                        </h3>
-                        {/* On affiche les infos même si "Unknown" pour debug */}
-                        <div className="text-xs text-muted-foreground mt-1 flex flex-col gap-0.5">
-                          {artist.day !== "Jours Inconnus" && <span className="flex items-center gap-1">📅 {artist.day}</span>}
-                          {artist.stage !== "Scène Inconnue" && <span className="flex items-center gap-1">📍 {artist.stage}</span>}
-                        </div>
-                      </div>
-                      <div className={`
-                        w-6 h-6 rounded-full border flex items-center justify-center transition-colors
-                        ${isSelected ? 'bg-red-600 border-red-600 text-white' : 'border-muted-foreground/30'}
-                      `}>
-                        {isSelected && <Check className="w-3 h-3" />}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+              <div className="mt-8 pt-6 border-t border-border">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold">{selectedArtists.size} groupes</span>
+                </div>
+                <Button 
+                  onClick={handleGenerate} 
+                  className="w-full bg-red-600 hover:bg-red-700 text-white gap-2"
+                  disabled={selectedArtists.size === 0}
+                >
+                  <Flame className="w-4 h-4" />
+                  Créer Playlist
+                </Button>
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Grille des Artistes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
+            {artists.map((artist, index) => {
+              const isSelected = selectedArtists.has(artist.id);
+              // On affiche l'artiste SEULEMENT s'il correspond aux filtres actifs
+              // Si aucun filtre n'est coché, on affiche tout par défaut
+              const showDay = selectedDays.size === 0 || selectedDays.has(artist.day);
+              const showStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
+              
+              if (!showDay || !showStage) return null;
+
+              return (
+                <motion.div
+                  key={artist.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.005 }} // délai très court pour fluidité
+                  onClick={() => toggleArtist(artist.id)}
+                  className={`
+                    relative p-4 rounded-lg border cursor-pointer group transition-all duration-200
+                    ${isSelected 
+                      ? 'bg-red-950/20 border-red-600/50' 
+                      : 'bg-card border-border hover:border-red-600/30'}
+                  `}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className={`font-display text-lg truncate pr-2 ${isSelected ? 'text-red-500' : 'text-foreground'}`}>
+                        {artist.name}
+                      </h3>
+                      <div className="text-xs text-muted-foreground mt-1 flex flex-col gap-0.5">
+                        <span className="flex items-center gap-1">📅 {artist.day}</span>
+                        <span className="flex items-center gap-1">📍 {artist.stage}</span>
+                      </div>
+                    </div>
+                    <div className={`
+                      w-6 h-6 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
+                      ${isSelected ? 'bg-red-600 border-red-600 text-white' : 'border-muted-foreground/30'}
+                    `}>
+                      {isSelected && <Check className="w-3 h-3" />}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
       </main>
     </div>
   );
