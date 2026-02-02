@@ -194,6 +194,37 @@ export default function Generate() {
     }
   };
 
+  // Wrapper qui force l'exécution
+  const forceExport = () => {
+    console.log('🔥 FORCE EXPORT APPELÉ');
+    
+    if (!user) {
+      alert('Connectez-vous d\'abord !');
+      return;
+    }
+    
+    const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
+    const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
+    
+    // Sauvegarder les songs
+    if (isUpcomingMode) {
+      const selectedTracks = artistsWithTracks
+        .filter(artist => selectedArtists.has(artist.artistId))
+        .flatMap(artist => artist.tracks)
+        .map(track => ({ title: track.name, artist: '', uri: track.uri }));
+      localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
+    } else {
+      localStorage.setItem('pending_songs', JSON.stringify(songs));
+    }
+    
+    localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
+    
+    // Redirection IMMÉDIATE
+    const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
+    console.log('🚀 REDIRECTION VERS:', url);
+    window.location.href = url;
+  };
+
   // Étape 3 : Exporter vers Spotify
   const handleSpotifyExport = (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -370,7 +401,7 @@ export default function Generate() {
           {/* Export button */}
           <div className="max-w-xl mx-auto">
             <Button 
-              onClick={(e) => handleSpotifyExport(e)}
+              onClick={forceExport}
               disabled={selectedArtists.size === 0}
               variant="fire"
               className="w-full h-16 text-xl font-bold"
@@ -514,7 +545,7 @@ export default function Generate() {
             )}
 
             <Button 
-              onClick={(e) => handleSpotifyExport(e)}
+              onClick={forceExport}
               variant="fire"
               className="w-full h-16 text-xl font-bold relative"
             >
@@ -577,7 +608,7 @@ export default function Generate() {
             {/* Bouton export */}
             <div className="max-w-xl mx-auto space-y-4">
               <Button 
-                onClick={(e) => handleSpotifyExport(e)}
+                onClick={forceExport}
                 variant="fire"
                 className="w-full h-16 text-xl font-bold"
               >
