@@ -212,17 +212,23 @@ export default function Generate() {
         .filter(artist => selectedArtists.has(artist.artistId))
         .flatMap(artist => artist.tracks)
         .map(track => ({ title: track.name, artist: '', uri: track.uri }));
+      console.log('💾 Sauvegarde tracks:', selectedTracks.length);
       localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
     } else {
+      console.log('💾 Sauvegarde songs:', songs.length);
       localStorage.setItem('pending_songs', JSON.stringify(songs));
     }
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
     
-    // Redirection IMMÉDIATE
+    // Redirection IMMÉDIATE avec replace
     const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
     console.log('🚀 REDIRECTION VERS:', url);
-    window.location.href = url;
+    
+    // Utiliser setTimeout pour être sûr que le localStorage est bien écrit
+    setTimeout(() => {
+      window.location.replace(url);
+    }, 100);
   };
 
   // Étape 3 : Exporter vers Spotify
