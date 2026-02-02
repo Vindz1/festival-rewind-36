@@ -70,14 +70,7 @@ export default function Generate() {
     }
   }, [user]);
 
-  const canExport = user && subscription?.can_export;
-
-  // Debug logs
-  useEffect(() => {
-    console.log('🔐 User:', user ? 'Connecté' : 'Non connecté');
-    console.log('📊 Subscription:', subscription);
-    console.log('✅ Can export:', canExport);
-  }, [user, subscription, canExport]);
+  const canExport = user && (loadingSubscription || subscription?.can_export);
 
   // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
   useEffect(() => {
