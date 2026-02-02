@@ -544,15 +544,23 @@ export default function Generate() {
               <Progress value={exportProgress} className="w-full" />
             )}
 
-            <Button 
+            <button
               onClick={forceExport}
-              variant="fire"
-              className="w-full h-16 text-xl font-bold relative"
+              type="button"
+              style={{
+                width: '100%',
+                height: '64px',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                backgroundColor: '#ff6b35',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
             >
-              {!user && <Lock className="mr-3" />}
-              <Music className="mr-3" />
-              {!user ? 'Se connecter pour exporter' : 'Exporter vers Spotify'}
-            </Button>
+              🎵 Exporter vers Spotify (TEST)
+            </button>
 
             {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
               <div className="text-center">
