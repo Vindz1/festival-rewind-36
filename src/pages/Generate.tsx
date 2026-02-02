@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { useUserConcerts } from '@/hooks/useUserConcerts';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription, UserSubscription } from '@/lib/subscription';
 import { Music, Loader2, Play, ArrowRight, Lock, Crown, ChevronRight, CheckCircle2 } from 'lucide-react';
@@ -39,7 +38,6 @@ export default function Generate() {
   const mode = searchParams.get('mode');
   const isUpcomingMode = mode === 'upcoming';
   
-  const { concerts } = useUserConcerts();
   const { user } = useAuth();
   const [songs, setSongs] = useState<any[]>([]);
   const [tracksWithInfo, setTracksWithInfo] = useState<TrackInfo[]>([]);
@@ -80,23 +78,51 @@ export default function Generate() {
       // Mode upcoming: charger les top tracks
       fetchTopTracks();
     } else {
-      // Mode normal: charger les setlists
+      // Mode normal: charger les setlists depuis localStorage
       const fetchSongs = async () => {
         setLoading(true);
+        
+        // Charger directement depuis localStorage
+        const savedConcerts = localStorage.getItem('selected_concerts');
+        if (!savedConcerts) {
+          toast.error('Aucun concert sélectionné');
+          setLoading(false);
+          return;
+        }
+        
+        const selectedConcerts = JSON.parse(savedConcerts);
+        console.log('📋 Concerts chargés depuis localStorage:', selectedConcerts);
+        
+        if (selectedConcerts.length === 0) {
+          toast.error('Aucun concert sélectionné');
+          setLoading(false);
+          return;
+        }
+        
         const all: any[] = [];
-        for (const c of concerts) {
-          const res = await fetch(`/api/search?action=songs&setlistId=${c.id}`);
-          const data = await res.json();
-          if (data.songs) {
-            data.songs.forEach((s: string) => all.push({ artist: c.artist, title: s }));
+        for (const c of selectedConcerts) {
+          try {
+            const res = await fetch(`/api/search?action=songs&setlistId=${c.id}`);
+            const data = await res.json();
+            if (data.songs) {
+              data.songs.forEach((s: string) => all.push({ 
+                artist: c.artist || data.artist, 
+                title: s 
+              }));
+            }
+          } catch (error) {
+            console.error(`Erreur pour ${c.artist}:`, error);
           }
         }
+        
+        console.log('🎵 Total songs:', all.length);
         setSongs(all);
         setLoading(false);
       };
-      if (concerts.length > 0) fetchSongs();
+      
+      fetchSongs();
     }
-  }, [concerts, isUpcomingMode]);
+  }, [isUpcomingMode]); // Retirer 'concerts' de la dépendance
 
   // Fonction pour charger les top tracks (mode upcoming)
   const fetchTopTracks = async () => {
@@ -354,7 +380,11 @@ export default function Generate() {
             <span className="text-gradient-fire">{songs.length}</span> TITRES
           </h1>
           <p className="text-gray-400">
-            Depuis {concerts.length} concert{concerts.length > 1 ? 's' : ''}
+            Depuis {(() => {
+              const saved = localStorage.getItem('selected_concerts');
+              const count = saved ? JSON.parse(saved).length : 0;
+              return `${count} concert${count > 1 ? 's' : ''}`;
+            })()}
           </p>
         </div>
 
