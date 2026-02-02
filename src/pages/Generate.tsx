@@ -196,7 +196,15 @@ export default function Generate() {
 
   // Étape 3 : Exporter vers Spotify
   const handleSpotifyExport = () => {
-    if (!canExport) return;
+    console.log('🚀 handleSpotifyExport appelé');
+    console.log('👤 User:', user);
+    console.log('📊 Subscription:', subscription);
+    console.log('✅ canExport:', canExport);
+    
+    if (!canExport) {
+      console.log('❌ Export bloqué - canExport est false');
+      return;
+    }
     
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
