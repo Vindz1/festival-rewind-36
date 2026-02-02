@@ -197,14 +197,14 @@ export default function Generate() {
   // Étape 3 : Exporter vers Spotify
   const handleSpotifyExport = () => {
     console.log('🚀 handleSpotifyExport appelé');
-    console.log('👤 User:', user);
-    console.log('📊 Subscription:', subscription);
-    console.log('✅ canExport:', canExport);
     
-    if (!canExport) {
-      console.log('❌ Export bloqué - canExport est false');
+    // Vérification simple : utilisateur connecté
+    if (!user) {
+      toast.error('Veuillez vous connecter');
       return;
     }
+    
+    console.log('✅ User connecté, export en cours...');
     
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
@@ -216,14 +216,20 @@ export default function Generate() {
         .flatMap(artist => artist.tracks)
         .map(track => ({ title: track.name, artist: '', uri: track.uri }));
       
+      console.log('📦 Tracks upcoming à envoyer:', selectedTracks.length);
       localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
     } else {
       // Mode normal: envoyer les songs depuis setlists
+      console.log('📦 Songs setlist à envoyer:', songs.length);
       localStorage.setItem('pending_songs', JSON.stringify(songs));
     }
     
     localStorage.setItem('playlist_name', playlistName || `Setlist Live - ${new Date().getFullYear()}`);
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
+    
+    const spotifyAuthUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
+    console.log('🔗 Redirection vers:', spotifyAuthUrl);
+    
+    window.location.href = spotifyAuthUrl;
   };
 
   // Toggle artist selection (upcoming mode)
@@ -362,7 +368,7 @@ export default function Generate() {
           <div className="max-w-xl mx-auto">
             <Button 
               onClick={handleSpotifyExport}
-              disabled={!canExport || selectedArtists.size === 0}
+              disabled={selectedArtists.size === 0}
               variant="fire"
               className="w-full h-16 text-xl font-bold"
             >
@@ -506,7 +512,6 @@ export default function Generate() {
 
             <Button 
               onClick={handleSpotifyExport}
-              disabled={!canExport}
               variant="fire"
               className="w-full h-16 text-xl font-bold relative"
             >
@@ -570,7 +575,6 @@ export default function Generate() {
             <div className="max-w-xl mx-auto space-y-4">
               <Button 
                 onClick={handleSpotifyExport}
-                disabled={!canExport}
                 variant="fire"
                 className="w-full h-16 text-xl font-bold"
               >
