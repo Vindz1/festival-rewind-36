@@ -195,7 +195,10 @@ export default function Generate() {
   };
 
   // Étape 3 : Exporter vers Spotify
-  const handleSpotifyExport = () => {
+  const handleSpotifyExport = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     console.log('🚀 handleSpotifyExport appelé');
     
     // Vérification simple : utilisateur connecté
@@ -367,7 +370,7 @@ export default function Generate() {
           {/* Export button */}
           <div className="max-w-xl mx-auto">
             <Button 
-              onClick={handleSpotifyExport}
+              onClick={(e) => handleSpotifyExport(e)}
               disabled={selectedArtists.size === 0}
               variant="fire"
               className="w-full h-16 text-xl font-bold"
@@ -511,7 +514,7 @@ export default function Generate() {
             )}
 
             <Button 
-              onClick={handleSpotifyExport}
+              onClick={(e) => handleSpotifyExport(e)}
               variant="fire"
               className="w-full h-16 text-xl font-bold relative"
             >
@@ -574,7 +577,7 @@ export default function Generate() {
             {/* Bouton export */}
             <div className="max-w-xl mx-auto space-y-4">
               <Button 
-                onClick={handleSpotifyExport}
+                onClick={(e) => handleSpotifyExport(e)}
                 variant="fire"
                 className="w-full h-16 text-xl font-bold"
               >
