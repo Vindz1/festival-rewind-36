@@ -72,6 +72,13 @@ export default function Generate() {
 
   const canExport = user && subscription?.can_export;
 
+  // Debug logs
+  useEffect(() => {
+    console.log('🔐 User:', user ? 'Connecté' : 'Non connecté');
+    console.log('📊 Subscription:', subscription);
+    console.log('✅ Can export:', canExport);
+  }, [user, subscription, canExport]);
+
   // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
   useEffect(() => {
     if (isUpcomingMode) {
