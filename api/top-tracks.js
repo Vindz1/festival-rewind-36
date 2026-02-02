@@ -1,47 +1,99 @@
-import SpotifyWebApi from 'spotify-web-api-node';
-
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-});
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-  const { mode, artists, playlistId, playlistName } = req.body;
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader) return res.status(401).json({ error: "Non autorisé" });
-  const userAccessToken = authHeader.split(' ')[1];
-  spotifyApi.setAccessToken(userAccessToken);
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { artists } = req.body;
+  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET } = process.env;
+
+  if (!artists || !Array.isArray(artists)) {
+    return res.status(400).json({ error: 'Artists array required' });
+  }
 
   try {
-    if (mode === 'create') {
-      // VRAIE URL SPOTIFY gérée par la lib
-      const playlist = await spotifyApi.createPlaylist(playlistName || 'My Playlist', { public: true });
-      return res.status(200).json({ 
-        playlistId: playlist.body.id, 
-        playlistUrl: playlist.body.external_urls.spotify 
-      });
+    // 1. Get Spotify token (Client Credentials Flow)
+    const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64')
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      console.error('Spotify Auth Error:', tokenData);
+      throw new Error('Failed to get access token');
     }
 
-    if (mode === 'add') {
-      let allTrackUris = [];
-      for (const name of artists) {
-        const cleanName = typeof name === 'string' ? name : (name.artist || name.name);
-        const searchRes = await spotifyApi.searchArtists(cleanName, { limit: 1 });
-        const artist = searchRes.body.artists?.items[0];
-        if (artist) {
-          const topTracks = await spotifyApi.getArtistTopTracks(artist.id, 'FR');
-          allTrackUris.push(...topTracks.body.tracks.slice(0, 5).map(t => t.uri));
+    const accessToken = tokenData.access_token;
+    const artistsWithTracks = [];
+
+    // 2. For each artist, get their top tracks
+    for (const artistName of artists) {
+      try {
+        console.log(`🔍 Searching for artist: ${artistName}`);
+
+        // Search for the artist
+        const searchResponse = await fetch(
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+        
+        const searchData = await searchResponse.json();
+        const artist = searchData.artists?.items?.[0];
+
+        if (!artist) {
+          console.log(`⚠️ Artist not found: ${artistName}`);
+          continue;
         }
+
+        console.log(`✅ Found artist: ${artist.name} (ID: ${artist.id})`);
+
+        // Get top tracks for this artist
+        const topTracksResponse = await fetch(
+          `https://api.spotify.com/v1/artists/${artist.id}/top-tracks?market=FR`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+
+        const topTracksData = await topTracksResponse.json();
+        const topTracks = topTracksData.tracks?.slice(0, 10) || [];
+
+        console.log(`🎵 ${artistName}: ${topTracks.length} tracks`);
+
+        artistsWithTracks.push({
+          artistName: artist.name,
+          artistId: artist.id,
+          artistImage: artist.images?.[0]?.url,
+          tracks: topTracks.map(track => ({
+            id: track.id,
+            name: track.name,
+            uri: track.uri,
+            album: track.album.name,
+            albumImage: track.album.images?.[0]?.url,
+            duration: track.duration_ms,
+            preview_url: track.preview_url
+          }))
+        });
+
+      } catch (err) {
+        console.error(`❌ Error fetching ${artistName}:`, err);
       }
-      if (allTrackUris.length > 0) {
-        await spotifyApi.addTracksToPlaylist(playlistId, allTrackUris);
-      }
-      return res.status(200).json({ success: true, tracksAdded: allTrackUris.length });
     }
+
+    console.log(`✅ Total: ${artistsWithTracks.length} artists with tracks`);
+
+    return res.status(200).json({ 
+      artists: artistsWithTracks,
+      total: artistsWithTracks.length
+    });
+
   } catch (error) {
-    console.error("Spotify API Error:", error);
-    return res.status(500).json({ error: error.message });
+    console.error('❌ Top tracks error:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Internal server error'
+    });
   }
 }
