@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useUserConcerts } from '@/hooks/useUserConcerts';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/AuthContext';
 import { getUserSubscription, UserSubscription } from '@/lib/subscription';
 import { Music, Loader2, Play, ArrowRight, Lock, Crown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
