@@ -10,26 +10,44 @@ export default function SpotifyCallback() {
 
   useEffect(() => {
     const createPlaylist = async () => {
+      console.log('🎯 SpotifyCallback démarré');
+      
       try {
-        // Récupérer le code Spotify
         const code = searchParams.get('code');
+        console.log('📝 Code:', code);
         
         if (!code) {
+          console.log('❌ Pas de code');
           setStatus("error");
           setMessage("Aucun code d'autorisation reçu");
           setTimeout(() => navigate('/generate'), 3000);
           return;
         }
 
+        const pendingSongs = localStorage.getItem('pending_songs');
+        const playlistName = localStorage.getItem('playlist_name');
+        
+        console.log('💾 Songs:', pendingSongs ? JSON.parse(pendingSongs).length : 0);
+        console.log('📋 Name:', playlistName);
+        console.log('🚀 Appel API...');
 
+        const response = await fetch('/api/spotify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            code,
+            pendingSongs,
+            playlistName
+          })
+        });
 
+        console.log('📨 Status:', response.status);
         const data = await response.json();
+        console.log('📦 Data:', data);
 
         if (response.ok && data.playlistUrl) {
           setStatus("success");
           setMessage("Playlist créée avec succès !");
-          
-          // Rediriger vers Spotify après 2 secondes
           setTimeout(() => {
             window.location.href = data.playlistUrl;
           }, 2000);
@@ -38,7 +56,7 @@ export default function SpotifyCallback() {
         }
 
       } catch (error) {
-        console.error('Erreur:', error);
+        console.error('❌ Erreur:', error);
         setStatus("error");
         setMessage("Erreur lors de la création de la playlist");
         setTimeout(() => navigate('/generate'), 3000);
