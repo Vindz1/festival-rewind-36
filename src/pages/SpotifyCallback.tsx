@@ -36,6 +36,14 @@ export default function SpotifyCallback() {
         setMessage("Connexion à Spotify...");
         console.log('🚀 Appel API...');
 
+        // Animer la barre pendant que l'API travaille
+        const progressInterval = setInterval(() => {
+          setProgress(prev => {
+            if (prev < 85) return prev + 5;
+            return prev;
+          });
+        }, 2000);
+
         const response = await fetch('/api/spotify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -46,20 +54,18 @@ export default function SpotifyCallback() {
           })
         });
 
-        setProgress(50);
-        setMessage("Recherche des morceaux...");
+        clearInterval(progressInterval);
+        setProgress(90);
+        setMessage("Finalisation...");
         
         console.log('📨 Status:', response.status);
         const data = await response.json();
         console.log('📦 Data:', data);
 
-        setProgress(90);
-        setMessage("Finalisation...");
-
         if (response.ok && data.playlistUrl) {
           setProgress(100);
           setStatus("success");
-          setMessage("Playlist créée avec succès !");
+          setMessage(`Playlist créée avec ${data.tracksAdded || 0} morceaux !`);
           setTimeout(() => {
             window.location.href = data.playlistUrl;
           }, 2000);
