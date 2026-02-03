@@ -62,16 +62,7 @@ export default function SpotifyCallback() {
         const data = await response.json();
         console.log('📦 Data:', data);
 
-        if (response.ok && data.playlistUrl) {
-          setProgress(100);
-          setStatus("success");
-          setMessage(`Playlist créée avec ${data.tracksAdded || 0} morceaux !`);
-          setTimeout(() => {
-            window.location.href = data.playlistUrl;
-          }, 2000);
-        } else {
-          throw new Error(data.error || 'Erreur inconnue');
-        }
+
 
       } catch (error) {
         console.error('❌ Erreur:', error);
