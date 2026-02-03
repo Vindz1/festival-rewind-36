@@ -60,52 +60,7 @@ export default async function handler(req, res) {
 
     const playlist = await createPlaylistResponse.json();
 
-    // 5. Chercher et ajouter les tracks
-    const trackUris = [];
 
-    for (const song of pendingSongs.slice(0, 50)) {
-      try {
-        // Si la song a déjà un URI (mode upcoming)
-        if (song.uri) {
-          trackUris.push(song.uri);
-          continue;
-        }
-
-        // Sinon, chercher sur Spotify
-        const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
-        const searchResponse = await fetch(
-          `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
-          { headers: { 'Authorization': `Bearer ${accessToken}` } }
-        );
-
-        const searchData = await searchResponse.json();
-
-        if (searchData.tracks?.items?.[0]) {
-          trackUris.push(searchData.tracks.items[0].uri);
-        }
-      } catch (err) {
-        console.error(`Erreur recherche ${song.title}:`, err);
-      }
-    }
-
-    // 6. Ajouter les tracks à la playlist
-    if (trackUris.length > 0) {
-      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ uris: trackUris })
-      });
-    }
-
-    // 7. Retourner l'URL de la playlist
-    return res.status(200).json({
-      success: true,
-      playlistUrl: playlist.external_urls.spotify,
-      tracksAdded: trackUris.length
-    });
 
   } catch (error) {
     console.error('Spotify API Error:', error);
