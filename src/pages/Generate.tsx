@@ -221,13 +221,29 @@ export default function Generate() {
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
     
-    // Redirection IMMÉDIATE avec replace
+    // Construction de l'URL
     const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
     console.log('🚀 REDIRECTION VERS:', url);
     
-    // Utiliser setTimeout pour être sûr que le localStorage est bien écrit
+    // TRIPLE MÉTHODE pour forcer la navigation
+    // Méthode 1: Créer un lien et le cliquer
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_self';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Méthode 2: window.location (backup)
     setTimeout(() => {
-      window.location.replace(url);
+      console.log('⚡ Backup: window.location.assign');
+      window.location.assign(url);
+    }, 50);
+    
+    // Méthode 3: window.open (dernier recours)
+    setTimeout(() => {
+      console.log('⚡ Last resort: window.open');
+      window.open(url, '_self');
     }, 100);
   };
 
