@@ -21,12 +21,7 @@ export default function SpotifyCallback() {
           return;
         }
 
-        // Appeler l'API pour créer la playlist
-        const response = await fetch('/api/spotify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
+
 
         const data = await response.json();
 
