@@ -1,57 +1,114 @@
 export default async function handler(req, res) {
-  const { action, code, uris, accessToken, playlistName } = req.body;
-  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI } = process.env;
-  
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { code } = req.body;
+  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET } = process.env;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Code manquant' });
+  }
+
   try {
-    if (action === 'token') {
-      const response = await fetch('https://accounts.spotify.com/api/token', {
+    // 1. Échanger le code contre un access token
+    const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        code: code,
+        redirect_uri: 'https://festivalrewind.vercel.app/spotify-callback',
+        grant_type: 'authorization_code'
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenData.access_token) {
+      console.error('Token error:', tokenData);
+      return res.status(400).json({ error: 'Impossible d\'obtenir le token', details: tokenData });
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // 2. Récupérer l'ID de l'utilisateur
+    const userResponse = await fetch('https://api.spotify.com/v1/me', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    const user = await userResponse.json();
+
+    // 3. Récupérer les songs depuis localStorage (via le body)
+    const pendingSongs = req.body.songs || JSON.parse(req.body.pendingSongs || '[]');
+    const playlistName = req.body.playlistName || 'Setlist Live - ' + new Date().getFullYear();
+
+    // 4. Créer la playlist
+    const createPlaylistResponse = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: playlistName,
+        description: 'Créé avec Setlist Live',
+        public: true
+      })
+    });
+
+    const playlist = await createPlaylistResponse.json();
+
+    // 5. Chercher et ajouter les tracks
+    const trackUris = [];
+
+    for (const song of pendingSongs.slice(0, 50)) {
+      try {
+        // Si la song a déjà un URI (mode upcoming)
+        if (song.uri) {
+          trackUris.push(song.uri);
+          continue;
+        }
+
+        // Sinon, chercher sur Spotify
+        const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
+        const searchResponse = await fetch(
+          `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+
+        const searchData = await searchResponse.json();
+
+        if (searchData.tracks?.items?.[0]) {
+          trackUris.push(searchData.tracks.items[0].uri);
+        }
+      } catch (err) {
+        console.error(`Erreur recherche ${song.title}:`, err);
+      }
+    }
+
+    // 6. Ajouter les tracks à la playlist
+    if (trackUris.length > 0) {
+      await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64'),
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-        body: new URLSearchParams({ 
-          code, 
-          redirect_uri: SPOTIFY_REDIRECT_URI, 
-          grant_type: 'authorization_code' 
-        })
+        body: JSON.stringify({ uris: trackUris })
       });
-      return res.status(200).json(await response.json());
     }
-    
-    if (action === 'create') {
-      const userRes = await fetch('https://api.spotify.com/v1/me', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      const user = await userRes.json();
-      
-      const createRes = await fetch(`https://api.spotify.com/v1/users/${user.id}/playlists`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${accessToken}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ 
-          name: playlistName || 'Setlist Live',
-          description: 'Généré avec setlist.live',
-          public: true 
-        })
-      });
-      const playlist = await createRes.json();
-      
-      if (uris?.length > 0) {
-        await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
-          method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${accessToken}`, 
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify({ uris: uris.slice(0, 50) })
-        });
-      }
-      return res.status(200).json({ url: playlist.external_urls.spotify });
-    }
-  } catch (e) { 
-    res.status(500).json({ error: e.message }); 
+
+    // 7. Retourner l'URL de la playlist
+    return res.status(200).json({
+      success: true,
+      playlistUrl: playlist.external_urls.spotify,
+      tracksAdded: trackUris.length
+    });
+
+  } catch (error) {
+    console.error('Spotify API Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
