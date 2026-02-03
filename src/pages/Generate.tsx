@@ -52,6 +52,7 @@ export default function Generate() {
   const [showPreview, setShowPreview] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [isExporting, setIsExporting] = useState(false); // NOUVEAU FLAG
   const [playlistName, setPlaylistName] = useState(
     isUpcomingMode 
       ? `Upcoming - ${new Date().getFullYear()}`
@@ -74,6 +75,12 @@ export default function Generate() {
 
   // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
   useEffect(() => {
+    // Ne pas charger si on est en train d'exporter
+    if (isExporting) {
+      console.log('⏸️ Export en cours, skip du chargement');
+      return;
+    }
+    
     if (isUpcomingMode) {
       // Mode upcoming: charger les top tracks
       fetchTopTracks();
@@ -122,7 +129,7 @@ export default function Generate() {
       
       fetchSongs();
     }
-  }, [isUpcomingMode]); // Retirer 'concerts' de la dépendance
+  }, [isUpcomingMode, isExporting]); // Ajouter isExporting
 
   // Fonction pour charger les top tracks (mode upcoming)
   const fetchTopTracks = async () => {
@@ -198,8 +205,13 @@ export default function Generate() {
   const forceExport = () => {
     console.log('🔥 FORCE EXPORT APPELÉ');
     
+    // BLOQUER LES USEEFFECT
+    setIsExporting(true);
+    console.log('🔒 isExporting = true (bloque useEffect)');
+    
     if (!user) {
       alert('Connectez-vous d\'abord !');
+      setIsExporting(false);
       return;
     }
     
