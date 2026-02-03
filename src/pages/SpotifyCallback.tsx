@@ -1,14 +1,4 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
-
-export default function SpotifyCallback() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState("loading");
-  const [message, setMessage] = useState("Création de votre playlist...");
-
-  useEffect(() => {
+useEffect(() => {
     const createPlaylist = async () => {
       console.log('🎯 SpotifyCallback démarré');
       
@@ -27,33 +17,7 @@ export default function SpotifyCallback() {
         const pendingSongs = localStorage.getItem('pending_songs');
         const playlistName = localStorage.getItem('playlist_name');
         
-        console.log('💾 Songs:', pendingSongs ? JSON.parse(pendingSongs).length : 0);
-        console.log('📋 Name:', playlistName);
-        console.log('🚀 Appel API...');
 
-        const response = await fetch('/api/spotify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            code,
-            pendingSongs,
-            playlistName
-          })
-        });
-
-        console.log('📨 Status:', response.status);
-        const data = await response.json();
-        console.log('📦 Data:', data);
-
-        if (response.ok && data.playlistUrl) {
-          setStatus("success");
-          setMessage("Playlist créée avec succès !");
-          setTimeout(() => {
-            window.location.href = data.playlistUrl;
-          }, 2000);
-        } else {
-          throw new Error(data.error || 'Erreur inconnue');
-        }
 
       } catch (error) {
         console.error('❌ Erreur:', error);
@@ -69,12 +33,7 @@ export default function SpotifyCallback() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="text-center max-w-md">
-        {status === "loading" && (
-          <>
-            <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-xl">{message}</p>
-          </>
-        )}
+
         
         {status === "success" && (
           <>
