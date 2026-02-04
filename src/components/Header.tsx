@@ -74,7 +74,7 @@ export const Header = () => {
               }`}
             >
               <Skull className="w-4 h-4" />
-              HF 2026
+              HellFest 2026
             </Link>
 
             <Link 
