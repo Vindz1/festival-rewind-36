@@ -46,14 +46,7 @@ export default function Generate() {
   const [artistsWithTracks, setArtistsWithTracks] = useState<ArtistWithTracks[]>([]);
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
   
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [showPreview, setShowPreview] = useState(false);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
-  const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const [isExporting, setIsExporting] = useState(false); // NOUVEAU FLAG
-  const [playlistName, setPlaylistName] = useState(
+
     isUpcomingMode 
       ? `Upcoming - ${new Date().getFullYear()}`
       : `Setlist Live - ${new Date().getFullYear()}`
@@ -131,46 +124,7 @@ export default function Generate() {
     }
   }, [isUpcomingMode, isExporting]); // Ajouter isExporting
 
-  // Fonction pour charger les top tracks (mode upcoming)
-  const fetchTopTracks = async () => {
-    setLoading(true);
-    try {
-      const selected = localStorage.getItem('selected_upcoming');
-      if (!selected) {
-        toast.error('Aucun artiste sélectionné');
-        setLoading(false);
-        return;
-      }
 
-      const artists = JSON.parse(selected);
-      const artistNames = artists.map((a: any) => a.artist);
-
-      console.log('Fetching top tracks for:', artistNames);
-
-      const response = await fetch('/api/top-tracks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artists: artistNames })
-      });
-
-      if (!response.ok) throw new Error('Erreur API');
-
-      const data = await response.json();
-      console.log('Top tracks received:', data);
-
-      setArtistsWithTracks(data.artists || []);
-      
-      // Sélectionner tous les artistes par défaut
-      const allArtistIds = (data.artists || []).map((a: ArtistWithTracks) => a.artistId);
-      setSelectedArtists(new Set(allArtistIds));
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching top tracks:', error);
-      toast.error('Erreur lors du chargement des tracks');
-      setLoading(false);
-    }
-  };
 
   // Étape 2 : Prévisualiser
   const fetchDetailedInfo = async () => {
@@ -316,18 +270,7 @@ export default function Generate() {
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl">
-            {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+
 
   // Mode upcoming: afficher l'interface différente
   if (isUpcomingMode) {
