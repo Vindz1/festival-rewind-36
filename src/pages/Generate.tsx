@@ -42,17 +42,7 @@ export default function Generate() {
   const [songs, setSongs] = useState<any[]>([]);
   const [tracksWithInfo, setTracksWithInfo] = useState<TrackInfo[]>([]);
   
-  // États pour le mode "upcoming"
-  const [artistsWithTracks, setArtistsWithTracks] = useState<ArtistWithTracks[]>([]);
-  const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
-  
 
-    isUpcomingMode 
-      ? `Upcoming - ${new Date().getFullYear()}`
-      : `Setlist Live - ${new Date().getFullYear()}`
-  );
-
-  // Charger les infos d'abonnement
   useEffect(() => {
     if (user) {
       getUserSubscription(user.id).then((sub) => {
