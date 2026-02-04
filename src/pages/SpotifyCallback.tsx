@@ -71,10 +71,32 @@ export default function SpotifyCallback() {
             if (searchData.tracks?.items?.[0]) {
               trackUris.push(searchData.tracks.items[0].uri);
             }
+          } catch (err) {
+            console.error(`Erreur ${song.title}:`, err);
+          }
+        }
 
+        console.log(`✅ ${trackUris.length} morceaux trouvés, ajout à la playlist...`);
 
+        // 3. Ajouter TOUS les tracks par batches de 100
+        for (let i = 0; i < trackUris.length; i += 100) {
+          const batch = trackUris.slice(i, i + 100);
+          
+          console.log(`📦 Ajout batch ${Math.floor(i/100) + 1}: ${batch.length} tracks`);
+          
+          await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ uris: batch })
+          });
+        }
 
-
+        // 4. Terminé !
+        setStatus("success");
+        setCurrentTrack(`${trackUris.length} morceaux ajoutés !`);
 
         setTimeout(() => {
           window.open(url, '_blank');
