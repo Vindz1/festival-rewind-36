@@ -72,20 +72,7 @@ export default function SpotifyCallback() {
               trackUris.push(searchData.tracks.items[0].uri);
             }
 
-            // Ajouter par batch de 100 toutes les 100 chansons
-            if (trackUris.length === 100 || i === pendingSongs.length - 1) {
-              if (trackUris.length > 0) {
-                await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ uris: trackUris })
-                });
-                trackUris.length = 0; // Vider pour le prochain batch
-              }
-            }
+
 
           } catch (err) {
             console.error(`Erreur ${song.title}:`, err);
