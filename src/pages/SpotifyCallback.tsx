@@ -74,14 +74,7 @@ export default function SpotifyCallback() {
 
 
 
-          } catch (err) {
-            console.error(`Erreur ${song.title}:`, err);
-          }
-        }
 
-        // 3. Terminé !
-        setStatus("success");
-        setCurrentTrack(`${processed} morceaux ajoutés !`);
 
         setTimeout(() => {
           window.open(url, '_blank');
