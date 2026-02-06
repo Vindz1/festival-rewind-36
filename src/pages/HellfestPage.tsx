@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Flame, Check, XCircle } from 'lucide-react'; // Ajout de XCircle
+import { Filter, Check, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from "@/AuthContext";
-// IMPORT CRUCIAL : On importe les données statiques
 import { HELLFEST_LINEUP, ArtistData } from '@/data/hellfestData';
 
 const HellfestPage = () => {
   const navigate = useNavigate();
-  // On charge directement les données importées
   const [artists] = useState<ArtistData[]>(HELLFEST_LINEUP);
    
-  // États des filtres
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [availableStages, setAvailableStages] = useState<string[]>([]);
    
@@ -23,9 +18,7 @@ const HellfestPage = () => {
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
 
-  // Initialisation des filtres au chargement
   useEffect(() => {
-    // On extrait la liste unique des jours et des scènes depuis nos données
     const uniqueDays = Array.from(new Set(artists.map(a => a.day)));
     const uniqueStages = Array.from(new Set(artists.map(a => a.stage)));
     
@@ -49,35 +42,25 @@ const HellfestPage = () => {
     autoSelectArtists(selectedDays, newStages);
   };
 
-  // La magie : coche automatiquement les groupes selon les filtres
   const autoSelectArtists = (days: Set<string>, stages: Set<string>) => {
     const newSelection = new Set<string>();
     
     artists.forEach(artist => {
-      // Logique : 
-      // Si aucun jour coché -> on considère qu'ils sont tous valides
-      // Si aucun stage coché -> on considère qu'ils sont tous valides
       const dayMatch = days.size === 0 || days.has(artist.day);
       const stageMatch = stages.size === 0 || stages.has(artist.stage);
       
-      // On sélectionne SEULEMENT si au moins un filtre est actif
       if ((days.size > 0 || stages.size > 0) && dayMatch && stageMatch) {
         newSelection.add(artist.id);
       }
     });
     
-    // Mise à jour de la sélection
     if (days.size > 0 || stages.size > 0) {
       setSelectedArtists(newSelection);
     }
   };
 
-  // NOUVELLE FONCTION : Tout vider
   const handleClearSelection = () => {
     setSelectedArtists(new Set());
-    // Optionnel : Réinitialiser aussi les filtres si on veut repartir de zéro
-    // setSelectedDays(new Set());
-    // setSelectedStages(new Set());
   };
 
   const toggleArtist = (id: string) => {
@@ -98,7 +81,6 @@ const HellfestPage = () => {
       .map(a => ({
         id: a.id,
         artist: a.name,
-        // On passe l'info "Hellfest 2026" pour que la playlist soit bien nommée plus tard
         eventDate: a.day + " - Hellfest 2026"
       }));
 
@@ -107,140 +89,133 @@ const HellfestPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background noise">
+    <div className="min-h-screen bg-[#1a1a1a]">
       <Header />
        
-      <main className="pt-24 pb-16 container px-4 mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="font-display text-5xl md:text-7xl text-foreground mb-4">
-            HELLFEST <span className="text-red-600">2026</span>
+      <main className="pt-20 pb-16 max-w-[1400px] mx-auto px-4">
+        {/* Hellfest header - Style officiel vert */}
+        <div className="bg-[#2d2d2d] border border-[#00cc00] rounded p-6 mb-6">
+          <h1 className="text-3xl font-bold text-[#00ff00] mb-2">
+            HELLFEST 2026
           </h1>
-          <p className="text-muted-foreground">
-            Programmation Officielle
+          <p className="text-sm text-[#a0a0a0]">
+            Programmation officielle • {artists.length} groupes
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-[300px_1fr] gap-8">
-             
+        <div className="grid lg:grid-cols-[280px_1fr] gap-6">
           {/* Sidebar Filtres */}
-          <div className="space-y-8">
-            <div className="bg-card border border-border p-6 rounded-xl sticky top-24">
-              <div className="flex items-center gap-2 mb-4 text-xl font-display">
-                <Filter className="w-5 h-5" />
-                Filtres
-              </div>
-               
-              <div className="space-y-6">
-                {/* Jours */}
-                <div>
-                  <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Jours</h3>
-                  <div className="space-y-2">
-                    {availableDays.map(day => (
-                      <div key={day} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`day-${day}`} 
-                          checked={selectedDays.has(day)}
-                          onCheckedChange={() => toggleDay(day)}
-                        />
-                        <label htmlFor={`day-${day}`} className="text-sm cursor-pointer select-none">
-                          {day}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Scènes */}
-                <div>
-                  <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">Scènes</h3>
-                  <div className="space-y-2">
-                    {availableStages.map(stage => (
-                      <div key={stage} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`stage-${stage}`}
-                          checked={selectedStages.has(stage)}
-                          onCheckedChange={() => toggleStage(stage)}
-                        />
-                        <label htmlFor={`stage-${stage}`} className="text-sm cursor-pointer select-none">
-                          {stage}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+          <div className="bg-[#2d2d2d] border border-[#404040] rounded p-4 h-fit sticky top-20">
+            <div className="flex items-center gap-2 mb-4 text-white font-semibold">
+              <Filter className="w-4 h-4" />
+              Filtres
+            </div>
+             
+            <div className="space-y-6">
+              {/* Jours */}
+              <div>
+                <h3 className="text-xs font-semibold text-[#a0a0a0] mb-2 uppercase tracking-wider">Jours</h3>
+                <div className="space-y-1.5">
+                  {availableDays.map(day => (
+                    <div key={day} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`day-${day}`} 
+                        checked={selectedDays.has(day)}
+                        onCheckedChange={() => toggleDay(day)}
+                        className="border-[#404040] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:border-[#4d94ff]"
+                      />
+                      <label htmlFor={`day-${day}`} className="text-sm cursor-pointer select-none text-white">
+                        {day}
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-border">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold">{selectedArtists.size} groupes</span>
+              {/* Scènes */}
+              <div>
+                <h3 className="text-xs font-semibold text-[#a0a0a0] mb-2 uppercase tracking-wider">Scènes</h3>
+                <div className="space-y-1.5">
+                  {availableStages.map(stage => (
+                    <div key={stage} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`stage-${stage}`}
+                        checked={selectedStages.has(stage)}
+                        onCheckedChange={() => toggleStage(stage)}
+                        className="border-[#404040] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:border-[#4d94ff]"
+                      />
+                      <label htmlFor={`stage-${stage}`} className="text-sm cursor-pointer select-none text-white">
+                        {stage}
+                      </label>
+                    </div>
+                  ))}
                 </div>
-                
-                {/* BOUTON TOUT DÉSELECTIONNER */}
-                <Button 
-                  variant="outline"
-                  onClick={handleClearSelection} 
-                  className="w-full mb-3 gap-2 text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/10"
-                  disabled={selectedArtists.size === 0}
-                >
-                  <XCircle className="w-4 h-4" />
-                  Tout désélectionner
-                </Button>
-
-                <Button 
-                  onClick={handleGenerate} 
-                  className="w-full bg-red-600 hover:bg-red-700 text-white gap-2"
-                  disabled={selectedArtists.size === 0}
-                >
-                  <Flame className="w-4 h-4" />
-                  Créer Playlist
-                </Button>
               </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#404040]">
+              <div className="text-sm text-white font-semibold mb-3">
+                {selectedArtists.size} groupe{selectedArtists.size > 1 ? 's' : ''}
+              </div>
+              
+              <Button 
+                variant="outline"
+                onClick={handleClearSelection} 
+                className="w-full mb-2 text-xs border-[#404040] text-[#a0a0a0] hover:bg-[#3d3d3d] hover:text-white"
+                disabled={selectedArtists.size === 0}
+              >
+                <XCircle className="w-3 h-3 mr-1.5" />
+                Tout désélectionner
+              </Button>
+
+              <Button 
+                onClick={handleGenerate} 
+                className="w-full bg-[#00cc00] hover:bg-[#00ff00] text-black font-semibold"
+                disabled={selectedArtists.size === 0}
+              >
+                Créer Playlist
+              </Button>
             </div>
           </div>
 
-          {/* Grille des Artistes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 content-start">
-            {artists.map((artist, index) => {
+          {/* Grille des Artistes - Table style */}
+          <div className="space-y-1">
+            {artists.map((artist) => {
               const isSelected = selectedArtists.has(artist.id);
-              // On affiche l'artiste SEULEMENT s'il correspond aux filtres actifs
-              // Si aucun filtre n'est coché, on affiche tout par défaut
               const showDay = selectedDays.size === 0 || selectedDays.has(artist.day);
               const showStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
                
               if (!showDay || !showStage) return null;
 
               return (
-                <motion.div
+                <div
                   key={artist.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.005 }} // délai très court pour fluidité
                   onClick={() => toggleArtist(artist.id)}
                   className={`
-                    relative p-4 rounded-lg border cursor-pointer group transition-all duration-200
+                    flex items-center gap-3 p-3 cursor-pointer transition-colors border-l-2
                     ${isSelected 
-                      ? 'bg-red-950/20 border-red-600/50' 
-                      : 'bg-card border-border hover:border-red-600/30'}
+                      ? 'bg-[#00cc00]/10 border-[#00cc00]' 
+                      : 'bg-[#2d2d2d] border-transparent hover:bg-[#3d3d3d]'}
                   `}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className={`font-display text-lg truncate pr-2 ${isSelected ? 'text-red-500' : 'text-foreground'}`}>
-                        {artist.name}
-                      </h3>
-                      <div className="text-xs text-muted-foreground mt-1 flex flex-col gap-0.5">
-                        <span className="flex items-center gap-1">📅 {artist.day}</span>
-                        <span className="flex items-center gap-1">📍 {artist.stage}</span>
-                      </div>
-                    </div>
-                    <div className={`
-                      w-6 h-6 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
-                      ${isSelected ? 'bg-red-600 border-red-600 text-white' : 'border-muted-foreground/30'}
-                    `}>
-                      {isSelected && <Check className="w-3 h-3" />}
+                  <div className={`
+                    w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors
+                    ${isSelected ? 'bg-[#00cc00] border-[#00cc00]' : 'border-[#404040]'}
+                  `}>
+                    {isSelected && <Check className="w-3 h-3 text-black" />}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`text-sm font-medium truncate ${isSelected ? 'text-[#00ff00]' : 'text-white'}`}>
+                      {artist.name}
+                    </h3>
+                    <div className="flex gap-3 text-xs text-[#a0a0a0] mt-0.5">
+                      <span>{artist.day}</span>
+                      <span>•</span>
+                      <span>{artist.stage}</span>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
