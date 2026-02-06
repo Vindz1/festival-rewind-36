@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Music, Calendar, Flame, ArrowRight, ChevronRight, Clock, ArrowLeft, Plus } from 'lucide-react';
+import { Music, Calendar, ArrowRight, Plus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -98,13 +97,13 @@ const MyConcerts = () => {
     const selectedArray = concerts.filter(c => newSelection.has(c.id)).map(c => ({
       id: c.id,
       artist: c.artist.name,
-      date: c.eventDate
+      venue: c.venue.name,
+      eventDate: c.eventDate,
     }));
     localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
   };
 
-  // Toggle sélection upcoming concert
-  const toggleUpcomingConcert = (concert: any) => {
+  const toggleUpcoming = (concert: any) => {
     const newSelection = new Set(selectedUpcoming);
     if (newSelection.has(concert.id)) {
       newSelection.delete(concert.id);
@@ -113,357 +112,293 @@ const MyConcerts = () => {
     }
     setSelectedUpcoming(newSelection);
     
-    // Sauvegarder dans localStorage
+    // Sauvegarder dans localStorage pour Generate.tsx
     const selectedArray = upcomingConcerts.filter(c => newSelection.has(c.id)).map(c => ({
       id: c.id,
-      artist: c.artist?.name || c.artist_name
+      artist: c.artist_name || c.artist,
+      eventDate: c.event_date || c.eventDate,
     }));
     localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
   };
 
-  // Toggle sélection upcoming concert
-  // Séparer les concerts passés et futurs
-  const now = new Date();
-  
-  // Fonction pour convertir DD-MM-YYYY en Date
-  const parseDate = (dateString: string) => {
-    if (!dateString) return null;
-    const [day, month, year] = dateString.split('-');
-    return new Date(`${year}-${month}-${day}`);
+  const handleGenerate = () => {
+    if (activeTab === 'past') {
+      if (selectedConcerts.size === 0) {
+        toast.error('Veuillez sélectionner au moins un concert');
+        return;
+      }
+      navigate('/generate');
+    } else {
+      if (selectedUpcoming.size === 0) {
+        toast.error('Veuillez sélectionner au moins un concert');
+        return;
+      }
+      navigate('/generate?mode=upcoming');
+    }
   };
-  
-  const pastConcerts = concerts.filter(concert => {
-    if (!concert.eventDate) return true;
-    const concertDate = parseDate(concert.eventDate);
-    return concertDate && concertDate < now;
-  });
-
-  const selectedCount = selectedConcerts.size;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background noise flex items-center justify-center">
-        <div className="animate-spin">
-          <Flame className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-[#1a1a1a]">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Music className="w-12 h-12 mx-auto mb-4 text-[#4d94ff] animate-pulse" />
+            <p className="text-[#a0a0a0]">Chargement de vos concerts...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const ConcertList = ({ concerts }: { concerts: typeof concerts }) => (
-    <div className="max-w-2xl mx-auto space-y-4">
-      {concerts.map((concert, index) => {
-        const isSelected = selectedConcerts.has(concert.id);
-        return (
-          <motion.div
-            key={concert.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            onClick={() => toggleConcert(concert)}
-            className={`bg-card border rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer group ${
-              isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-fire shrink-0 transition-all ${
-              isSelected ? 'bg-gradient-fire' : 'bg-muted'
-            }`}>
-              {isSelected ? (
-                <ChevronRight className="w-6 h-6 text-primary-foreground" />
-              ) : (
-                <Flame className="w-6 h-6 text-muted-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-display text-xl text-foreground truncate group-hover:text-primary transition-colors">
-                {concert.artist.name}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {concert.venue?.name && <span>{concert.venue.name}</span>}
-                {concert.eventDate && (
-                  <>
-                    {concert.venue?.name && <span>•</span>}
-                    <span>{(() => {
-                      const [day, month, year] = concert.eventDate.split('-');
-                      const date = new Date(`${year}-${month}-${day}`);
-                      return date.toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      });
-                    })()}</span>
-                  </>
-                )}
-              </div>
-            </div>
-            {isSelected && (
-              <div className="text-primary font-medium text-sm shrink-0">
-                ✓ Sélectionné
-              </div>
-            )}
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-
-  const UpcomingConcertsList = () => (
-    <div className="max-w-2xl mx-auto space-y-4">
-      {upcomingConcerts.map((concert, index) => {
-        // Handle both setlist.fm scraped format and Supabase format
-        const artistName = concert.artist?.name || concert.artist_name;
-        const eventName = concert.event_name;
-        const venueName = concert.venue?.name || concert.venue_name;
-        const eventDate = concert.eventDate || concert.event_date;
-        const isSelected = selectedUpcoming.has(concert.id);
-        
-        return (
-          <motion.div
-            key={concert.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            onClick={() => toggleUpcomingConcert(concert)}
-            className={`bg-card border rounded-xl p-4 flex items-center gap-4 transition-all cursor-pointer group ${
-              isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-fire shrink-0 transition-all ${
-              isSelected ? 'bg-gradient-fire' : 'bg-muted'
-            }`}>
-              {isSelected ? (
-                <ChevronRight className="w-6 h-6 text-primary-foreground" />
-              ) : (
-                <Music className="w-6 h-6 text-muted-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-display text-xl text-foreground truncate group-hover:text-primary transition-colors">
-                {artistName}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {eventName && <span>{eventName}</span>}
-                {venueName && (
-                  <>
-                    {eventName && <span>•</span>}
-                    <span>{venueName}</span>
-                  </>
-                )}
-                {eventDate && (
-                  <>
-                    {(eventName || venueName) && <span>•</span>}
-                    <span>{typeof eventDate === 'string' && eventDate.includes('-') && eventDate.length === 10
-                      ? new Date(eventDate).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })
-                      : eventDate
-                    }</span>
-                  </>
-                )}
-              </div>
-            </div>
-            {isSelected && (
-              <div className="text-primary font-medium text-sm shrink-0">
-                ✓ Sélectionné
-              </div>
-            )}
-          </motion.div>
-        );
-      })}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-background noise">
+    <div className="min-h-screen bg-[#1a1a1a]">
       <Header />
-
-      <main className="pt-24 pb-16">
-        <div className="container px-4">
-          {/* Back button */}
-          <div className="max-w-4xl mx-auto mb-6">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/')}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Retour
-            </Button>
-          </div>
-
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <h1 className="font-display text-5xl md:text-7xl text-foreground mb-4">
-              MES <span className="text-gradient-fire">CONCERTS</span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Sélectionnez les concerts à inclure dans votre playlist
-            </p>
-            
-            {!user && selectedCount > 0 && (
-              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-lg text-sm">
-                <span className="text-muted-foreground">💡 Créez un compte pour exporter vos {selectedCount} concert{selectedCount > 1 ? 's' : ''}</span>
-                <Link to="/auth">
-                  <Button size="sm" variant="outline">S'inscrire</Button>
-                </Link>
-              </div>
-            )}
-          </motion.div>
-
-          {concerts.length === 0 && upcomingConcerts.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16 max-w-md mx-auto"
-            >
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-                <Music className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <h2 className="font-display text-2xl text-foreground mb-2">Aucun concert trouvé</h2>
-              <p className="text-muted-foreground mb-6">
-                Ajoutez des concerts sur votre profil setlist.fm
-              </p>
-              <a href="https://www.setlist.fm" target="_blank" rel="noopener noreferrer">
-                <Button variant="fire" className="gap-2">
-                  Aller sur setlist.fm
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </a>
-            </motion.div>
-          ) : (
-            <>
-              {/* Tabs */}
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'past' | 'future')} className="max-w-4xl mx-auto">
-                <TabsList className="grid w-full grid-cols-2 mb-8">
-                  <TabsTrigger value="past" className="gap-2">
-                    <Music className="w-4 h-4" />
-                    I Was There
-                    {pastConcerts.length > 0 && (
-                      <span className="ml-1 text-xs bg-primary/20 px-2 py-0.5 rounded-full">
-                        {pastConcerts.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="future" className="gap-2">
-                    <Clock className="w-4 h-4" />
-                    I'm Going
-                    {upcomingConcerts.length > 0 && (
-                      <span className="ml-1 text-xs bg-primary/20 px-2 py-0.5 rounded-full">
-                        {upcomingConcerts.length}
-                      </span>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Past Concerts Tab */}
-                <TabsContent value="past">
-                  {pastConcerts.length > 0 ? (
-                    <>
-                      <ConcertList concerts={pastConcerts} />
-                      
-                      {/* Floating Action Button */}
-                      {selectedCount > 0 && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="fixed bottom-8 right-8 z-50"
-                        >
-                          <Link to="/generate">
-                            <Button 
-                              variant="fire" 
-                              size="lg" 
-                              className="gap-2 shadow-lg hover:shadow-xl transition-shadow rounded-full px-6 py-6"
-                            >
-                              <Music className="w-5 h-5" />
-                              Générer ({selectedCount})
-                              <ArrowRight className="w-4 h-4" />
-                            </Button>
-                          </Link>
-                        </motion.div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-16">
-                      <Music className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Aucun concert passé</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* Future Concerts Tab */}
-                <TabsContent value="future">
-                  {upcomingConcerts.length > 0 ? (
-                    <>
-                      <UpcomingConcertsList />
-                      
-                      {/* Floating Action Button for Upcoming */}
-                      {selectedUpcoming.size > 0 && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="fixed bottom-8 right-8 z-50"
-                        >
-                          <Link to="/generate?mode=upcoming">
-                            <Button 
-                              variant="fire" 
-                              size="lg" 
-                              className="gap-2 shadow-lg hover:shadow-xl transition-shadow rounded-full px-6 py-6"
-                            >
-                              <Music className="w-5 h-5" />
-                              Générer ({selectedUpcoming.size})
-                              <ArrowRight className="w-4 h-4" />
-                            </Button>
-                          </Link>
-                        </motion.div>
-                      )}
-                      
-                      {user && (
-                        <div className="text-center mt-6">
-                          <Link to="/im-going">
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Plus className="w-4 h-4" />
-                              Ajouter manuellement
-                            </Button>
-                          </Link>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-16">
-                      <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground mb-4">Aucun concert à venir trouvé</p>
-                      {user ? (
-                        <>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Ajoutez vos concerts à venir manuellement
-                          </p>
-                          <Link to="/im-going">
-                            <Button variant="fire" className="gap-2">
-                              <Plus className="w-4 h-4" />
-                              Ajouter des concerts
-                            </Button>
-                          </Link>
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Connectez-vous pour ajouter des concerts à venir
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
+      
+      <div className="max-w-[1200px] mx-auto px-4 py-6">
+        {/* Header - Style setlist.fm */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-white mb-2">Mes Concerts</h1>
+          <p className="text-sm text-[#a0a0a0]">
+            {activeTab === 'past' 
+              ? `${concerts.length} concerts assistés` 
+              : `${upcomingConcerts.length} concerts à venir`}
+          </p>
         </div>
-      </main>
+
+        {/* Tabs - Style setlist.fm */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'past' | 'future')} className="mb-6">
+          <TabsList className="bg-[#2d2d2d] border-b border-[#404040] rounded-none h-auto p-0 w-full justify-start">
+            <TabsTrigger 
+              value="past" 
+              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-[#4d94ff] rounded-none px-6 py-3 text-[#a0a0a0]"
+            >
+              I Was There
+            </TabsTrigger>
+            <TabsTrigger 
+              value="future"
+              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-[#4d94ff] rounded-none px-6 py-3 text-[#a0a0a0]"
+            >
+              I'm Going
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Past concerts - Table style setlist.fm */}
+          <TabsContent value="past" className="mt-0">
+            {concerts.length === 0 ? (
+              <div className="bg-[#2d2d2d] border border-[#404040] rounded p-12 text-center">
+                <Music className="w-12 h-12 mx-auto mb-4 text-[#606060]" />
+                <p className="text-[#a0a0a0] mb-4">Aucun concert trouvé</p>
+                <a 
+                  href="https://www.setlist.fm" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#4d94ff] hover:underline text-sm"
+                >
+                  Ajouter des concerts sur setlist.fm
+                </a>
+              </div>
+            ) : (
+              <>
+                <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-[#252525] border-b border-[#404040]">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-12">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedConcerts.size === concerts.length}
+                            onChange={() => {
+                              if (selectedConcerts.size === concerts.length) {
+                                setSelectedConcerts(new Set());
+                                localStorage.removeItem('selected_concerts');
+                              } else {
+                                const all = new Set(concerts.map(c => c.id));
+                                setSelectedConcerts(all);
+                                localStorage.setItem('selected_concerts', JSON.stringify(concerts.map(c => ({
+                                  id: c.id,
+                                  artist: c.artist.name,
+                                  venue: c.venue.name,
+                                  eventDate: c.eventDate,
+                                }))));
+                              }
+                            }}
+                            className="rounded border-[#404040]"
+                          />
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                          Artiste
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                          Lieu
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-20">
+                          Morceaux
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#404040]">
+                      {concerts.map((concert) => (
+                        <tr 
+                          key={concert.id}
+                          onClick={() => toggleConcert(concert)}
+                          className="hover:bg-[#3d3d3d] cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedConcerts.has(concert.id)}
+                              onChange={() => toggleConcert(concert)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded border-[#404040]"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-white">{concert.artist.name}</div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                            {concert.venue.name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                            {concert.eventDate}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                            {concert.sets?.set?.[0]?.song?.length || 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Generate button - Fixed bottom */}
+                {selectedConcerts.size > 0 && (
+                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4">
+                    <div className="max-w-[1200px] mx-auto flex items-center justify-between">
+                      <div className="text-white">
+                        <span className="font-semibold">{selectedConcerts.size}</span>
+                        <span className="text-[#a0a0a0] ml-1">concert{selectedConcerts.size > 1 ? 's' : ''} sélectionné{selectedConcerts.size > 1 ? 's' : ''}</span>
+                      </div>
+                      <Button 
+                        onClick={handleGenerate}
+                        className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
+                      >
+                        Générer la playlist
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* Future concerts - Table style setlist.fm */}
+          <TabsContent value="future" className="mt-0">
+            {upcomingConcerts.length === 0 ? (
+              <div className="bg-[#2d2d2d] border border-[#404040] rounded p-12 text-center">
+                <Calendar className="w-12 h-12 mx-auto mb-4 text-[#606060]" />
+                <p className="text-[#a0a0a0] mb-4">Aucun concert à venir</p>
+                <a 
+                  href="https://www.setlist.fm" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[#4d94ff] hover:underline text-sm"
+                >
+                  Ajouter des concerts sur setlist.fm
+                </a>
+              </div>
+            ) : (
+              <>
+                <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-[#252525] border-b border-[#404040]">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-12">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedUpcoming.size === upcomingConcerts.length}
+                            onChange={() => {
+                              if (selectedUpcoming.size === upcomingConcerts.length) {
+                                setSelectedUpcoming(new Set());
+                                localStorage.removeItem('selected_upcoming');
+                              } else {
+                                const all = new Set(upcomingConcerts.map(c => c.id));
+                                setSelectedUpcoming(all);
+                                localStorage.setItem('selected_upcoming', JSON.stringify(upcomingConcerts.map(c => ({
+                                  id: c.id,
+                                  artist: c.artist_name || c.artist,
+                                  eventDate: c.event_date || c.eventDate,
+                                }))));
+                              }
+                            }}
+                            className="rounded border-[#404040]"
+                          />
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                          Artiste
+                        </th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#404040]">
+                      {upcomingConcerts.map((concert) => (
+                        <tr 
+                          key={concert.id}
+                          onClick={() => toggleUpcoming(concert)}
+                          className="hover:bg-[#3d3d3d] cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedUpcoming.has(concert.id)}
+                              onChange={() => toggleUpcoming(concert)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded border-[#404040]"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-white">
+                              {concert.artist_name || concert.artist}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                            {concert.event_date || concert.eventDate}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Generate button - Fixed bottom */}
+                {selectedUpcoming.size > 0 && (
+                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4">
+                    <div className="max-w-[1200px] mx-auto flex items-center justify-between">
+                      <div className="text-white">
+                        <span className="font-semibold">{selectedUpcoming.size}</span>
+                        <span className="text-[#a0a0a0] ml-1">concert{selectedUpcoming.size > 1 ? 's' : ''} sélectionné{selectedUpcoming.size > 1 ? 's' : ''}</span>
+                      </div>
+                      <Button 
+                        onClick={handleGenerate}
+                        className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
+                      >
+                        Générer la playlist
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
