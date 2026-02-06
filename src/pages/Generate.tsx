@@ -316,88 +316,11 @@ export default function Generate() {
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-xl">
-            {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
-  // Mode upcoming: afficher l'interface différente
-  if (isUpcomingMode) {
-    return (
-      <div className="min-h-screen bg-black text-white pt-24 px-4">
-        <Header />
-        
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold mb-4 italic">
-              <span className="text-gradient-fire">{totalSelectedTracks}</span> TITRES
-            </h1>
-            <p className="text-gray-400">
-              Top tracks de {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''}
-            </p>
-          </div>
 
-          {/* Auth warnings */}
-          {!user && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-primary/30">
-              <Lock className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-                <Link to="/auth" className="ml-2 underline text-primary">
-                  Se connecter
-                </Link>
-              </AlertDescription>
-            </Alert>
-          )}
 
-          {user && subscription?.subscription_type === 'admin' && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
-              <Crown className="h-4 w-4 text-purple-400" />
-              <AlertDescription>
-                <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
-              </AlertDescription>
-            </Alert>
-          )}
 
-          {/* Playlist name input */}
-          <div className="max-w-xl mx-auto mb-6">
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Nom de la playlist
-            </label>
-            <input
-              type="text"
-              value={playlistName}
-              onChange={(e) => setPlaylistName(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Upcoming Concerts 2026"
-            />
-          </div>
 
-          {/* Artists list */}
-          <div className="space-y-4 mb-8">
-            {artistsWithTracks.map((artist) => {
-              const isSelected = selectedArtists.has(artist.artistId);
-              return (
-                <div
-                  key={artist.artistId}
-                  onClick={() => toggleArtist(artist.artistId)}
-                  className={`bg-zinc-900 border rounded-xl p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-primary bg-primary/5' : 'border-zinc-800 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-gradient-fire' : 'bg-zinc-800'
-                    }`}>
                       {artist.artistImage ? (
                         <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
                       ) : (
