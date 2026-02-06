@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion';
-import { Music, LogOut, User, Skull } from 'lucide-react'; // Ajout de Skull ici
+import { Music, LogOut, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from "@/AuthContext";
@@ -22,30 +21,47 @@ export const Header = () => {
   };
 
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed top-0 left-0 right-0 z-50 glass"
-    >
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <Music className="w-8 h-8 text-primary glow-fire transition-transform group-hover:scale-110" />
-            </div>
-            <span className="font-display text-2xl tracking-wider text-foreground">
-              SETLIST<span className="text-gradient-fire">MEMORY</span>
+    <header className="bg-[#2d2d2d] border-b border-[#404040] sticky top-0 z-50">
+      <div className="max-w-[1200px] mx-auto px-4">
+        <div className="flex items-center justify-between h-14">
+          {/* Logo - Style setlist.fm sobre */}
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Music className="w-5 h-5 text-[#4d94ff]" />
+            <span className="text-lg font-semibold text-white tracking-tight">
+              setlist<span className="text-[#4d94ff]">memory</span>
             </span>
           </Link>
 
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Navigation horizontale - Style setlist.fm */}
+          <nav className="hidden md:flex items-center">
+            <Link 
+              to="/my-concerts" 
+              className={`px-4 py-4 text-sm transition-colors border-b-2 ${
+                location.pathname === '/my-concerts' 
+                  ? 'text-white border-[#4d94ff]' 
+                  : 'text-[#a0a0a0] border-transparent hover:text-white hover:bg-[#3d3d3d]'
+              }`}
+            >
+              Mes Concerts
+            </Link>
+            
+            {/* Hellfest 2026 - Style officiel vert */}
+            <Link 
+              to="/hellfest-2026" 
+              className={`px-4 py-4 text-sm font-bold transition-colors border-b-2 ${
+                location.pathname === '/hellfest-2026' 
+                  ? 'text-[#00ff00] border-[#00ff00]' 
+                  : 'text-[#00cc00] border-transparent hover:text-[#00ff00] hover:bg-[#3d3d3d]'
+              }`}
+            >
+              HELLFEST 2026
+            </Link>
+
             <a 
               href="https://www.emp.fr" 
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
             >
               Boutique
             </a>
@@ -53,7 +69,7 @@ export const Header = () => {
               href="https://www.discogs.com" 
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
             >
               Vinyles
             </a>
@@ -61,54 +77,41 @@ export const Header = () => {
               href="https://www.bandsintown.com" 
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
             >
               Concerts
             </a>
-            
-            {/* Lien Hellfest 2026 Special */}
-            <Link 
-              to="/hellfest-2026" 
-              className={`flex items-center gap-2 text-sm font-bold transition-colors ${
-                location.pathname === '/hellfest-2026' ? 'text-red-500' : 'text-red-600 hover:text-red-500'
-              }`}
-            >
-              <Skull className="w-4 h-4" />
-              HellFest 2026
-            </Link>
-
-            <Link 
-              to="/my-concerts" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/my-concerts' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Mes Concerts
-            </Link>
           </nav>
 
-          {/* Right section - Auth */}
+          {/* Auth - Style setlist.fm */}
           <div className="flex items-center gap-3">
             {!authLoading && (
               <>
                 {user ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-fire flex items-center justify-center">
-                          <User className="w-4 h-4 text-primary-foreground" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-2 hover:bg-[#3d3d3d] text-white h-9"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-[#4d94ff] flex items-center justify-center">
+                          <User className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="hidden sm:inline text-sm font-medium max-w-[120px] truncate">
+                        <span className="hidden sm:inline text-sm max-w-[120px] truncate">
                           {user.email?.split('@')[0]}
                         </span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuContent align="end" className="w-56 bg-[#2d2d2d] border-[#404040]">
                       <div className="px-2 py-1.5">
-                        <p className="text-sm font-medium truncate">{user.email}</p>
+                        <p className="text-sm text-white truncate">{user.email}</p>
                       </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                      <DropdownMenuSeparator className="bg-[#404040]" />
+                      <DropdownMenuItem 
+                        onClick={handleSignOut} 
+                        className="text-red-400 hover:bg-[#3d3d3d] hover:text-red-300"
+                      >
                         <LogOut className="w-4 h-4 mr-2" />
                         Déconnexion
                       </DropdownMenuItem>
@@ -116,7 +119,10 @@ export const Header = () => {
                   </DropdownMenu>
                 ) : (
                   <Link to="/auth">
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button 
+                      size="sm" 
+                      className="gap-2 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white h-9 px-4"
+                    >
                       <User className="w-4 h-4" />
                       Connexion
                     </Button>
@@ -127,6 +133,6 @@ export const Header = () => {
           </div>
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 };
