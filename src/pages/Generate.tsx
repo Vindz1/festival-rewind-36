@@ -316,11 +316,88 @@ export default function Generate() {
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-[#4d94ff]" />
+          <p className="text-xl">
+            {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
+  // Mode upcoming: afficher l'interface différente
+  if (isUpcomingMode) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
+        <Header />
+        
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-5xl font-bold mb-4 italic">
+              <span className="text-gradient-fire">{totalSelectedTracks}</span> TITRES
+            </h1>
+            <p className="text-[#a0a0a0]">
+              Top tracks de {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''}
+            </p>
+          </div>
 
+          {/* Auth warnings */}
+          {!user && (
+            <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-primary/30">
+              <Lock className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
+                <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
+                  Se connecter
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
 
+          {user && subscription?.subscription_type === 'admin' && (
+            <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
+              <Crown className="h-4 w-4 text-purple-400" />
+              <AlertDescription>
+                <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
+              </AlertDescription>
+            </Alert>
+          )}
 
+          {/* Playlist name input */}
+          <div className="max-w-xl mx-auto mb-6">
+            <label className="block text-sm font-medium mb-2 text-gray-300">
+              Nom de la playlist
+            </label>
+            <input
+              type="text"
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Upcoming Concerts 2026"
+            />
+          </div>
 
+          {/* Artists list */}
+          <div className="space-y-4 mb-8">
+            {artistsWithTracks.map((artist) => {
+              const isSelected = selectedArtists.has(artist.artistId);
+              return (
+                <div
+                  key={artist.artistId}
+                  onClick={() => toggleArtist(artist.artistId)}
+                  className={`bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer transition-all ${
+                    isSelected ? 'border-primary bg-primary/5' : 'border-[#404040] hover:border-zinc-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
+                      isSelected ? 'bg-gradient-fire' : 'bg-[#3d3d3d]'
+                    }`}>
                       {artist.artistImage ? (
                         <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
                       ) : (
@@ -329,16 +406,16 @@ export default function Generate() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold">{artist.artistName}</h3>
-                      <p className="text-sm text-gray-400">{artist.tracks.length} morceaux</p>
+                      <p className="text-sm text-[#a0a0a0]">{artist.tracks.length} morceaux</p>
                     </div>
-                    {isSelected && <CheckCircle2 className="w-6 h-6 text-primary" />}
+                    {isSelected && <CheckCircle2 className="w-6 h-6 text-[#4d94ff]" />}
                   </div>
 
                   {/* Track list preview (if selected) */}
                   {isSelected && (
                     <div className="mt-4 space-y-2">
                       {artist.tracks.slice(0, 5).map((track, idx) => (
-                        <div key={track.id} className="flex items-center gap-2 text-sm text-gray-400 pl-2">
+                        <div key={track.id} className="flex items-center gap-2 text-sm text-[#a0a0a0] pl-2">
                           <span className="text-gray-600">#{idx + 1}</span>
                           <span className="flex-1 truncate">{track.name}</span>
                         </div>
@@ -375,7 +452,7 @@ export default function Generate() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pt-24 px-4">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
       <Header />
       
       <div className="max-w-4xl mx-auto">
@@ -384,7 +461,7 @@ export default function Generate() {
           <h1 className="text-5xl font-bold mb-4 italic">
             <span className="text-gradient-fire">{songs.length}</span> TITRES
           </h1>
-          <p className="text-gray-400">
+          <p className="text-[#a0a0a0]">
             Depuis {(() => {
               const saved = localStorage.getItem('selected_concerts');
               const count = saved ? JSON.parse(saved).length : 0;
@@ -395,11 +472,11 @@ export default function Generate() {
 
         {/* Auth warnings */}
         {!user && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-primary/30">
+          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-primary/30">
             <Lock className="h-4 w-4" />
             <AlertDescription>
               <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-              <Link to="/auth" className="ml-2 underline text-primary">
+              <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
                 Se connecter
               </Link>
             </AlertDescription>
@@ -416,7 +493,7 @@ export default function Generate() {
         )}
 
         {user && subscription?.subscription_type === 'free' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-zinc-900 border-yellow-500/30">
+          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-yellow-500/30">
             <Crown className="h-4 w-4 text-yellow-500" />
             <AlertDescription>
               <strong>Offre gratuite</strong> : {subscription.exports_this_year}/2 playlists utilisées cette année.
@@ -426,7 +503,7 @@ export default function Generate() {
                 </span>
               )}
               {subscription.can_export && subscription.remaining_exports !== undefined && (
-                <span className="block mt-1 text-gray-400">
+                <span className="block mt-1 text-[#a0a0a0]">
                   Il vous reste {subscription.remaining_exports} export{subscription.remaining_exports > 1 ? 's' : ''}.
                 </span>
               )}
@@ -452,7 +529,7 @@ export default function Generate() {
             type="text"
             value={playlistName}
             onChange={(e) => setPlaylistName(e.target.value)}
-            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             placeholder="Ma Time Capsule Live"
           />
         </div>
@@ -461,7 +538,7 @@ export default function Generate() {
         {!showPreview ? (
           <div className="max-w-xl mx-auto space-y-4">
             {/* Input nom de playlist */}
-            <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+            <div className="bg-[#2d2d2d] rounded-xl p-4 border border-[#404040]">
               <label htmlFor="playlistName" className="block text-sm font-medium text-gray-300 mb-2">
                 Nom de la playlist
               </label>
@@ -471,7 +548,7 @@ export default function Generate() {
                 value={playlistName}
                 onChange={(e) => setPlaylistName(e.target.value)}
                 placeholder="Ma Time Capsule Live"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full bg-[#3d3d3d] border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-2">
                 Ce nom apparaîtra sur votre Spotify
@@ -531,9 +608,9 @@ export default function Generate() {
         ) : (
           <>
             {/* Liste de prévisualisation */}
-            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-6 mb-6">
+            <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 mb-6">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                <Music className="text-primary" />
+                <Music className="text-[#4d94ff]" />
                 Prévisualisation ({tracksWithInfo.length} morceaux)
               </h2>
               
@@ -541,7 +618,7 @@ export default function Generate() {
                 {tracksWithInfo.map((track, index) => (
                   <div 
                     key={index}
-                    className="flex items-center gap-4 p-3 bg-zinc-800/50 rounded-lg hover:bg-zinc-800 transition-colors"
+                    className="flex items-center gap-4 p-3 bg-[#3d3d3d]/50 rounded-lg hover:bg-[#3d3d3d] transition-colors"
                   >
                     <div className="w-12 h-12 bg-zinc-700 rounded flex-shrink-0 flex items-center justify-center">
                       {track.albumArt ? (
@@ -556,7 +633,7 @@ export default function Generate() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white truncate">{track.title}</p>
-                      <p className="text-sm text-gray-400 truncate">
+                      <p className="text-sm text-[#a0a0a0] truncate">
                         {track.artist}
                         {track.album && <> • {track.album}</>}
                         {track.year && <> ({track.year})</>}
