@@ -21,7 +21,7 @@ const MyConcerts = () => {
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
 
-  // Helpers d'affichage sécurisés
+  // Helpers pour éviter les crashs
   const getArtistName = (c: any) => c.artist?.name || c.artist || 'Artiste inconnu';
   const getVenueName = (c: any) => c.venue?.name || c.venue_name || '—';
   const getEventDate = (c: any) => c.eventDate || c.event_date || 'À venir';
@@ -33,7 +33,7 @@ const MyConcerts = () => {
 
       setLoading(true);
       try {
-        // CHARGEMENT "I WAS THERE" (API OFFICIELLE)
+        // CHARGEMENT "I WAS THERE"
         try {
           const res = await fetch(`/api/search?action=user&username=${username}`);
           if (res.ok) {
@@ -42,7 +42,7 @@ const MyConcerts = () => {
           }
         } catch (e) { console.error(e); }
 
-        // CHARGEMENT "I'M GOING" (SCRAPER)
+        // CHARGEMENT "I'M GOING"
         let upcoming: any[] = [];
         try {
           const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
@@ -61,10 +61,8 @@ const MyConcerts = () => {
           if (sbData) upcoming = [...upcoming, ...sbData];
         }
 
-        // DÉDOUBLONNAGE FINAL
-        // On retire les doublons exacts (même nom d'artiste) pour éviter l'effet "Metallica, Metallica"
+        // DÉDOUBLONNAGE
         const uniqueUpcoming = Array.from(new Map(upcoming.map(item => [getArtistName(item), item])).values());
-
         setUpcomingConcerts(uniqueUpcoming);
 
       } catch (error) {
