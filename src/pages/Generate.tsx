@@ -3,9 +3,9 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription, UserSubscription } from '@/lib/subscription';
-import { Music, Loader2, Play, ArrowRight, Lock, Crown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Music, Loader2, Play, ArrowRight, Lock, Crown, CheckCircle2, ArrowLeft, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
@@ -35,6 +35,7 @@ interface ArtistWithTracks {
 
 export default function Generate() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const mode = searchParams.get('mode');
   const isUpcomingMode = mode === 'upcoming';
   
@@ -247,281 +248,259 @@ export default function Generate() {
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
-  // --- RENDU : LOADER ---
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1a1a1a] text-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-[#4d94ff]" />
-          <p className="text-xl text-[#a0a0a0]">
-            {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // --- RENDU ---
 
-  // --- RENDU : MODE UPCOMING ---
-  if (isUpcomingMode) {
-    return (
-      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4 pb-12">
-        <Header />
+  return (
+    <div className="min-h-screen bg-[#1a1a1a] text-white font-sans selection:bg-[#4d94ff] selection:text-white">
+      {/* Header en dehors du container avec padding, pour qu'il reste en haut */}
+      <Header />
+
+      {/* Container principal avec animation d'entrée */}
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold mb-4 italic">
-              <span className="text-[#4d94ff]">{totalSelectedTracks}</span> TITRES
-            </h1>
+        {/* Bouton Retour */}
+        <div className="mb-6">
+            <Button 
+                variant="ghost" 
+                onClick={() => navigate(-1)}
+                className="text-[#a0a0a0] hover:text-white hover:bg-[#2d2d2d] gap-2 pl-0"
+            >
+                <ArrowLeft className="w-4 h-4" />
+                Retour à la sélection
+            </Button>
+        </div>
+
+        {/* --- LOADER --- */}
+        {loading ? (
+           <div className="flex flex-col items-center justify-center min-h-[50vh] animate-in zoom-in duration-500">
+             <div className="relative mb-6">
+                <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
+                <div className="relative bg-[#2d2d2d] p-6 rounded-full border border-[#4d94ff]/30 shadow-[0_0_30px_-5px_rgba(77,148,255,0.3)]">
+                    <Loader2 className="w-12 h-12 text-[#4d94ff] animate-spin" />
+                </div>
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Chargement en cours</h2>
             <p className="text-[#a0a0a0]">
-              Top tracks de {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''}
+              {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
             </p>
           </div>
-
-          {/* Auth warnings */}
-          {!user && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-[#404040]">
-              <Lock className="h-4 w-4 text-[#a0a0a0]" />
-              <AlertDescription className="text-gray-300">
-                <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-                <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
-                  Se connecter
-                </Link>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Playlist name input */}
-          <div className="max-w-xl mx-auto mb-6">
-            <label className="block text-sm font-medium mb-2 text-gray-300">
-              Nom de la playlist
-            </label>
-            <input
-              type="text"
-              value={playlistName}
-              onChange={(e) => setPlaylistName(e.target.value)}
-              className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600"
-              placeholder="Upcoming Concerts 2026"
-            />
-          </div>
-
-          {/* Artists list */}
-          <div className="space-y-4 mb-8">
-            {artistsWithTracks.map((artist) => {
-              const isSelected = selectedArtists.has(artist.artistId);
-              return (
-                <div
-                  key={artist.artistId}
-                  onClick={() => toggleArtist(artist.artistId)}
-                  className={`bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-[#4d94ff] bg-[#4d94ff]/10' : 'border-[#404040] hover:border-zinc-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-[#4d94ff]' : 'bg-[#3d3d3d]'
-                    }`}>
-                      {artist.artistImage ? (
-                        <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
-                      ) : (
-                        <Music className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white">{artist.artistName}</h3>
-                      <p className="text-sm text-[#a0a0a0]">{artist.tracks.length} morceaux</p>
-                    </div>
-                    {isSelected && <CheckCircle2 className="w-6 h-6 text-[#4d94ff]" />}
-                  </div>
-
-                  {/* Track list preview */}
-                  {isSelected && (
-                    <div className="mt-4 space-y-2 border-t border-[#404040]/50 pt-3">
-                      {artist.tracks.slice(0, 5).map((track, idx) => (
-                        <div key={track.id} className="flex items-center gap-2 text-sm text-[#a0a0a0] pl-2">
-                          <span className="text-gray-600 font-mono w-4">#{idx + 1}</span>
-                          <span className="flex-1 truncate">{track.name}</span>
-                        </div>
-                      ))}
-                      {artist.tracks.length > 5 && (
-                        <p className="text-xs text-[#4d94ff] pl-2 pt-1">
-                          +{artist.tracks.length - 5} autres morceaux
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Export button */}
-          <div className="max-w-xl mx-auto sticky bottom-6 z-10">
-            <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full"></div>
-            <Button 
-              onClick={forceExport}
-              disabled={selectedArtists.size === 0}
-              className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02]"
-            >
-              {!user && <Lock className="mr-3 w-5 h-5" />}
-              <Music className="mr-3 w-5 h-5" />
-              {!user ? 'Se connecter pour exporter' : `Créer la playlist (${totalSelectedTracks} titres)`}
-              {user && <ArrowRight className="ml-3 w-5 h-5" />}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- RENDU : MODE SETLIST (NORMAL) ---
-  return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4 pb-12">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto">
-        {/* Header avec stats */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold mb-4 italic">
-            <span className="text-[#4d94ff]">{songs.length}</span> TITRES
-          </h1>
-          <p className="text-[#a0a0a0]">
-            Depuis {(() => {
-              const saved = localStorage.getItem('selected_concerts');
-              const count = saved ? JSON.parse(saved).length : 0;
-              return `${count} concert${count > 1 ? 's' : ''}`;
-            })()}
-          </p>
-        </div>
-
-        {/* Auth warnings */}
-        {!user && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-[#404040]">
-            <Lock className="h-4 w-4 text-[#a0a0a0]" />
-            <AlertDescription className="text-gray-300">
-              <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-              <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
-                Se connecter
-              </Link>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Playlist name input */}
-        <div className="max-w-xl mx-auto mb-6">
-          <label className="block text-sm font-medium mb-2 text-gray-300">
-            Nom de la playlist
-          </label>
-          <input
-            type="text"
-            value={playlistName}
-            onChange={(e) => setPlaylistName(e.target.value)}
-            className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600"
-            placeholder="Ma Time Capsule Live"
-          />
-        </div>
-
-        {/* Boutons d'action */}
-        {!showPreview ? (
-          <div className="max-w-xl mx-auto space-y-4">
-            {/* Input nom de playlist (Redondant mais gardé si vous le souhaitez, sinon on peut l'enlever) */}
-            
-            <Button 
-              onClick={fetchDetailedInfo} 
-              disabled={searching}
-              variant="outline"
-              className="w-full h-16 text-xl font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white transition-all bg-transparent"
-            >
-              {searching ? (
-                <>
-                  <Loader2 className="mr-3 animate-spin" />
-                  Chargement... {exportProgress}%
-                </>
-              ) : (
-                <>
-                  <Play className="mr-3 fill-current" />
-                  Prévisualiser les morceaux
-                </>
-              )}
-            </Button>
-
-            {searching && (
-              <Progress value={exportProgress} className="w-full h-2 bg-[#2d2d2d] [&>div]:bg-[#4d94ff]" />
-            )}
-
-            <Button
-              onClick={forceExport}
-              className="w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white rounded-lg shadow-lg hover:scale-[1.02] transition-transform"
-            >
-              {!user && <Lock className="mr-2 w-5 h-5" />}
-              🎵 Exporter vers Spotify
-            </Button>
-
-            {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-              <div className="text-center mt-4">
-                <Button variant="ghost" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
-                  <Crown className="w-4 h-4" />
-                  Passer à Premium
-                </Button>
-              </div>
-            )}
-          </div>
         ) : (
-          <>
-            {/* Liste de prévisualisation */}
-            <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
-                <Music className="text-[#4d94ff]" />
-                Prévisualisation ({tracksWithInfo.length} morceaux)
-              </h2>
-              
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                {tracksWithInfo.map((track, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center gap-4 p-3 bg-[#3d3d3d]/50 rounded-lg hover:bg-[#3d3d3d] transition-colors border border-transparent hover:border-[#404040]"
-                  >
-                    <div className="w-12 h-12 bg-[#252525] rounded flex-shrink-0 flex items-center justify-center border border-[#404040]">
-                      {track.albumArt ? (
-                        <img 
-                          src={track.albumArt} 
-                          alt={track.album}
-                          className="w-full h-full object-cover rounded"
-                        />
-                      ) : (
-                        <Music className="w-6 h-6 text-zinc-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white truncate">{track.title}</p>
-                      <p className="text-sm text-[#a0a0a0] truncate">
-                        {track.artist}
-                        {track.album && <span className="hidden sm:inline"> • {track.album}</span>}
-                        {track.year && <span className="hidden sm:inline"> ({track.year})</span>}
-                      </p>
-                    </div>
-                    <div className="text-sm text-gray-600 font-mono w-8 text-right">
-                      #{index + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          
+          /* --- CONTENU PRINCIPAL --- */
+          <div className="space-y-8">
+            
+            {/* Titre et Stats */}
+            <div className="text-center space-y-2">
+                <h1 className="text-4xl md:text-5xl font-bold italic tracking-tight">
+                    <span className="text-[#4d94ff] drop-shadow-[0_0_15px_rgba(77,148,255,0.5)]">
+                        {isUpcomingMode ? totalSelectedTracks : songs.length}
+                    </span> TITRES
+                </h1>
+                <p className="text-[#a0a0a0]">
+                    {isUpcomingMode 
+                        ? `Top tracks de ${selectedArtists.size} artiste${selectedArtists.size > 1 ? 's' : ''}`
+                        : `Depuis ${(() => {
+                            const saved = localStorage.getItem('selected_concerts');
+                            const count = saved ? JSON.parse(saved).length : 0;
+                            return `${count} concert${count > 1 ? 's' : ''}`;
+                          })()}`
+                    }
+                </p>
             </div>
 
-            {/* Bouton export final */}
-            <div className="max-w-xl mx-auto space-y-4 sticky bottom-6 z-10">
-              <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full"></div>
-              <Button 
-                onClick={forceExport}
-                className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02]"
-              >
-                {!user && <Lock className="mr-3 w-5 h-5" />}
-                <Music className="mr-3 w-5 h-5" />
-                {!user ? 'Se connecter pour exporter' : 'Créer la playlist sur Spotify'}
-                {user && <ArrowRight className="ml-3 w-5 h-5" />}
-              </Button>
+            {/* Auth Warnings */}
+            {!user && (
+                <Alert className="max-w-xl mx-auto bg-[#2d2d2d] border-[#404040]">
+                <Lock className="h-4 w-4 text-[#a0a0a0]" />
+                <AlertDescription className="text-gray-300">
+                    <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
+                    <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
+                    Se connecter
+                    </Link>
+                </AlertDescription>
+                </Alert>
+            )}
+
+            {/* Input Nom Playlist */}
+            <div className="max-w-xl mx-auto">
+                <label className="block text-sm font-medium mb-2 text-gray-400">
+                    Nom de la playlist
+                </label>
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={playlistName}
+                        onChange={(e) => setPlaylistName(e.target.value)}
+                        className="w-full pl-4 pr-10 py-4 bg-[#2d2d2d] border border-[#404040] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600 transition-all shadow-lg"
+                        placeholder={isUpcomingMode ? "Upcoming Concerts 2026" : "Ma Time Capsule Live"}
+                    />
+                    <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4d94ff] w-5 h-5 opacity-50" />
+                </div>
             </div>
-          </>
+
+            {/* --- CONTENU SPÉCIFIQUE AU MODE --- */}
+            
+            {/* MODE UPCOMING : LISTE ARTISTES */}
+            {isUpcomingMode && (
+                <div className="space-y-4">
+                    {artistsWithTracks.map((artist) => {
+                    const isSelected = selectedArtists.has(artist.artistId);
+                    return (
+                        <div
+                        key={artist.artistId}
+                        onClick={() => toggleArtist(artist.artistId)}
+                        className={`group bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                            isSelected 
+                            ? 'border-[#4d94ff] bg-[#4d94ff]/5 shadow-[0_0_20px_-10px_rgba(77,148,255,0.2)]' 
+                            : 'border-[#404040] hover:border-zinc-500 hover:bg-[#333]'
+                        }`}
+                        >
+                        <div className="flex items-center gap-4">
+                            <div className={`w-14 h-14 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected ? 'bg-[#4d94ff]' : 'bg-[#3d3d3d]'
+                            }`}>
+                            {artist.artistImage ? (
+                                <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
+                            ) : (
+                                <Music className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
+                            )}
+                            </div>
+                            <div className="flex-1">
+                                <h3 className={`text-lg font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
+                                    {artist.artistName}
+                                </h3>
+                                <p className="text-sm text-[#a0a0a0]">{artist.tracks.length} morceaux</p>
+                            </div>
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                isSelected ? 'border-[#4d94ff] bg-[#4d94ff]' : 'border-[#505050]'
+                            }`}>
+                                {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
+                            </div>
+                        </div>
+
+                        {/* Preview tracks */}
+                        {isSelected && (
+                            <div className="mt-4 space-y-2 border-t border-[#404040]/50 pt-3 animate-in slide-in-from-top-2">
+                            {artist.tracks.slice(0, 5).map((track, idx) => (
+                                <div key={track.id} className="flex items-center gap-3 text-sm text-[#a0a0a0] pl-2 py-1">
+                                    <span className="text-[#4d94ff] font-mono w-4">#{idx + 1}</span>
+                                    <span className="flex-1 truncate text-gray-400">{track.name}</span>
+                                </div>
+                            ))}
+                            {artist.tracks.length > 5 && (
+                                <p className="text-xs text-[#4d94ff] pl-2 pt-1 font-medium">
+                                +{artist.tracks.length - 5} autres morceaux
+                                </p>
+                            )}
+                            </div>
+                        )}
+                        </div>
+                    );
+                    })}
+                </div>
+            )}
+
+            {/* MODE PAST : LISTE PREVIEW */}
+            {!isUpcomingMode && showPreview && (
+                <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl animate-in slide-in-from-bottom-8">
+                    <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-white border-b border-[#404040] pb-4">
+                        <div className="bg-[#4d94ff]/20 p-2 rounded-lg">
+                            <Music className="text-[#4d94ff] w-5 h-5" />
+                        </div>
+                        Prévisualisation ({tracksWithInfo.length} titres)
+                    </h2>
+                    
+                    <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        {tracksWithInfo.map((track, index) => (
+                        <div 
+                            key={index}
+                            className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#3d3d3d] transition-colors group"
+                        >
+                            <div className="w-10 h-10 bg-[#252525] rounded flex-shrink-0 flex items-center justify-center border border-[#404040] overflow-hidden">
+                            {track.albumArt ? (
+                                <img src={track.albumArt} alt={track.album} className="w-full h-full object-cover" />
+                            ) : (
+                                <Music className="w-5 h-5 text-zinc-600" />
+                            )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-200 truncate group-hover:text-white transition-colors">{track.title}</p>
+                                <p className="text-xs text-[#a0a0a0] truncate">
+                                    {track.artist}
+                                    {track.album && <span className="hidden sm:inline"> • {track.album}</span>}
+                                </p>
+                            </div>
+                            <div className="text-xs text-gray-600 font-mono w-6 text-right">
+                                {index + 1}
+                            </div>
+                        </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* BOUTONS D'ACTION (Sticky Bottom) */}
+            <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-3 pb-4">
+                
+                {/* Bouton PREVIEW (Mode Past uniquement) */}
+                {!isUpcomingMode && !showPreview && (
+                    <>
+                        <Button 
+                            onClick={fetchDetailedInfo} 
+                            disabled={searching}
+                            variant="outline"
+                            className="w-full h-16 text-lg font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white transition-all bg-[#1a1a1a]/80 backdrop-blur"
+                        >
+                        {searching ? (
+                            <>
+                            <Loader2 className="mr-3 animate-spin" />
+                            Analyse... {exportProgress}%
+                            </>
+                        ) : (
+                            <>
+                            <Play className="mr-3 fill-current w-5 h-5" />
+                            Prévisualiser les morceaux
+                            </>
+                        )}
+                        </Button>
+                        {searching && (
+                            <Progress value={exportProgress} className="w-full h-1.5 bg-[#2d2d2d] [&>div]:bg-[#4d94ff]" />
+                        )}
+                    </>
+                )}
+
+                {/* Bouton EXPORT FINAL */}
+                {/* On l'affiche soit si c'est Upcoming, soit si la preview est active en mode Past */}
+                {(isUpcomingMode || showPreview) && (
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
+                        <Button 
+                            onClick={forceExport}
+                            disabled={isUpcomingMode && selectedArtists.size === 0}
+                            className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02] hover:-translate-y-1"
+                        >
+                            {!user && <Lock className="mr-3 w-5 h-5" />}
+                            <div className="flex items-center gap-2">
+                                <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-6 w-auto mr-1 opacity-90" />
+                                <span>{!user ? 'Se connecter' : 'Créer la playlist'}</span>
+                            </div>
+                            {user && <ArrowRight className="ml-3 w-5 h-5" />}
+                        </Button>
+                    </div>
+                )}
+
+                {/* Upsell Premium */}
+                {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
+                    <div className="text-center animate-in slide-in-from-bottom-2 fade-in">
+                        <Button variant="ghost" size="sm" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
+                            <Crown className="w-4 h-4" />
+                            Passer à Premium pour plus d'exports
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+          </div>
         )}
       </div>
     </div>
