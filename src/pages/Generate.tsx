@@ -195,10 +195,10 @@ export default function Generate() {
     }
   };
 
+  // --- C'EST ICI QUE LE FIX EST APPLIQUÉ ---
   const forceExport = () => {
     console.log('🔥 FORCE EXPORT APPELÉ');
     setIsExporting(true);
-    console.log('🔒 isExporting = true (bloque useEffect)');
     
     if (!user) {
       alert('Connectez-vous d\'abord !');
@@ -210,28 +210,33 @@ export default function Generate() {
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     
     if (isUpcomingMode) {
+      // CORRECTION MAJEURE ICI : On mappe correctement l'artiste parent vers chaque track
       const selectedTracks = artistsWithTracks
         .filter(artist => selectedArtists.has(artist.artistId))
-        .flatMap(artist => artist.tracks)
-        .map(track => ({ title: track.name, artist: '', uri: track.uri }));
-      console.log('💾 Sauvegarde tracks:', selectedTracks.length);
+        .flatMap(artist => 
+          artist.tracks.map(track => ({
+            title: track.name,
+            artist: artist.artistName, // ON AJOUTE L'ARTISTE (C'était '' avant)
+            uri: track.uri
+          }))
+        );
+        
+      console.log('💾 Sauvegarde tracks upcoming:', selectedTracks.length);
       localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
     } else {
-      console.log('💾 Sauvegarde songs:', songs.length);
+      console.log('💾 Sauvegarde songs setlist:', songs.length);
       localStorage.setItem('pending_songs', JSON.stringify(songs));
     }
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
     
+    // URL SPOTIFY CORRIGÉE (Plus de googleusercontent)
     const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public%20playlist-modify-private`;
+    
     console.log('🚀 REDIRECTION VERS:', url);
     
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_self';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Redirection directe
+    window.location.href = url;
   };
 
   const toggleArtist = (artistId: string) => {
@@ -252,13 +257,11 @@ export default function Generate() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans selection:bg-[#4d94ff] selection:text-white">
-      {/* Header en dehors du container avec padding */}
       <Header />
 
-      {/* Container principal avec animation d'entrée */}
       <div className="max-w-4xl mx-auto px-4 py-8 pt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* CORRECTION DU BOUTON RETOUR : Redirection explicite selon le mode */}
+        {/* BOUTON RETOUR CORRIGÉ */}
         <div className="mb-6">
             <Button 
                 variant="ghost" 
@@ -270,7 +273,7 @@ export default function Generate() {
             </Button>
         </div>
 
-        {/* --- LOADER --- */}
+        {/* LOADER */}
         {loading ? (
            <div className="flex flex-col items-center justify-center min-h-[50vh] animate-in zoom-in duration-500">
              <div className="relative mb-6">
@@ -286,10 +289,9 @@ export default function Generate() {
           </div>
         ) : (
           
-          /* --- CONTENU PRINCIPAL --- */
+          /* CONTENU PRINCIPAL */
           <div className="space-y-8">
             
-            {/* Titre et Stats */}
             <div className="text-center space-y-2">
                 <h1 className="text-4xl md:text-5xl font-bold italic tracking-tight">
                     <span className="text-[#4d94ff] drop-shadow-[0_0_15px_rgba(77,148,255,0.5)]">
@@ -308,7 +310,6 @@ export default function Generate() {
                 </p>
             </div>
 
-            {/* Auth Warnings */}
             {!user && (
                 <Alert className="max-w-xl mx-auto bg-[#2d2d2d] border-[#404040]">
                 <Lock className="h-4 w-4 text-[#a0a0a0]" />
@@ -321,7 +322,6 @@ export default function Generate() {
                 </Alert>
             )}
 
-            {/* Input Nom Playlist */}
             <div className="max-w-xl mx-auto">
                 <label className="block text-sm font-medium mb-2 text-gray-400">
                     Nom de la playlist
@@ -338,9 +338,7 @@ export default function Generate() {
                 </div>
             </div>
 
-            {/* --- CONTENU SPÉCIFIQUE AU MODE --- */}
-            
-            {/* MODE UPCOMING : LISTE ARTISTES */}
+            {/* LISTE ARTISTES (UPCOMING) */}
             {isUpcomingMode && (
                 <div className="space-y-4">
                     {artistsWithTracks.map((artist) => {
@@ -378,7 +376,6 @@ export default function Generate() {
                             </div>
                         </div>
 
-                        {/* Preview tracks */}
                         {isSelected && (
                             <div className="mt-4 space-y-2 border-t border-[#404040]/50 pt-3 animate-in slide-in-from-top-2">
                             {artist.tracks.slice(0, 5).map((track, idx) => (
@@ -387,11 +384,6 @@ export default function Generate() {
                                     <span className="flex-1 truncate text-gray-400">{track.name}</span>
                                 </div>
                             ))}
-                            {artist.tracks.length > 5 && (
-                                <p className="text-xs text-[#4d94ff] pl-2 pt-1 font-medium">
-                                +{artist.tracks.length - 5} autres morceaux
-                                </p>
-                            )}
                             </div>
                         )}
                         </div>
@@ -400,7 +392,7 @@ export default function Generate() {
                 </div>
             )}
 
-            {/* MODE PAST : LISTE PREVIEW */}
+            {/* LISTE PREVIEW (PAST) */}
             {!isUpcomingMode && showPreview && (
                 <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl animate-in slide-in-from-bottom-8">
                     <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-white border-b border-[#404040] pb-4">
@@ -439,10 +431,9 @@ export default function Generate() {
                 </div>
             )}
 
-            {/* BOUTONS D'ACTION (Sticky Bottom) */}
+            {/* FOOTER ACTIONS */}
             <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-3 pb-4">
                 
-                {/* Bouton PREVIEW (Mode Past uniquement) */}
                 {!isUpcomingMode && !showPreview && (
                     <>
                         <Button 
@@ -469,7 +460,6 @@ export default function Generate() {
                     </>
                 )}
 
-                {/* Bouton EXPORT FINAL */}
                 {(isUpcomingMode || showPreview) && (
                     <div className="relative">
                         <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
@@ -488,7 +478,6 @@ export default function Generate() {
                     </div>
                 )}
 
-                {/* Upsell Premium */}
                 {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
                     <div className="text-center animate-in slide-in-from-bottom-2 fade-in">
                         <Button variant="ghost" size="sm" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
