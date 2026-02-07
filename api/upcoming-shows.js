@@ -8,7 +8,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // On cible la page de profil principale qui contient généralement la Sidebar "Upcoming"
+    console.log(`🔍 Scraping started for user: ${username}`);
+    
+    // On cible la page principale du profil
     const response = await fetch(`https://www.setlist.fm/user/${username}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -16,52 +18,65 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      console.log("❌ Profile page fetch failed");
+      console.log("❌ Profile page fetch failed:", response.status);
       return res.status(404).json({ error: 'User not found' });
     }
 
     const html = await response.text();
-    const $ = cheerio.load(html);
+    console.log(`📄 HTML retrieved (${html.length} chars)`);
     
+    const $ = cheerio.load(html);
     const upcomingConcerts = [];
     const today = new Date();
-    // On retire les heures pour comparer uniquement les jours
     today.setHours(0, 0, 0, 0);
 
-    // Setlist.fm utilise souvent des div class="row" pour lister les events.
-    // Chaque event a généralement une date stylisée avec .month, .day, .year
-    
+    // Dictionnaire pour convertir les mois texte en numéros
+    const MONTH_MAP = {
+      'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+      'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+    };
+
+    // On parcourt chaque ligne qui ressemble à un concert
     $('.row').each((i, row) => {
         const $row = $(row);
         
         // 1. Extraction de la Date
-        const monthStr = $row.find('.month').text().trim();
-        const dayStr = $row.find('.day').text().trim();
-        let yearStr = $row.find('.year').text().trim();
+        const monthStr = $row.find('.month').text().trim(); // Ex: "Jun"
+        const dayStr = $row.find('.day').text().trim();     // Ex: "24"
+        let yearStr = $row.find('.year').text().trim();     // Ex: "2026" ou vide
 
-        // Si on n'a pas au moins le mois et le jour, ce n'est pas une ligne de concert
+        // Si pas de mois ou jour, ce n'est pas un concert, on passe
         if (!monthStr || !dayStr) return;
 
-        // Si l'année est absente (cas fréquent pour l'année en cours sur setlist.fm), on devine
-        if (!yearStr) {
+        // LOGIQUE ANNÉE MANQUANTE
+        let year = parseInt(yearStr);
+        if (!year || isNaN(year)) {
             const currentYear = new Date().getFullYear();
-            yearStr = currentYear.toString();
+            const monthIndex = MONTH_MAP[monthStr];
+            const currentMonth = new Date().getMonth();
+
+            // Si le mois du concert (ex: Jan) est avant le mois actuel (ex: Juin),
+            // c'est probablement l'année prochaine. Sinon c'est cette année.
+            if (monthIndex !== undefined && monthIndex < currentMonth) {
+                year = currentYear + 1;
+            } else {
+                year = currentYear;
+            }
         }
 
-        // Conversion en objet Date JS pour vérifier si c'est futur ou passé
-        const dateString = `${dayStr} ${monthStr} ${yearStr}`;
-        const concertDate = new Date(dateString);
+        // Création de l'objet Date
+        const monthIndex = MONTH_MAP[monthStr];
+        if (monthIndex === undefined) return; // Mois inconnu
 
-        // Si la date est invalide, on saute
-        if (isNaN(concertDate.getTime())) return;
+        const concertDate = new Date(year, monthIndex, parseInt(dayStr));
 
-        // FILTRE MAGIQUE : Si le concert est avant aujourd'hui, on l'ignore (c'est du passé)
+        // Si c'est passé, on ignore
         if (concertDate < today) {
+            // console.log(`Skipping past concert: ${dayStr} ${monthStr} ${year}`);
             return;
         }
 
         // 2. Extraction Artiste et Lieu
-        // L'artiste est souvent dans un <strong> > <a> ou juste un <a> au début
         let artistName = null;
         let venueName = null;
 
@@ -71,44 +86,52 @@ export default async function handler(req, res) {
             const href = $(link).attr('href') || '';
             const text = $(link).text().trim();
 
-            // Lien Artiste (contient /setlists/ ou /artist/)
-            if (!artistName && (href.includes('/setlists/') || href.includes('/artist/'))) {
+            // L'artiste a un lien vers /setlist/ ou /artist/ (et n'est pas "View")
+            if (!artistName && (href.includes('/setlists/') || href.includes('/artist/')) && text !== 'View') {
                 artistName = text;
             }
-            // Lien Lieu (contient /venue/)
+            // Le lieu a un lien vers /venue/
             if (!venueName && href.includes('/venue/')) {
                 venueName = text;
             }
         });
 
-        // Nettoyage final pour éviter les bugs "Jun" ou vides
-        if (artistName && artistName.length > 1) {
+        // Fallback: Si pas de lieu trouvé dans les liens, chercher le texte après l'artiste
+        if (!venueName) {
+             // Parfois le lieu n'est pas un lien cliquable
+             const contentText = $row.text(); // Tout le texte de la ligne
+             // C'est approximatif, mais mieux que rien
+        }
+
+        if (artistName) {
+             const displayDate = `${dayStr} ${monthStr} ${year}`; // Format lisible pour MyConcerts.tsx
              
-             // Création d'une date lisible pour l'affichage (ex: "24 Jun 2026")
-             const displayDate = `${dayStr} ${monthStr} ${yearStr}`;
-
-             // Vérification doublon (parfois la page mobile/desktop duplique les rows)
-             const alreadyExists = upcomingConcerts.some(c => 
-                 c.artist.name === artistName && c.eventDate === displayDate
-             );
-
-             if (!alreadyExists) {
+             // Vérification doublon
+             const exists = upcomingConcerts.some(c => c.artist.name === artistName && c.eventDate === displayDate);
+             
+             if (!exists) {
+                 console.log(`Found upcoming: ${artistName} on ${displayDate} @ ${venueName}`);
                  upcomingConcerts.push({
                     id: `scraped-${upcomingConcerts.length}-${Date.now()}`,
                     artist: { name: artistName },
-                    eventDate: displayDate, // Sera formaté par MyConcerts.tsx
-                    venue: { name: venueName || 'Lieu inconnu' }
+                    eventDate: displayDate,
+                    venue: { name: venueName || 'Lieu à confirmer' }
                 });
              }
         }
     });
 
-    // Tri par date (le plus proche d'abord)
+    // Tri chronologique
     upcomingConcerts.sort((a, b) => {
-        return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+        // Re-parsing rapide pour le tri
+        const parse = (d) => {
+             const parts = d.split(' '); // "24 Jun 2026"
+             return new Date(parseInt(parts[2]), MONTH_MAP[parts[1]], parseInt(parts[0]));
+        };
+        return parse(a.eventDate) - parse(b.eventDate);
     });
     
-    console.log(`✅ ${upcomingConcerts.length} concerts FUTURS trouvés via Date-Parsing.`);
+    console.log(`✅ Returns ${upcomingConcerts.length} upcoming concerts.`);
 
     return res.status(200).json({ 
       results: upcomingConcerts,
