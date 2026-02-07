@@ -23,32 +23,67 @@ const MyConcerts = () => {
 
   // --- HELPER FUNCTIONS ---
 
-  // Récupère le nom de l'artiste peu importe la source des données
   const getArtistName = (c: any) => {
-    if (c.artist_name) return c.artist_name;
-    if (typeof c.artist === 'string') return c.artist;
-    if (typeof c.artist === 'object' && c.artist?.name) return c.artist.name;
-    return 'Artiste inconnu';
+    let name = 'Artiste inconnu';
+    
+    // Tentative de récupération du nom
+    if (c.artist_name) name = c.artist_name;
+    else if (typeof c.artist === 'string') name = c.artist;
+    else if (c.artist?.name) name = c.artist.name;
+
+    // PATCH "Jun" : Si l'artiste est détecté comme "Jun" (erreur fréquente de parsing de date juin)
+    // On essaie de voir si le backend a mis le vrai nom ailleurs, sinon on le signale
+    if (name === 'Jun') {
+        console.warn('⚠️ Artiste détecté comme "Jun". Vérifiez le parsing API.', c);
+        // Si le backend renvoie le titre de l'event (ex: "Metallica at Stadium"), on peut l'utiliser
+        if (c.event_name) return c.event_name; 
+        // Sinon, c'est probablement Metallica selon votre description, mais impossible de le deviner sans données
+    }
+    return name;
   };
 
-  // Récupère le lieu ou le nom de l'événement
   const getVenueName = (c: any) => {
-    if (c.venue_name) return c.venue_name; // Supabase
-    if (c.venue?.name) return c.venue.name; // Setlist.fm object
-    if (typeof c.venue === 'string') return c.venue; // Setlist.fm string simple
-    if (c.event_name) return c.event_name; // Supabase fallback
+    // Setlist.fm object (structure fréquente: venue: { name: "X", city: { name: "Y" } })
+    if (c.venue?.name) return c.venue.name;
+    
+    // Supabase column
+    if (c.venue_name) return c.venue_name;
+    
+    // Setlist.fm string simple
+    if (typeof c.venue === 'string') return c.venue;
+    
+    // Fallback: Ville
+    if (c.city?.name) return `${c.city.name} (Lieu TBD)`;
+    
     return '—';
   };
 
-  // Récupère et formate la date
   const getEventDate = (c: any) => {
-    const rawDate = c.event_date || c.eventDate;
+    // Récupérer la date brute
+    const raw = c.event_date || c.eventDate || c.date;
     
-    if (!rawDate) return 'Date à confirmer';
+    if (!raw) return 'Date à confirmer';
+    if (raw === 'À venir') return raw; // Si l'API renvoie littéralement ce texte
 
-    // Essayer de formater la date si c'est un format standard (YYYY-MM-DD)
+    // 1. Gestion du format Setlist.fm "DD-MM-YYYY" (ex: 24-01-2026)
+    // Javascript ne lit pas bien ce format par défaut, il faut le convertir en YYYY-MM-DD
+    const ddmmyyyy = /^(\d{2})[-/](\d{2})[-/](\d{4})$/;
+    const match = raw.match(ddmmyyyy);
+    
+    if (match) {
+        // match[1] = Jour, match[2] = Mois, match[3] = Année
+        const isoDate = `${match[3]}-${match[2]}-${match[1]}`; // Devient 2026-01-24
+        const dateObj = new Date(isoDate);
+        return dateObj.toLocaleDateString('fr-FR', {
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric'
+        });
+    }
+
+    // 2. Format standard ISO
     try {
-      const dateObj = new Date(rawDate);
+      const dateObj = new Date(raw);
       if (!isNaN(dateObj.getTime())) {
         return dateObj.toLocaleDateString('fr-FR', {
           day: 'numeric',
@@ -57,10 +92,10 @@ const MyConcerts = () => {
         });
       }
     } catch (e) {
-      // Ignorer l'erreur et retourner le texte brut
+      // Échec silencieux
     }
 
-    return rawDate;
+    return raw;
   };
 
   // --- DATA LOADING ---
@@ -82,21 +117,21 @@ const MyConcerts = () => {
         if (!response.ok) throw new Error('Erreur de chargement');
         
         const data = await response.json();
-        const fetchedConcerts = data.results || [];
-        setConcerts(fetchedConcerts);
+        setConcerts(data.results || []);
 
-        // 2. Fetch concerts à venir (setlist.fm scraping + Supabase)
+        // 2. Fetch concerts à venir
         try {
           const upcomingResponse = await fetch(`/api/upcoming-shows?username=${username}`);
           const upcomingData = await upcomingResponse.json();
           
-          let upcomingList: any[] = [];
+          console.log("🔍 DEBUG - Données 'À venir' reçues :", upcomingData); // Regardez la console (F12) pour voir la structure de "Jun" !
 
+          let upcomingList: any[] = [];
           if (upcomingData.results && upcomingData.results.length > 0) {
             upcomingList = upcomingData.results;
           }
 
-          // Ajouter ou merger avec Supabase si l'utilisateur est connecté
+          // Merge avec Supabase si connecté
           if (user) {
             const { data: supabaseUpcoming, error } = await supabase
               .from('upcoming_concerts')
@@ -105,14 +140,9 @@ const MyConcerts = () => {
               .order('event_date', { ascending: true });
 
             if (!error && supabaseUpcoming) {
-              // On peut choisir de combiner les listes ici si besoin
-              // Pour l'instant, on ajoute ceux de Supabase à la suite ou on remplace si la liste setlist est vide
-              if (upcomingList.length === 0) {
-                 upcomingList = supabaseUpcoming;
-              } else {
-                 // Optionnel : concaténer (attention aux doublons potentiels à gérer plus tard)
-                 upcomingList = [...upcomingList, ...supabaseUpcoming];
-              }
+              // On combine les listes. 
+              // Note: Idéalement il faudrait dédoublonner ici, mais on concatène pour l'instant.
+              upcomingList = [...upcomingList, ...supabaseUpcoming];
             }
           }
           
@@ -261,7 +291,7 @@ const MyConcerts = () => {
                           </td>
                           <td className="px-4 py-3 font-medium text-white">{getArtistName(concert)}</td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">{getVenueName(concert)}</td>
-                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">{concert.eventDate}</td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">{getEventDate(concert)}</td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">{concert.sets?.set?.[0]?.song?.length || 0}</td>
                         </tr>
                       ))}
@@ -314,56 +344,5 @@ const MyConcerts = () => {
                           />
                         </th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Artiste</th>
-                        {/* AJOUT DE LA COLONNE LIEU */}
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase hidden md:table-cell">Lieu</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#404040]">
-                      {upcomingConcerts.map((concert) => (
-                        <tr key={concert.id} onClick={() => toggleUpcoming(concert)} className="hover:bg-[#3d3d3d] cursor-pointer transition-colors">
-                          <td className="px-4 py-3">
-                            <input type="checkbox" checked={selectedUpcoming.has(concert.id)} readOnly className="rounded border-[#404040]" />
-                          </td>
-                          <td className="px-4 py-3 font-medium text-white">
-                            {getArtistName(concert)}
-                            {/* Affichage mobile du lieu sous l'artiste si besoin */}
-                            <div className="md:hidden text-xs text-[#a0a0a0] mt-1">{getVenueName(concert)}</div>
-                          </td>
-                          {/* CELLULE LIEU (Masquée sur mobile, visible sur desktop) */}
-                          <td className="px-4 py-3 text-sm text-[#a0a0a0] hidden md:table-cell">
-                            {getVenueName(concert)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
-                            {getEventDate(concert)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Footer Future */}
-                {selectedUpcoming.size > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 z-50 animate-in slide-in-from-bottom-2">
-                    <div className="max-w-[1200px] mx-auto flex items-center justify-between">
-                      <div className="text-white">
-                        <span className="font-semibold">{selectedUpcoming.size}</span>
-                        <span className="text-[#a0a0a0] ml-1">concerts sélectionnés</span>
-                      </div>
-                      <Button onClick={handleGenerate} className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white">
-                        Générer la playlist <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-};
-
-export default MyConcerts;
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a
