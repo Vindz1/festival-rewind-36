@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-
+import { motion } from 'framer-motion';
 import { Music, Calendar, Plus, Trash2, ArrowLeft, Search, Loader2, ArrowRight } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -178,7 +178,9 @@ const ImGoing = () => {
           </Button>
 
           {/* Header */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
             <h1 className="font-display text-5xl md:text-7xl text-white mb-4">
@@ -187,13 +189,13 @@ const ImGoing = () => {
             <p className="text-lg text-[#a0a0a0]">
               Ajoutez les artistes que vous allez voir
             </p>
-          </div>
+          </motion.div>
 
           {/* Add button */}
           {!showAddForm && (
             <div className="text-center mb-8">
               <Button 
-                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white" 
+                variant="fire" 
                 onClick={() => setShowAddForm(true)}
                 className="gap-2"
               >
@@ -205,7 +207,9 @@ const ImGoing = () => {
 
           {/* Add form */}
           {showAddForm && (
-            <div
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
               className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-6 mb-8"
             >
               <h3 className="font-display text-xl mb-4">Nouvel artiste</h3>
@@ -232,7 +236,7 @@ const ImGoing = () => {
                         <div
                           key={artist.id}
                           onClick={() => setSelectedArtist(artist)}
-                          className="flex items-center gap-3 p-3 bg-[#3d3d3d] rounded-lg cursor-pointer hover:bg-[#4d94ff]/10 transition-colors"
+                          className="flex items-center gap-3 p-3 bg-[#3d3d3d] rounded-lg cursor-pointer hover:bg-primary/10 transition-colors"
                         >
                           {artist.images?.[0] && (
                             <img 
@@ -255,7 +259,7 @@ const ImGoing = () => {
               ) : (
                 <div className="space-y-4">
                   {/* Selected artist */}
-                  <div className="flex items-center gap-3 p-3 bg-[#4d94ff]/10 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg">
                     {selectedArtist.images?.[0] && (
                       <img 
                         src={selectedArtist.images[0].url} 
@@ -301,7 +305,7 @@ const ImGoing = () => {
 
                   {/* Actions */}
                   <div className="flex gap-2">
-                    <Button className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white" onClick={addConcert} className="flex-1">
+                    <Button variant="fire" onClick={addConcert} className="flex-1">
                       Ajouter
                     </Button>
                     <Button 
@@ -317,7 +321,7 @@ const ImGoing = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* Concerts list */}
@@ -330,15 +334,17 @@ const ImGoing = () => {
             <>
               <div className="space-y-3">
                 {upcomingConcerts.map((concert) => (
-                  <div
+                  <motion.div
                     key={concert.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     onClick={() => toggleSelection(concert.id)}
                     className={`bg-[#2d2d2d] border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${
-                      selectedIds.has(concert.id) ? 'border-[#4d94ff] bg-[#4d94ff]/5' : 'border-[#404040] hover:border-[#4d94ff]/50'
+                      selectedIds.has(concert.id) ? 'border-primary bg-primary/5' : 'border-[#404040] hover:border-primary/50'
                     }`}
                   >
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                      selectedIds.has(concert.id) ? 'bg-[#4d94ff]' : 'bg-[#3d3d3d]'
+                      selectedIds.has(concert.id) ? 'bg-gradient-fire' : 'bg-[#3d3d3d]'
                     }`}>
                       <Music className={`w-6 h-6 ${selectedIds.has(concert.id) ? 'text-[#4d94ff]-foreground' : 'text-[#a0a0a0]'}`} />
                     </div>
@@ -364,15 +370,15 @@ const ImGoing = () => {
                       }}
                       className="shrink-0"
                     >
-                      <Trash2 className="w-4 h-4 text-red-400" />
+                      <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
               {selectedIds.size > 0 && (
                 <div className="text-center mt-8">
-                  <Button className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white" size="lg" onClick={generatePlaylist} className="gap-2">
+                  <Button variant="fire" size="lg" onClick={generatePlaylist} className="gap-2">
                     <Music className="w-5 h-5" />
                     Générer la playlist ({selectedIds.size} artiste{selectedIds.size > 1 ? 's' : ''})
                     <ArrowRight className="w-4 h-4" />
