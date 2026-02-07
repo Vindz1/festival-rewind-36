@@ -23,10 +23,10 @@ export default async function handler(req, res) {
     
     const upcomingArtists = [];
     
-    // Find all text nodes and headings
+    // Find all text nodes
     const allText = $('body').text();
     
-    // Split by the two section headers
+    // Split sections
     const upcomingIndex = allText.indexOf('Upcoming Shows');
     const attendedIndex = allText.indexOf('Attended Shows');
     
@@ -35,13 +35,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ results: [], scraped: true });
     }
     
-    // Extract the text between the two sections
-    const upcomingSection = allText.substring(upcomingIndex, attendedIndex);
-    
-    console.log('📄 Upcoming section text (first 500 chars):', upcomingSection.substring(0, 500));
-    
-    // Now find all <strong> tags in the HTML between these sections
-    // We'll search for the actual HTML elements
+    // Liste des mois à ignorer (souvent parsés par erreur comme Artistes)
+    const IGNORED_TERMS = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+        'Date', 'Venue', 'Festival'
+    ];
+
     let foundUpcoming = false;
     let foundAttended = false;
     
@@ -52,30 +52,35 @@ export default async function handler(req, res) {
       // Detect section boundaries
       if (text === 'Upcoming Shows' || text.startsWith('Upcoming Shows (')) {
         foundUpcoming = true;
-        console.log('✅ Found Upcoming Shows marker');
         return;
       }
       
       if (foundUpcoming && (text === 'Attended Shows' || text.startsWith('Attended Shows ('))) {
         foundAttended = true;
-        console.log('✅ Found Attended Shows marker, stopping');
         return false; // break
       }
       
-      // If we're in the upcoming section and this is a <strong> tag
+      // Look for strong tags in upcoming section
       if (foundUpcoming && !foundAttended && $elem.is('strong')) {
         const artistName = $elem.text().trim();
         
-        // Filter out non-artist text (dates, venues, etc.)
+        // Improved Filtering
         if (artistName && 
             !artistName.match(/^\d/) && // Not starting with number
             !artistName.includes('Hellfest') && // Not venue
             !artistName.includes('2026') && // Not year
             artistName.length > 2 && // At least 3 chars
-            !upcomingArtists.includes(artistName)) { // Not duplicate
-          
-          console.log(`🎸 Found artist: ${artistName}`);
-          upcomingArtists.push(artistName);
+            !upcomingArtists.includes(artistName)) {
+            
+            // Check if it's a Month name
+            const isMonth = IGNORED_TERMS.some(term => artistName.startsWith(term));
+            
+            if (!isMonth) {
+                console.log(`🎸 Found artist: ${artistName}`);
+                upcomingArtists.push(artistName);
+            } else {
+                console.log(`⚠️ Ignored date/month text: ${artistName}`);
+            }
         }
       }
     });
@@ -86,7 +91,7 @@ export default async function handler(req, res) {
     const results = upcomingArtists.map((name, idx) => ({
       id: `upcoming-${idx}`,
       artist: { name },
-      eventDate: 'À venir',
+      eventDate: 'À venir', // Hardcoded car non récupéré par ce script
       venue: { name: null }
     }));
 
