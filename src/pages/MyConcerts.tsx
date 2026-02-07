@@ -21,6 +21,18 @@ const MyConcerts = () => {
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
 
+  // Helper pour éviter le crash "Object is not valid as a React child"
+  const getArtistName = (c: any) => {
+    if (c.artist_name) return c.artist_name;
+    if (typeof c.artist === 'string') return c.artist;
+    if (typeof c.artist === 'object' && c.artist?.name) return c.artist.name;
+    return 'Artiste inconnu';
+  };
+
+  const getEventDate = (c: any) => {
+    return c.event_date || c.eventDate || 'Date inconnue';
+  };
+
   // Charger les concerts depuis setlist.fm ET Supabase
   useEffect(() => {
     const fetchAllConcerts = async () => {
@@ -96,8 +108,8 @@ const MyConcerts = () => {
     // Sauvegarder dans localStorage pour Generate.tsx
     const selectedArray = concerts.filter(c => newSelection.has(c.id)).map(c => ({
       id: c.id,
-      artist: c.artist.name,
-      venue: c.venue.name,
+      artist: c.artist?.name || c.artist, // Protection ici aussi
+      venue: c.venue?.name || c.venue,
       eventDate: c.eventDate,
     }));
     localStorage.setItem('selected_concerts', JSON.stringify(selectedArray));
@@ -115,8 +127,8 @@ const MyConcerts = () => {
     // Sauvegarder dans localStorage pour Generate.tsx
     const selectedArray = upcomingConcerts.filter(c => newSelection.has(c.id)).map(c => ({
       id: c.id,
-      artist: c.artist_name || c.artist,
-      eventDate: c.event_date || c.eventDate,
+      artist: getArtistName(c),
+      eventDate: getEventDate(c),
     }));
     localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
   };
@@ -217,8 +229,8 @@ const MyConcerts = () => {
                                 setSelectedConcerts(all);
                                 localStorage.setItem('selected_concerts', JSON.stringify(concerts.map(c => ({
                                   id: c.id,
-                                  artist: c.artist.name,
-                                  venue: c.venue.name,
+                                  artist: c.artist?.name || c.artist,
+                                  venue: c.venue?.name || c.venue,
                                   eventDate: c.eventDate,
                                 }))));
                               }
@@ -257,10 +269,10 @@ const MyConcerts = () => {
                             />
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-white">{concert.artist.name}</div>
+                            <div className="font-medium text-white">{concert.artist?.name || concert.artist}</div>
                           </td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">
-                            {concert.venue.name}
+                            {concert.venue?.name || concert.venue}
                           </td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">
                             {concert.eventDate}
@@ -276,7 +288,7 @@ const MyConcerts = () => {
 
                 {/* Generate button - Fixed bottom */}
                 {selectedConcerts.size > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4">
+                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 z-50">
                     <div className="max-w-[1200px] mx-auto flex items-center justify-between">
                       <div className="text-white">
                         <span className="font-semibold">{selectedConcerts.size}</span>
@@ -330,8 +342,8 @@ const MyConcerts = () => {
                                 setSelectedUpcoming(all);
                                 localStorage.setItem('selected_upcoming', JSON.stringify(upcomingConcerts.map(c => ({
                                   id: c.id,
-                                  artist: c.artist_name || c.artist,
-                                  eventDate: c.event_date || c.eventDate,
+                                  artist: getArtistName(c),
+                                  eventDate: getEventDate(c),
                                 }))));
                               }
                             }}
@@ -363,12 +375,13 @@ const MyConcerts = () => {
                             />
                           </td>
                           <td className="px-4 py-3">
+                            {/* CORRECTION ICI : Utilisation de getArtistName pour éviter le crash */}
                             <div className="font-medium text-white">
-                              {concert.artist_name || concert.artist}
+                              {getArtistName(concert)}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">
-                            {concert.event_date || concert.eventDate}
+                            {getEventDate(concert)}
                           </td>
                         </tr>
                       ))}
@@ -378,7 +391,7 @@ const MyConcerts = () => {
 
                 {/* Generate button - Fixed bottom */}
                 {selectedUpcoming.size > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4">
+                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 z-50">
                     <div className="max-w-[1200px] mx-auto flex items-center justify-between">
                       <div className="text-white">
                         <span className="font-semibold">{selectedUpcoming.size}</span>
