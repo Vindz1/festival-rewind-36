@@ -21,7 +21,7 @@ const MyConcerts = () => {
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
 
-  // Helper simple pour l'affichage
+  // Helpers d'affichage sécurisés
   const getArtistName = (c: any) => c.artist?.name || c.artist || 'Artiste inconnu';
   const getVenueName = (c: any) => c.venue?.name || c.venue_name || '—';
   const getEventDate = (c: any) => c.eventDate || c.event_date || 'À venir';
@@ -33,7 +33,7 @@ const MyConcerts = () => {
 
       setLoading(true);
       try {
-        // 1. Passé
+        // CHARGEMENT "I WAS THERE" (API OFFICIELLE)
         try {
           const res = await fetch(`/api/search?action=user&username=${username}`);
           if (res.ok) {
@@ -42,7 +42,7 @@ const MyConcerts = () => {
           }
         } catch (e) { console.error(e); }
 
-        // 2. Futur
+        // CHARGEMENT "I'M GOING" (SCRAPER)
         let upcoming: any[] = [];
         try {
           const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
@@ -52,7 +52,7 @@ const MyConcerts = () => {
           }
         } catch (e) { console.error(e); }
 
-        // Merge Supabase
+        // MERGE SUPABASE
         if (user) {
           const { data: sbData } = await supabase
             .from('upcoming_concerts')
@@ -61,13 +61,11 @@ const MyConcerts = () => {
           if (sbData) upcoming = [...upcoming, ...sbData];
         }
 
-        // Filtrage final anti-"Jun" côté client par sécurité
-        const cleanUpcoming = upcoming.filter(c => {
-           const name = getArtistName(c);
-           return name !== 'Jun' && name.length > 1;
-        });
+        // DÉDOUBLONNAGE FINAL
+        // On retire les doublons exacts (même nom d'artiste) pour éviter l'effet "Metallica, Metallica"
+        const uniqueUpcoming = Array.from(new Map(upcoming.map(item => [getArtistName(item), item])).values());
 
-        setUpcomingConcerts(cleanUpcoming);
+        setUpcomingConcerts(uniqueUpcoming);
 
       } catch (error) {
         toast.error('Erreur chargement');
@@ -119,7 +117,6 @@ const MyConcerts = () => {
           </TabsList>
 
           <TabsContent value="past">
-            {/* Table Passé (Simplifiée) */}
             <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
                {concerts.length === 0 ? <div className="p-8 text-center text-[#a0a0a0]">Aucun concert</div> : (
                  <table className="w-full">
@@ -150,9 +147,8 @@ const MyConcerts = () => {
           </TabsContent>
 
           <TabsContent value="future">
-             {/* Table Futur */}
              <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
-               {upcomingConcerts.length === 0 ? <div className="p-8 text-center text-[#a0a0a0]">Aucun concert à venir</div> : (
+               {upcomingConcerts.length === 0 ? <div className="p-8 text-center text-[#a0a0a0]">Aucun concert à venir trouvé</div> : (
                  <table className="w-full">
                    <thead className="bg-[#252525] text-[#a0a0a0] text-xs uppercase">
                      <tr><th className="p-4 w-12"></th><th className="p-4 text-left">Artiste</th><th className="p-4 text-left">Lieu</th><th className="p-4 text-left">Date</th></tr>
