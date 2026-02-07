@@ -8,8 +8,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    // On utilise l'URL de votre capture d'écran
-    const response = await fetch(`https://www.setlist.fm/attended/${username}`, {
+    console.log(`🚜 Bulldozer scraping for: ${username}`);
+    
+    const response = await fetch(`https://www.setlist.fm/user/${username}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
@@ -17,80 +18,61 @@ export default async function handler(req, res) {
 
     if (!response.ok) return res.status(404).json({ error: 'User not found' });
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    const fullHtml = await response.text();
     
-    const upcomingConcerts = [];
-    const IGNORED_TERMS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Date', 'Venue', 'Festival'];
+    // --- 1. DÉCOUPAGE BRUT DU HTML ---
+    // On cherche où commence "Upcoming"
+    let startIndex = fullHtml.indexOf('>Upcoming Shows<');
+    if (startIndex === -1) startIndex = fullHtml.indexOf('>Upcoming Events<');
+    if (startIndex === -1) startIndex = fullHtml.indexOf('Upcoming'); // Dernier recours
 
-    // Recherche basée sur la structure visuelle (Tableau ou Liste)
-    // On cherche tous les liens d'artistes dans la section "Upcoming"
-    
-    // 1. Trouver le conteneur "Upcoming"
-    let upcomingContainer = null;
-    $('h2, h3').each((i, el) => {
-        if ($(el).text().includes('Upcoming')) {
-            upcomingContainer = $(el).parent();
+    if (startIndex === -1) {
+        console.log("❌ Section 'Upcoming' introuvable dans le HTML brut.");
+        return res.status(200).json({ results: [], source: 'scraper-failed' });
+    }
+
+    // On cherche où ça s'arrête (généralement la section suivante est "Attended" ou "Recent")
+    let endIndex = fullHtml.indexOf('Attended', startIndex);
+    if (endIndex === -1) endIndex = fullHtml.indexOf('Recent', startIndex);
+    if (endIndex === -1) endIndex = startIndex + 10000; // Si on trouve pas la fin, on prend un gros morceau
+
+    // On garde uniquement la partie du code qui nous intéresse
+    const relevantHtml = fullHtml.substring(startIndex, endIndex);
+    const $ = cheerio.load(relevantHtml);
+
+    const upcomingConcerts = [];
+    const IGNORED = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Date', 'Venue', 'View', 'Edit', 'Setlist'];
+
+    // --- 2. EXTRACTION DES LIENS ---
+    // On prend TOUS les liens dans cette zone
+    $('a').each((i, link) => {
+        const text = $(link).text().trim();
+        const href = $(link).attr('href') || "";
+
+        // Un lien de concert contient généralement '/setlist/' ou '/artist/'
+        // Et on vérifie que le texte n'est pas un mot banni (comme "Edit" ou "Jun")
+        if ((href.includes('/setlist/') || href.includes('/artist/')) && text.length > 2) {
+            
+            // Vérif anti-mois
+            const isMonth = IGNORED.some(ign => text.startsWith(ign));
+            
+            // Vérif anti-doublon
+            const isDuplicate = upcomingConcerts.some(c => c.artist.name === text);
+
+            if (!isMonth && !isDuplicate) {
+                console.log(`🎸 Trouvé: ${text}`);
+                
+                upcomingConcerts.push({
+                    id: `scraped-${upcomingConcerts.length}`,
+                    artist: { name: text },
+                    eventDate: 'Date à confirmer', // On sacrifie la date pour sauver l'artiste
+                    venue: { name: '—' }
+                });
+            }
         }
     });
 
-    if (upcomingContainer) {
-        // 2. Parcourir les lignes (souvent div.row ou tr)
-        upcomingContainer.find('.row, tr').each((i, row) => {
-            const $row = $(row);
-            
-            // --- DATE (Basé sur les cases carrées visibles sur votre capture) ---
-            let dateStr = 'À venir';
-            const month = $row.find('.month').text().trim();
-            const day = $row.find('.day').text().trim();
-            const year = $row.find('.year').text().trim();
-
-            if (month && day && year) {
-                dateStr = `${day} ${month} ${year}`; // ex: 11 Jun 2026
-            }
-
-            // --- ARTISTE ---
-            let artistName = "";
-            const $links = $row.find('a');
-
-            $links.each((j, link) => {
-                const text = $(link).text().trim();
-                const href = $(link).attr('href') || "";
-                
-                // Si c'est un lien vers un setlist ou un artiste, et que ce n'est pas un mois
-                if ((href.includes('artist') || href.includes('setlist')) && 
-                    !IGNORED_TERMS.includes(text) && 
-                    text.length > 2) {
-                    artistName = text;
-                }
-            });
-
-            // --- LIEU ---
-            // Le lieu est souvent le lien suivant l'artiste ou le texte juste après
-            let venueName = "—";
-            $links.each((j, link) => {
-                const href = $(link).attr('href') || "";
-                if (href.includes('venue')) {
-                    venueName = $(link).text().trim();
-                }
-            });
-
-            // SAUVEGARDE VALIDÉE
-            if (artistName) {
-                // Vérification finale anti-doublon et anti-"Jun"
-                const isDuplicate = upcomingConcerts.some(c => c.artist.name === artistName && c.eventDate === dateStr);
-                
-                if (!isDuplicate && !IGNORED_TERMS.includes(artistName)) {
-                    upcomingConcerts.push({
-                        id: `scraped-${upcomingConcerts.length}`,
-                        artist: { name: artistName },
-                        eventDate: dateStr,
-                        venue: { name: venueName }
-                    });
-                }
-            }
-        });
-    }
+    console.log(`✅ Total trouvé: ${upcomingConcerts.length}`);
 
     return res.status(200).json({ 
       results: upcomingConcerts,
@@ -98,7 +80,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Scraping error:', error);
+    console.error('❌ Error:', error);
     return res.status(500).json({ error: 'Server Error', results: [] });
   }
 }
