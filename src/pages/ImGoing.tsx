@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Music, Calendar, Plus, Trash2, ArrowLeft, Search, Loader2, ArrowRight } from 'lucide-react';
-import { Header } from '@/components/Header';
+import { Calendar, Plus, Trash2, Search, Loader2, ArrowRight } from 'lucide-react';
+// On retire Header car la page parente l'a déjà
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from "@/AuthContext";
@@ -26,12 +26,14 @@ const ImGoing = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Si pas d'user, on n'affiche rien ou on laisse le parent gérer la redirection.
+    // On évite le navigate('/auth') brutal ici qui peut causer des conflits au chargement de l'onglet.
     if (!user) {
-      navigate('/auth');
-      return;
+        setLoading(false);
+        return;
     }
     fetchUpcomingConcerts();
-  }, [user, navigate]);
+  }, [user]);
 
   const fetchUpcomingConcerts = async () => {
     if (!user) return;
@@ -149,269 +151,255 @@ const ImGoing = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a]">
-        <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#4d94ff]" />
-        </div>
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-[#4d94ff]" />
       </div>
     );
   }
 
+  // CONTENEUR PRINCIPAL NETTOYÉ
+  // On a retiré min-h-screen, bg-[#1a1a1a], Header et le padding top (pt-20)
+  // pour que ça s'intègre naturellement dans l'onglet.
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
-      <Header />
+    <div className="w-full animate-in fade-in duration-500">
       
-      <main className="pt-20 pb-16 max-w-[1200px] mx-auto px-4">
-        {/* Back button */}
-        <button 
-          onClick={() => navigate('/my-concerts')}
-          className="flex items-center gap-2 text-sm text-[#a0a0a0] hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </button>
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-white mb-2">I'm Going</h1>
-          <p className="text-sm text-[#a0a0a0]">
-            {upcomingConcerts.length} concert{upcomingConcerts.length > 1 ? 's' : ''} à venir
-          </p>
+      {/* Bouton Ajouter */}
+      {!showAddForm && (
+        <div className="mb-6 flex justify-end">
+          <Button 
+            onClick={() => setShowAddForm(true)}
+            className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter un concert
+          </Button>
         </div>
+      )}
 
-        {/* Add button */}
-        {!showAddForm && (
-          <div className="mb-6">
-            <Button 
-              onClick={() => setShowAddForm(true)}
-              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Ajouter un artiste
-            </Button>
-          </div>
-        )}
+      {/* Formulaire d'ajout */}
+      {showAddForm && (
+        <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6 mb-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Planifier un concert</h3>
+          
+          {!selectedArtist ? (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Rechercher un artiste..."
+                  value={artistSearch}
+                  onChange={(e) => setArtistSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchArtist()}
+                  className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
+                />
+                <Button 
+                  onClick={searchArtist} 
+                  disabled={searching}
+                  className="bg-[#4d94ff] hover:bg-[#6ba6ff]"
+                >
+                  {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
 
-        {/* Add form */}
-        {showAddForm && (
-          <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6 mb-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Nouvel artiste</h3>
-            
-            {!selectedArtist ? (
-              <div className="space-y-4">
-                <div className="flex gap-2">
+              {searchResults.length > 0 && (
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {searchResults.map((artist) => (
+                    <div
+                      key={artist.id}
+                      onClick={() => setSelectedArtist(artist)}
+                      className="flex items-center gap-3 p-3 bg-[#3d3d3d] rounded cursor-pointer hover:bg-[#454545] transition-colors"
+                    >
+                      {artist.images?.[0] && (
+                        <img 
+                          src={artist.images[0].url} 
+                          alt={artist.name}
+                          className="w-10 h-10 rounded object-cover"
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium text-white text-sm">{artist.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+               <div className="flex justify-end">
+                <Button variant="ghost" onClick={() => setShowAddForm(false)} className="text-[#a0a0a0]">Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-[#4d94ff]/10 rounded border border-[#4d94ff]/30">
+                {selectedArtist.images?.[0] && (
+                  <img 
+                    src={selectedArtist.images[0].url} 
+                    alt={selectedArtist.name}
+                    className="w-10 h-10 rounded object-cover"
+                  />
+                )}
+                <p className="font-medium flex-1 text-white text-sm">{selectedArtist.name}</p>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedArtist(null);
+                    setSearchResults([]);
+                  }}
+                  className="text-xs text-[#a0a0a0] hover:text-white"
+                >
+                  Changer
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <Input
-                    placeholder="Nom de l'artiste..."
-                    value={artistSearch}
-                    onChange={(e) => setArtistSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchArtist()}
+                    placeholder="Nom de l'événement (ex: Hellfest 2026)"
+                    value={eventName}
+                    onChange={(e) => setEventName(e.target.value)}
                     className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
                   />
-                  <Button 
-                    onClick={searchArtist} 
-                    disabled={searching}
-                    className="bg-[#4d94ff] hover:bg-[#6ba6ff]"
-                  >
-                    {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  </Button>
-                </div>
-
-                {searchResults.length > 0 && (
-                  <div className="space-y-1">
-                    {searchResults.map((artist) => (
-                      <div
-                        key={artist.id}
-                        onClick={() => setSelectedArtist(artist)}
-                        className="flex items-center gap-3 p-3 bg-[#3d3d3d] rounded cursor-pointer hover:bg-[#454545] transition-colors"
-                      >
-                        {artist.images?.[0] && (
-                          <img 
-                            src={artist.images[0].url} 
-                            alt={artist.name}
-                            className="w-10 h-10 rounded object-cover"
-                          />
-                        )}
-                        <div>
-                          <p className="font-medium text-white text-sm">{artist.name}</p>
-                          <p className="text-xs text-[#a0a0a0]">
-                            {artist.followers?.total.toLocaleString()} followers
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  <Input
+                    type="date"
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="bg-[#3d3d3d] border-[#404040] text-white focus:border-[#4d94ff]"
+                  />
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-[#4d94ff]/10 rounded border border-[#4d94ff]/30">
-                  {selectedArtist.images?.[0] && (
-                    <img 
-                      src={selectedArtist.images[0].url} 
-                      alt={selectedArtist.name}
-                      className="w-10 h-10 rounded object-cover"
+              <Input
+                placeholder="Lieu (optionnel)"
+                value={venueName}
+                onChange={(e) => setVenueName(e.target.value)}
+                className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
+              />
+              <Input
+                placeholder="Notes (ex: Mainstage, 20h30)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
+              />
+
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  onClick={addConcert} 
+                  className="flex-1 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
+                >
+                  Ajouter
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setSelectedArtist(null);
+                    setSearchResults([]);
+                  }}
+                  className="border-[#404040] text-white hover:bg-[#3d3d3d] bg-transparent"
+                >
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Liste des concerts (Style Table comme sur l'image I Was There) */}
+      {upcomingConcerts.length === 0 ? (
+        <div className="bg-[#2d2d2d] border border-[#404040] rounded p-12 text-center">
+          <Calendar className="w-12 h-12 mx-auto mb-4 text-[#606060]" />
+          <p className="text-[#a0a0a0]">Aucun concert à venir pour le moment.</p>
+        </div>
+      ) : (
+        <>
+          <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-[#252525] border-b border-[#404040]">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-12">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIds.size === upcomingConcerts.length && upcomingConcerts.length > 0}
+                      onChange={() => {
+                        if (selectedIds.size === upcomingConcerts.length) {
+                          setSelectedIds(new Set());
+                        } else {
+                          setSelectedIds(new Set(upcomingConcerts.map(c => c.id)));
+                        }
+                      }}
+                      className="rounded border-[#404040] bg-[#3d3d3d]"
                     />
-                  )}
-                  <p className="font-medium flex-1 text-white text-sm">{selectedArtist.name}</p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedArtist(null);
-                      setSearchResults([]);
-                    }}
-                    className="text-xs text-[#a0a0a0] hover:text-white"
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                    Artiste
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider hidden md:table-cell">
+                    Lieu / Événement
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#404040]">
+                {upcomingConcerts.map((concert) => (
+                  <tr 
+                    key={concert.id}
+                    className="hover:bg-[#3d3d3d] transition-colors"
                   >
-                    Changer
-                  </Button>
-                </div>
-
-                <Input
-                  placeholder="Nom de l'événement (ex: Hellfest 2026)"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
-                />
-                <Input
-                  type="date"
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="bg-[#3d3d3d] border-[#404040] text-white focus:border-[#4d94ff]"
-                />
-                <Input
-                  placeholder="Lieu (optionnel)"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
-                />
-                <Input
-                  placeholder="Notes (ex: Mainstage, 20h30)"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
-                />
-
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={addConcert} 
-                    className="flex-1 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
-                  >
-                    Ajouter
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setSelectedArtist(null);
-                      setSearchResults([]);
-                    }}
-                    className="border-[#404040] text-white hover:bg-[#3d3d3d]"
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Concerts list */}
-        {upcomingConcerts.length === 0 ? (
-          <div className="bg-[#2d2d2d] border border-[#404040] rounded p-12 text-center">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-[#606060]" />
-            <p className="text-[#a0a0a0]">Aucun concert à venir</p>
-          </div>
-        ) : (
-          <>
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-[#252525] border-b border-[#404040]">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-12">
+                    <td className="px-4 py-3">
                       <input 
                         type="checkbox" 
-                        checked={selectedIds.size === upcomingConcerts.length}
-                        onChange={() => {
-                          if (selectedIds.size === upcomingConcerts.length) {
-                            setSelectedIds(new Set());
-                          } else {
-                            setSelectedIds(new Set(upcomingConcerts.map(c => c.id)));
-                          }
-                        }}
-                        className="rounded border-[#404040]"
+                        checked={selectedIds.has(concert.id)}
+                        onChange={() => toggleSelection(concert.id)}
+                        className="rounded border-[#404040] bg-[#3d3d3d]"
                       />
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
-                      Artiste
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
-                      Événement
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase tracking-wider w-20"></th>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-white text-sm">{concert.artist_name}</div>
+                      {concert.notes && <div className="text-xs text-[#a0a0a0] mt-0.5 md:hidden">{concert.notes}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-[#a0a0a0] hidden md:table-cell">
+                      <div className="flex flex-col">
+                         {concert.event_name && <span>{concert.event_name}</span>}
+                         {concert.venue_name && <span className="text-xs opacity-70">{concert.venue_name}</span>}
+                         {!concert.event_name && !concert.venue_name && '—'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                      {concert.event_date ? new Date(concert.event_date).toLocaleDateString('fr-FR') : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => deleteConcert(concert.id)}
+                        className="text-[#a0a0a0] hover:text-red-400 transition-colors p-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#404040]">
-                  {upcomingConcerts.map((concert) => (
-                    <tr 
-                      key={concert.id}
-                      className="hover:bg-[#3d3d3d] transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedIds.has(concert.id)}
-                          onChange={() => toggleSelection(concert.id)}
-                          className="rounded border-[#404040]"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-white text-sm">{concert.artist_name}</div>
-                        {concert.notes && <div className="text-xs text-[#a0a0a0] mt-0.5">{concert.notes}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#a0a0a0]">
-                        {concert.event_name || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-[#a0a0a0]">
-                        {concert.event_date ? new Date(concert.event_date).toLocaleDateString('fr-FR') : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => deleteConcert(concert.id)}
-                          className="text-[#a0a0a0] hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            {selectedIds.size > 0 && (
-              <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4">
-                <div className="max-w-[1200px] mx-auto flex items-center justify-between">
-                  <div className="text-white">
-                    <span className="font-semibold">{selectedIds.size}</span>
-                    <span className="text-[#a0a0a0] ml-1">artiste{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
-                  </div>
-                  <Button 
-                    onClick={generatePlaylist}
-                    className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
-                  >
-                    Générer la playlist
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+          {selectedIds.size > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#2d2d2d] border-t border-[#404040] p-4 animate-in slide-in-from-bottom-5">
+              <div className="max-w-[1200px] mx-auto flex items-center justify-between">
+                <div className="text-white">
+                  <span className="font-semibold">{selectedIds.size}</span>
+                  <span className="text-[#a0a0a0] ml-1">artiste{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}</span>
                 </div>
+                <Button 
+                  onClick={generatePlaylist}
+                  className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white gap-2"
+                >
+                  Générer la playlist
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
-            )}
-          </>
-        )}
-      </main>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
