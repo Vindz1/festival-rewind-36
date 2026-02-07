@@ -74,7 +74,7 @@ export default function Generate() {
 
   const canExport = user && (loadingSubscription || subscription?.can_export);
 
-  // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
+  // Étape 1 : Récupérer les chansons
   useEffect(() => {
     if (isExporting) {
       console.log('⏸️ Export en cours, skip du chargement');
@@ -252,17 +252,17 @@ export default function Generate() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans selection:bg-[#4d94ff] selection:text-white">
-      {/* Header en dehors du container avec padding, pour qu'il reste en haut */}
+      {/* Header en dehors du container avec padding */}
       <Header />
 
       {/* Container principal avec animation d'entrée */}
       <div className="max-w-4xl mx-auto px-4 py-8 pt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* Bouton Retour */}
+        {/* CORRECTION DU BOUTON RETOUR : Redirection explicite selon le mode */}
         <div className="mb-6">
             <Button 
                 variant="ghost" 
-                onClick={() => navigate(-1)}
+                onClick={() => navigate(isUpcomingMode ? '/my-concerts?tab=future' : '/my-concerts?tab=past')}
                 className="text-[#a0a0a0] hover:text-white hover:bg-[#2d2d2d] gap-2 pl-0"
             >
                 <ArrowLeft className="w-4 h-4" />
@@ -470,7 +470,6 @@ export default function Generate() {
                 )}
 
                 {/* Bouton EXPORT FINAL */}
-                {/* On l'affiche soit si c'est Upcoming, soit si la preview est active en mode Past */}
                 {(isUpcomingMode || showPreview) && (
                     <div className="relative">
                         <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
