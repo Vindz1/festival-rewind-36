@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import { Music, Calendar, Plus, Trash2, ArrowLeft, Search, Loader2, ArrowRight } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -178,9 +178,7 @@ const ImGoing = () => {
           </Button>
 
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="text-center mb-12"
           >
             <h1 className="font-display text-5xl md:text-7xl text-white mb-4">
@@ -189,7 +187,7 @@ const ImGoing = () => {
             <p className="text-lg text-[#a0a0a0]">
               Ajoutez les artistes que vous allez voir
             </p>
-          </motion.div>
+          </div>
 
           {/* Add button */}
           {!showAddForm && (
@@ -207,9 +205,7 @@ const ImGoing = () => {
 
           {/* Add form */}
           {showAddForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+            <div
               className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-6 mb-8"
             >
               <h3 className="font-display text-xl mb-4">Nouvel artiste</h3>
@@ -321,7 +317,7 @@ const ImGoing = () => {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
           )}
 
           {/* Concerts list */}
@@ -334,10 +330,8 @@ const ImGoing = () => {
             <>
               <div className="space-y-3">
                 {upcomingConcerts.map((concert) => (
-                  <motion.div
+                  <div
                     key={concert.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
                     onClick={() => toggleSelection(concert.id)}
                     className={`bg-[#2d2d2d] border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${
                       selectedIds.has(concert.id) ? 'border-[#4d94ff] bg-[#4d94ff]/5' : 'border-[#404040] hover:border-[#4d94ff]/50'
@@ -372,7 +366,7 @@ const ImGoing = () => {
                     >
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </Button>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
