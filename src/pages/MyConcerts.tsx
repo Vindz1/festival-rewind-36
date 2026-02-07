@@ -31,27 +31,23 @@ const MyConcerts = () => {
     else if (typeof c.artist === 'string') name = c.artist;
     else if (c.artist?.name) name = c.artist.name;
 
-    // PATCH "Jun" : Si l'artiste est détecté comme "Jun" (erreur fréquente de parsing de date juin)
-    // On essaie de voir si le backend a mis le vrai nom ailleurs, sinon on le signale
-    if (name === 'Jun') {
-        console.warn('⚠️ Artiste détecté comme "Jun". Vérifiez le parsing API.', c);
-        // Si le backend renvoie le titre de l'event (ex: "Metallica at Stadium"), on peut l'utiliser
-        if (c.event_name) return c.event_name; 
-        // Sinon, c'est probablement Metallica selon votre description, mais impossible de le deviner sans données
+    // PATCH "Jun" et Mois : Si l'artiste est un mois, on l'ignore ou on affiche une alerte
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (MONTHS.includes(name) || name.length < 2) {
+         // Si le backend a mal parsé, on essaie de voir si on a le titre de l'event
+         if (c.event_name) return c.event_name;
+         return 'Nom introuvable';
     }
     return name;
   };
 
   const getVenueName = (c: any) => {
-    // Setlist.fm object (structure fréquente: venue: { name: "X", city: { name: "Y" } })
+    // Setlist.fm object
     if (c.venue?.name) return c.venue.name;
-    
     // Supabase column
     if (c.venue_name) return c.venue_name;
-    
     // Setlist.fm string simple
     if (typeof c.venue === 'string') return c.venue;
-    
     // Fallback: Ville
     if (c.city?.name) return `${c.city.name} (Lieu TBD)`;
     
@@ -63,25 +59,25 @@ const MyConcerts = () => {
     const raw = c.event_date || c.eventDate || c.date;
     
     if (!raw) return 'Date à confirmer';
-    if (raw === 'À venir') return raw; // Si l'API renvoie littéralement ce texte
+    if (raw === 'À venir') return raw; 
 
-    // 1. Gestion du format Setlist.fm "DD-MM-YYYY" (ex: 24-01-2026)
-    // Javascript ne lit pas bien ce format par défaut, il faut le convertir en YYYY-MM-DD
+    // Gestion du format Setlist.fm "DD-MM-YYYY"
     const ddmmyyyy = /^(\d{2})[-/](\d{2})[-/](\d{4})$/;
     const match = raw.match(ddmmyyyy);
     
     if (match) {
-        // match[1] = Jour, match[2] = Mois, match[3] = Année
-        const isoDate = `${match[3]}-${match[2]}-${match[1]}`; // Devient 2026-01-24
-        const dateObj = new Date(isoDate);
-        return dateObj.toLocaleDateString('fr-FR', {
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric'
-        });
+        const isoDate = `${match[3]}-${match[2]}-${match[1]}`;
+        try {
+          const dateObj = new Date(isoDate);
+          return dateObj.toLocaleDateString('fr-FR', {
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric'
+          });
+        } catch(e) { return raw; }
     }
 
-    // 2. Format standard ISO
+    // Format standard ISO
     try {
       const dateObj = new Date(raw);
       if (!isNaN(dateObj.getTime())) {
@@ -91,9 +87,7 @@ const MyConcerts = () => {
           year: 'numeric'
         });
       }
-    } catch (e) {
-      // Échec silencieux
-    }
+    } catch (e) { }
 
     return raw;
   };
@@ -105,27 +99,29 @@ const MyConcerts = () => {
       const username = localStorage.getItem('setlistfm_username');
       
       if (!username) {
-        toast.error('Veuillez d\'abord connecter votre compte setlist.fm');
-        navigate('/');
+        // toast.error('Veuillez d\'abord connecter votre compte setlist.fm');
+        // navigate('/');
+        // On ne force pas la redirection ici pour éviter les boucles si l'user veut juste voir ses ajouts manuels
+        setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
         // 1. Fetch concerts passés (setlist.fm)
-        const response = await fetch(`/api/search?action=user&username=${username}`);
-        if (!response.ok) throw new Error('Erreur de chargement');
-        
-        const data = await response.json();
-        setConcerts(data.results || []);
+        try {
+          const response = await fetch(`/api/search?action=user&username=${username}`);
+          if (response.ok) {
+            const data = await response.json();
+            setConcerts(data.results || []);
+          }
+        } catch (e) { console.error("Err past concerts", e); }
 
         // 2. Fetch concerts à venir
         try {
           const upcomingResponse = await fetch(`/api/upcoming-shows?username=${username}`);
           const upcomingData = await upcomingResponse.json();
           
-          console.log("🔍 DEBUG - Données 'À venir' reçues :", upcomingData); // Regardez la console (F12) pour voir la structure de "Jun" !
-
           let upcomingList: any[] = [];
           if (upcomingData.results && upcomingData.results.length > 0) {
             upcomingList = upcomingData.results;
@@ -140,13 +136,17 @@ const MyConcerts = () => {
               .order('event_date', { ascending: true });
 
             if (!error && supabaseUpcoming) {
-              // On combine les listes. 
-              // Note: Idéalement il faudrait dédoublonner ici, mais on concatène pour l'instant.
               upcomingList = [...upcomingList, ...supabaseUpcoming];
             }
           }
           
-          setUpcomingConcerts(upcomingList);
+          // Filtrage côté client pour retirer les doublons ou erreurs manifestes ("Jun")
+          const cleanList = upcomingList.filter(c => {
+             const name = getArtistName(c);
+             return name !== 'Nom introuvable' && name !== 'Jun';
+          });
+
+          setUpcomingConcerts(cleanList);
 
         } catch (upcomingError) {
           console.error('Error fetching upcoming shows:', upcomingError);
@@ -278,7 +278,7 @@ const MyConcerts = () => {
                           />
                         </th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Artiste</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Lieu</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase hidden md:table-cell">Lieu</th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Date</th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase w-20">Morceaux</th>
                       </tr>
@@ -290,7 +290,7 @@ const MyConcerts = () => {
                             <input type="checkbox" checked={selectedConcerts.has(concert.id)} readOnly className="rounded border-[#404040]" />
                           </td>
                           <td className="px-4 py-3 font-medium text-white">{getArtistName(concert)}</td>
-                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">{getVenueName(concert)}</td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0] hidden md:table-cell">{getVenueName(concert)}</td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">{getEventDate(concert)}</td>
                           <td className="px-4 py-3 text-sm text-[#a0a0a0]">{concert.sets?.set?.[0]?.song?.length || 0}</td>
                         </tr>
@@ -345,4 +345,52 @@ const MyConcerts = () => {
                         </th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Artiste</th>
                         <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase hidden md:table-cell">Lieu</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a
+                        <th className="text-left px-4 py-3 text-xs font-medium text-[#a0a0a0] uppercase">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#404040]">
+                      {upcomingConcerts.map((concert) => (
+                        <tr key={concert.id} onClick={() => toggleUpcoming(concert)} className="hover:bg-[#3d3d3d] cursor-pointer transition-colors">
+                          <td className="px-4 py-3">
+                            <input type="checkbox" checked={selectedUpcoming.has(concert.id)} readOnly className="rounded border-[#404040]" />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-white">
+                            {getArtistName(concert)}
+                            <div className="md:hidden text-xs text-[#a0a0a0] mt-1">{getVenueName(concert)}</div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0] hidden md:table-cell">
+                            {getVenueName(concert)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-[#a0a0a0]">
+                            {getEventDate(concert)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer Future */}
+                {selectedUpcoming.size > 0 && (
+                  <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 z-50 animate-in slide-in-from-bottom-2">
+                    <div className="max-w-[1200px] mx-auto flex items-center justify-between">
+                      <div className="text-white">
+                        <span className="font-semibold">{selectedUpcoming.size}</span>
+                        <span className="text-[#a0a0a0] ml-1">concerts sélectionnés</span>
+                      </div>
+                      <Button onClick={handleGenerate} className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white">
+                        Générer la playlist <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default MyConcerts;
