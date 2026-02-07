@@ -52,7 +52,7 @@ export default function Generate() {
   const [showPreview, setShowPreview] = useState(false);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
-  const [isExporting, setIsExporting] = useState(false); // NOUVEAU FLAG
+  const [isExporting, setIsExporting] = useState(false);
   const [playlistName, setPlaylistName] = useState(
     isUpcomingMode 
       ? `Upcoming - ${new Date().getFullYear()}`
@@ -75,21 +75,17 @@ export default function Generate() {
 
   // Étape 1 : Récupérer les chansons depuis setlist.fm OU top tracks Spotify
   useEffect(() => {
-    // Ne pas charger si on est en train d'exporter
     if (isExporting) {
       console.log('⏸️ Export en cours, skip du chargement');
       return;
     }
     
     if (isUpcomingMode) {
-      // Mode upcoming: charger les top tracks
       fetchTopTracks();
     } else {
-      // Mode normal: charger les setlists depuis localStorage
       const fetchSongs = async () => {
         setLoading(true);
         
-        // Charger directement depuis localStorage
         const savedConcerts = localStorage.getItem('selected_concerts');
         if (!savedConcerts) {
           toast.error('Aucun concert sélectionné');
@@ -129,9 +125,8 @@ export default function Generate() {
       
       fetchSongs();
     }
-  }, [isUpcomingMode, isExporting]); // Ajouter isExporting
+  }, [isUpcomingMode, isExporting]);
 
-  // Fonction pour charger les top tracks (mode upcoming)
   const fetchTopTracks = async () => {
     setLoading(true);
     try {
@@ -160,7 +155,6 @@ export default function Generate() {
 
       setArtistsWithTracks(data.artists || []);
       
-      // Sélectionner tous les artistes par défaut
       const allArtistIds = (data.artists || []).map((a: ArtistWithTracks) => a.artistId);
       setSelectedArtists(new Set(allArtistIds));
       
@@ -172,7 +166,6 @@ export default function Generate() {
     }
   };
 
-  // Étape 2 : Prévisualiser
   const fetchDetailedInfo = async () => {
     if (tracksWithInfo.length > 0) {
       setShowPreview(true);
@@ -201,11 +194,8 @@ export default function Generate() {
     }
   };
 
-  // Wrapper qui force l'exécution
   const forceExport = () => {
     console.log('🔥 FORCE EXPORT APPELÉ');
-    
-    // BLOQUER LES USEEFFECT
     setIsExporting(true);
     console.log('🔒 isExporting = true (bloque useEffect)');
     
@@ -218,7 +208,6 @@ export default function Generate() {
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     
-    // Sauvegarder les songs
     if (isUpcomingMode) {
       const selectedTracks = artistsWithTracks
         .filter(artist => selectedArtists.has(artist.artistId))
@@ -233,74 +222,17 @@ export default function Generate() {
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
     
-    // Construction de l'URL
-    const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
+    const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public%20playlist-modify-private`;
     console.log('🚀 REDIRECTION VERS:', url);
     
-    // TRIPLE MÉTHODE pour forcer la navigation
-    // Méthode 1: Créer un lien et le cliquer
     const link = document.createElement('a');
     link.href = url;
     link.target = '_self';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    // Méthode 2: window.location (backup)
-    setTimeout(() => {
-      console.log('⚡ Backup: window.location.assign');
-      window.location.assign(url);
-    }, 50);
-    
-    // Méthode 3: window.open (dernier recours)
-    setTimeout(() => {
-      console.log('⚡ Last resort: window.open');
-      window.open(url, '_self');
-    }, 100);
   };
 
-  // Étape 3 : Exporter vers Spotify
-  const handleSpotifyExport = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    
-    console.log('🚀 handleSpotifyExport appelé');
-    
-    // Vérification simple : utilisateur connecté
-    if (!user) {
-      toast.error('Veuillez vous connecter');
-      return;
-    }
-    
-    console.log('✅ User connecté, export en cours...');
-    
-    const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
-    const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
-    
-    if (isUpcomingMode) {
-      // Mode upcoming: envoyer les URIs des tracks sélectionnées
-      const selectedTracks = artistsWithTracks
-        .filter(artist => selectedArtists.has(artist.artistId))
-        .flatMap(artist => artist.tracks)
-        .map(track => ({ title: track.name, artist: '', uri: track.uri }));
-      
-      console.log('📦 Tracks upcoming à envoyer:', selectedTracks.length);
-      localStorage.setItem('pending_songs', JSON.stringify(selectedTracks));
-    } else {
-      // Mode normal: envoyer les songs depuis setlists
-      console.log('📦 Songs setlist à envoyer:', songs.length);
-      localStorage.setItem('pending_songs', JSON.stringify(songs));
-    }
-    
-    localStorage.setItem('playlist_name', playlistName || `Setlist Live - ${new Date().getFullYear()}`);
-    
-    const spotifyAuthUrl = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public`;
-    console.log('🔗 Redirection vers:', spotifyAuthUrl);
-    
-    window.location.href = spotifyAuthUrl;
-  };
-
-  // Toggle artist selection (upcoming mode)
   const toggleArtist = (artistId: string) => {
     const newSelection = new Set(selectedArtists);
     if (newSelection.has(artistId)) {
@@ -311,17 +243,17 @@ export default function Generate() {
     setSelectedArtists(newSelection);
   };
 
-  // Calculate total tracks (upcoming mode)
   const totalSelectedTracks = artistsWithTracks
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
+  // --- RENDU : LOADER ---
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] text-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-[#4d94ff]" />
-          <p className="text-xl">
+          <p className="text-xl text-[#a0a0a0]">
             {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
           </p>
         </div>
@@ -329,17 +261,17 @@ export default function Generate() {
     );
   }
 
-  // Mode upcoming: afficher l'interface différente
+  // --- RENDU : MODE UPCOMING ---
   if (isUpcomingMode) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
+      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4 pb-12">
         <Header />
         
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-5xl font-bold mb-4 italic">
-              <span className="text-gradient-fire">{totalSelectedTracks}</span> TITRES
+              <span className="text-[#4d94ff]">{totalSelectedTracks}</span> TITRES
             </h1>
             <p className="text-[#a0a0a0]">
               Top tracks de {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''}
@@ -348,22 +280,13 @@ export default function Generate() {
 
           {/* Auth warnings */}
           {!user && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-primary/30">
-              <Lock className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-[#404040]">
+              <Lock className="h-4 w-4 text-[#a0a0a0]" />
+              <AlertDescription className="text-gray-300">
                 <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
                 <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
                   Se connecter
                 </Link>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {user && subscription?.subscription_type === 'admin' && (
-            <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
-              <Crown className="h-4 w-4 text-purple-400" />
-              <AlertDescription>
-                <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
               </AlertDescription>
             </Alert>
           )}
@@ -377,7 +300,7 @@ export default function Generate() {
               type="text"
               value={playlistName}
               onChange={(e) => setPlaylistName(e.target.value)}
-              className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600"
               placeholder="Upcoming Concerts 2026"
             />
           </div>
@@ -391,37 +314,37 @@ export default function Generate() {
                   key={artist.artistId}
                   onClick={() => toggleArtist(artist.artistId)}
                   className={`bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-primary bg-primary/5' : 'border-[#404040] hover:border-zinc-700'
+                    isSelected ? 'border-[#4d94ff] bg-[#4d94ff]/10' : 'border-[#404040] hover:border-zinc-500'
                   }`}
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-gradient-fire' : 'bg-[#3d3d3d]'
+                      isSelected ? 'bg-[#4d94ff]' : 'bg-[#3d3d3d]'
                     }`}>
                       {artist.artistImage ? (
                         <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
                       ) : (
-                        <Music className="w-6 h-6 text-zinc-400" />
+                        <Music className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
                       )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold">{artist.artistName}</h3>
+                      <h3 className="text-xl font-bold text-white">{artist.artistName}</h3>
                       <p className="text-sm text-[#a0a0a0]">{artist.tracks.length} morceaux</p>
                     </div>
                     {isSelected && <CheckCircle2 className="w-6 h-6 text-[#4d94ff]" />}
                   </div>
 
-                  {/* Track list preview (if selected) */}
+                  {/* Track list preview */}
                   {isSelected && (
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-4 space-y-2 border-t border-[#404040]/50 pt-3">
                       {artist.tracks.slice(0, 5).map((track, idx) => (
                         <div key={track.id} className="flex items-center gap-2 text-sm text-[#a0a0a0] pl-2">
-                          <span className="text-gray-600">#{idx + 1}</span>
+                          <span className="text-gray-600 font-mono w-4">#{idx + 1}</span>
                           <span className="flex-1 truncate">{track.name}</span>
                         </div>
                       ))}
                       {artist.tracks.length > 5 && (
-                        <p className="text-xs text-gray-500 pl-2">
+                        <p className="text-xs text-[#4d94ff] pl-2 pt-1">
                           +{artist.tracks.length - 5} autres morceaux
                         </p>
                       )}
@@ -433,17 +356,17 @@ export default function Generate() {
           </div>
 
           {/* Export button */}
-          <div className="max-w-xl mx-auto">
+          <div className="max-w-xl mx-auto sticky bottom-6 z-10">
+            <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full"></div>
             <Button 
               onClick={forceExport}
               disabled={selectedArtists.size === 0}
-              variant="fire"
-              className="w-full h-16 text-xl font-bold"
+              className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02]"
             >
-              {!user && <Lock className="mr-3" />}
-              <Music className="mr-3" />
+              {!user && <Lock className="mr-3 w-5 h-5" />}
+              <Music className="mr-3 w-5 h-5" />
               {!user ? 'Se connecter pour exporter' : `Créer la playlist (${totalSelectedTracks} titres)`}
-              {user && <ArrowRight className="ml-3" />}
+              {user && <ArrowRight className="ml-3 w-5 h-5" />}
             </Button>
           </div>
         </div>
@@ -451,15 +374,16 @@ export default function Generate() {
     );
   }
 
+  // --- RENDU : MODE SETLIST (NORMAL) ---
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4 pb-12">
       <Header />
       
       <div className="max-w-4xl mx-auto">
         {/* Header avec stats */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold mb-4 italic">
-            <span className="text-gradient-fire">{songs.length}</span> TITRES
+            <span className="text-[#4d94ff]">{songs.length}</span> TITRES
           </h1>
           <p className="text-[#a0a0a0]">
             Depuis {(() => {
@@ -472,50 +396,13 @@ export default function Generate() {
 
         {/* Auth warnings */}
         {!user && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-primary/30">
-            <Lock className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-[#404040]">
+            <Lock className="h-4 w-4 text-[#a0a0a0]" />
+            <AlertDescription className="text-gray-300">
               <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
               <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
                 Se connecter
               </Link>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'admin' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-500/50">
-            <Crown className="h-4 w-4 text-purple-400" />
-            <AlertDescription>
-              <strong className="text-purple-400">✨ Admin</strong> : Exports illimités !
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'free' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-[#2d2d2d] border-yellow-500/30">
-            <Crown className="h-4 w-4 text-yellow-500" />
-            <AlertDescription>
-              <strong>Offre gratuite</strong> : {subscription.exports_this_year}/2 playlists utilisées cette année.
-              {!subscription.can_export && (
-                <span className="block mt-1 text-yellow-500">
-                  Limite atteinte. Passez à Premium pour des exports illimités !
-                </span>
-              )}
-              {subscription.can_export && subscription.remaining_exports !== undefined && (
-                <span className="block mt-1 text-[#a0a0a0]">
-                  Il vous reste {subscription.remaining_exports} export{subscription.remaining_exports > 1 ? 's' : ''}.
-                </span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {user && subscription?.subscription_type === 'premium' && (
-          <Alert className="max-w-xl mx-auto mb-6 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-500/50">
-            <Crown className="h-4 w-4 text-yellow-500" />
-            <AlertDescription>
-              <strong className="text-yellow-500">Premium</strong> : Exports illimités ! 🎉
             </AlertDescription>
           </Alert>
         )}
@@ -529,7 +416,7 @@ export default function Generate() {
             type="text"
             value={playlistName}
             onChange={(e) => setPlaylistName(e.target.value)}
-            className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-4 py-3 bg-[#2d2d2d] border border-[#404040] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600"
             placeholder="Ma Time Capsule Live"
           />
         </div>
@@ -537,29 +424,13 @@ export default function Generate() {
         {/* Boutons d'action */}
         {!showPreview ? (
           <div className="max-w-xl mx-auto space-y-4">
-            {/* Input nom de playlist */}
-            <div className="bg-[#2d2d2d] rounded-xl p-4 border border-[#404040]">
-              <label htmlFor="playlistName" className="block text-sm font-medium text-gray-300 mb-2">
-                Nom de la playlist
-              </label>
-              <input
-                id="playlistName"
-                type="text"
-                value={playlistName}
-                onChange={(e) => setPlaylistName(e.target.value)}
-                placeholder="Ma Time Capsule Live"
-                className="w-full bg-[#3d3d3d] border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Ce nom apparaîtra sur votre Spotify
-              </p>
-            </div>
-
+            {/* Input nom de playlist (Redondant mais gardé si vous le souhaitez, sinon on peut l'enlever) */}
+            
             <Button 
               onClick={fetchDetailedInfo} 
               disabled={searching}
               variant="outline"
-              className="w-full h-16 text-xl font-bold"
+              className="w-full h-16 text-xl font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white transition-all bg-transparent"
             >
               {searching ? (
                 <>
@@ -568,38 +439,28 @@ export default function Generate() {
                 </>
               ) : (
                 <>
-                  <Play className="mr-3" />
+                  <Play className="mr-3 fill-current" />
                   Prévisualiser les morceaux
                 </>
               )}
             </Button>
 
             {searching && (
-              <Progress value={exportProgress} className="w-full" />
+              <Progress value={exportProgress} className="w-full h-2 bg-[#2d2d2d] [&>div]:bg-[#4d94ff]" />
             )}
 
-            <button
+            <Button
               onClick={forceExport}
-              type="button"
-              style={{
-                width: '100%',
-                height: '64px',
-                fontSize: '20px',
-                fontWeight: 'bold',
-                backgroundColor: '#ff6b35',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+              className="w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white rounded-lg shadow-lg hover:scale-[1.02] transition-transform"
             >
-              🎵 Exporter vers Spotify (TEST)
-            </button>
+              {!user && <Lock className="mr-2 w-5 h-5" />}
+              🎵 Exporter vers Spotify
+            </Button>
 
             {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-              <div className="text-center">
-                <Button variant="outline" className="gap-2">
-                  <Crown className="w-4 h-4 text-yellow-500" />
+              <div className="text-center mt-4">
+                <Button variant="ghost" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
+                  <Crown className="w-4 h-4" />
                   Passer à Premium
                 </Button>
               </div>
@@ -609,18 +470,18 @@ export default function Generate() {
           <>
             {/* Liste de prévisualisation */}
             <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
                 <Music className="text-[#4d94ff]" />
                 Prévisualisation ({tracksWithInfo.length} morceaux)
               </h2>
               
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {tracksWithInfo.map((track, index) => (
                   <div 
                     key={index}
-                    className="flex items-center gap-4 p-3 bg-[#3d3d3d]/50 rounded-lg hover:bg-[#3d3d3d] transition-colors"
+                    className="flex items-center gap-4 p-3 bg-[#3d3d3d]/50 rounded-lg hover:bg-[#3d3d3d] transition-colors border border-transparent hover:border-[#404040]"
                   >
-                    <div className="w-12 h-12 bg-zinc-700 rounded flex-shrink-0 flex items-center justify-center">
+                    <div className="w-12 h-12 bg-[#252525] rounded flex-shrink-0 flex items-center justify-center border border-[#404040]">
                       {track.albumArt ? (
                         <img 
                           src={track.albumArt} 
@@ -628,18 +489,18 @@ export default function Generate() {
                           className="w-full h-full object-cover rounded"
                         />
                       ) : (
-                        <Music className="w-6 h-6 text-zinc-500" />
+                        <Music className="w-6 h-6 text-zinc-600" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white truncate">{track.title}</p>
                       <p className="text-sm text-[#a0a0a0] truncate">
                         {track.artist}
-                        {track.album && <> • {track.album}</>}
-                        {track.year && <> ({track.year})</>}
+                        {track.album && <span className="hidden sm:inline"> • {track.album}</span>}
+                        {track.year && <span className="hidden sm:inline"> ({track.year})</span>}
                       </p>
                     </div>
-                    <div className="text-sm text-gray-500 font-mono">
+                    <div className="text-sm text-gray-600 font-mono w-8 text-right">
                       #{index + 1}
                     </div>
                   </div>
@@ -647,27 +508,18 @@ export default function Generate() {
               </div>
             </div>
 
-            {/* Bouton export */}
-            <div className="max-w-xl mx-auto space-y-4">
+            {/* Bouton export final */}
+            <div className="max-w-xl mx-auto space-y-4 sticky bottom-6 z-10">
+              <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full"></div>
               <Button 
                 onClick={forceExport}
-                variant="fire"
-                className="w-full h-16 text-xl font-bold"
+                className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02]"
               >
-                {!user && <Lock className="mr-3" />}
-                <Music className="mr-3" />
+                {!user && <Lock className="mr-3 w-5 h-5" />}
+                <Music className="mr-3 w-5 h-5" />
                 {!user ? 'Se connecter pour exporter' : 'Créer la playlist sur Spotify'}
-                {user && <ArrowRight className="ml-3" />}
+                {user && <ArrowRight className="ml-3 w-5 h-5" />}
               </Button>
-
-              {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-                <div className="text-center">
-                  <Button variant="outline" className="gap-2">
-                    <Crown className="w-4 h-4 text-yellow-500" />
-                    Passer à Premium pour plus d'exports
-                  </Button>
-                </div>
-              )}
             </div>
           </>
         )}
