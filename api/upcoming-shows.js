@@ -8,127 +8,103 @@ export default async function handler(req, res) {
   }
 
   try {
-    // On charge la page principale du profil
+    console.log(`🤖 Scraping "dumb mode" for: ${username}`);
+    
+    // On charge la page de profil
     const response = await fetch(`https://www.setlist.fm/user/${username}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
-    if (!response.ok) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    if (!response.ok) return res.status(404).json({ error: 'User not found' });
 
     const html = await response.text();
     const $ = cheerio.load(html);
     
     const upcomingConcerts = [];
-    const processedIds = new Set(); // Pour éviter les doublons
 
-    console.log(`🔍 Scanning page for user: ${username}`);
-
-    // LISTE DES MOIS pour la détection
-    const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // --- LOGIQUE SIMPLIFIÉE ---
+    // 1. On cherche le titre "Upcoming Shows" (h2 ou h3)
+    // 2. On prend son conteneur parent
+    // 3. On prend toutes les lignes (.row) dedans. Point barre.
     
-    // MÉTHODE BULLDOZER : On scanne tous les conteneurs susceptibles de contenir un event
-    // div.row, div.col-*, li, tr
-    $('div, li, tr').each((i, el) => {
-        const $el = $(el);
-        const text = $el.text().trim();
-        
-        // 1. FILTRE RAPIDE : Est-ce qu'il y a une année future dans ce bloc ?
-        if (!text.includes('2025') && !text.includes('2026')) {
-            return; // On passe au suivant
+    let upcomingContainer = null;
+
+    // On cherche le header qui contient le mot "Upcoming"
+    $('h2, h3').each((i, el) => {
+        if ($(el).text().includes('Upcoming')) {
+            upcomingContainer = $(el).parent(); // Le parent contient généralement la liste
         }
+    });
 
-        // 2. FILTRE ARTISTE : Y a-t-il un lien vers un artiste dans ce bloc ?
-        // Les liens artistes ressemblent à /setlists/nom-du-groupe-... ou /artist/nom...
-        const artistLink = $el.find('a[href*="/setlists/"], a[href*="/artist/"]').first();
+    if (upcomingContainer) {
+        console.log("✅ Bloc 'Upcoming' trouvé !");
         
-        if (artistLink.length === 0) return;
+        // On cherche chaque ligne de concert dans ce bloc spécifique
+        upcomingContainer.find('.row').each((i, row) => {
+            const $row = $(row);
+            
+            // Extraction DATE (Texte brut)
+            const month = $row.find('.month').text().trim();
+            const day = $row.find('.day').text().trim();
+            let year = $row.find('.year').text().trim();
 
-        const artistName = artistLink.text().trim();
-        const href = artistLink.attr('href');
-
-        // On ignore si le nom de l'artiste est vide ou si c'est un lien générique
-        if (!artistName || artistName.length < 2 || artistName === 'Play' || artistName === 'Edit') return;
-
-        // 3. EXTRACTION DE LA DATE
-        // On cherche un format de date dans le texte du bloc (ex: "Jun 24 2026" ou "24 Jun 2026")
-        let foundDate = null;
-        let foundMonth = null;
-
-        // On cherche quel mois est présent dans le texte
-        for (const m of MONTHS_EN) {
-            if (text.includes(m)) {
-                foundMonth = m;
-                break;
+            if (!year) {
+                // Si l'année est masquée par Setlist.fm (année en cours), on force 2026 (ou l'année courante)
+                // Pour être sûr, on met l'année actuelle par défaut
+                year = new Date().getFullYear().toString();
             }
-        }
 
-        if (!foundMonth) return; // Pas de mois trouvé = pas une date de concert
+            // Extraction ARTISTE & LIEU (Premier lien = Artiste, Deuxième lien ou texte = Lieu)
+            let artistName = "";
+            let venueName = "";
 
-        // On essaie de trouver le jour (un ou deux chiffres proches du mois)
-        // Regex simple : MotMois + espaces + Chiffres OU Chiffres + espaces + MotMois
-        const dateRegex = new RegExp(`(${foundMonth})\\s+(\\d{1,2})|(\\d{1,2})\\s+(${foundMonth})`, 'i');
-        const match = text.match(dateRegex);
+            // On récupère tous les liens
+            const links = $row.find('a');
+            
+            links.each((j, link) => {
+                const href = $(link).attr('href') || "";
+                const text = $(link).text().trim();
 
-        if (match) {
-            // On reconstruit une date lisible
-            const day = match[2] || match[3];
-            const year = text.includes('2026') ? '2026' : '2025'; // On priorise l'année future trouvée
-            foundDate = `${day} ${foundMonth} ${year}`;
-        } else {
-            // Fallback : on met au moins le mois et l'année
-            const year = text.includes('2026') ? '2026' : '2025';
-            foundDate = `${foundMonth} ${year}`; 
-        }
+                // Si le lien contient 'artist' ou 'setlists', c'est l'artiste
+                if ((href.includes('artist') || href.includes('setlists')) && !artistName) {
+                    artistName = text;
+                }
+                // Si le lien contient 'venue', c'est le lieu
+                else if (href.includes('venue') && !venueName) {
+                    venueName = text;
+                }
+            });
 
-        // 4. EXTRACTION DU LIEU
-        // On cherche un lien avec /venue/
-        let venueName = 'Lieu inconnu';
-        const venueLink = $el.find('a[href*="/venue/"]').first();
-        if (venueLink.length > 0) {
-            venueName = venueLink.text().trim();
-        } else {
-            // Parfois le lieu n'est pas un lien, on essaie de trouver du texte après l'artiste
-            // C'est risqué, on laisse "Lieu inconnu" ou on cherche la ville
-            const cityLink = $el.find('a[href*="/city/"]').first();
-            if (cityLink.length > 0) {
-                venueName = `${cityLink.text().trim()} (Ville)`;
+            // Si on n'a pas trouvé le lieu via un lien, on cherche le texte après "at"
+            if (!venueName) {
+                const fullText = $row.text();
+                if (fullText.includes(' at ')) {
+                    venueName = fullText.split(' at ')[1]?.trim();
+                }
             }
-        }
 
-        // 5. VALIDATION ET AJOUT
-        // On crée un ID unique pour éviter d'ajouter le même concert 3 fois (car on scanne des divs imbriquées)
-        const uniqueId = `${artistName}-${foundDate}`;
-        
-        if (!processedIds.has(uniqueId)) {
-            // Vérification finale : on ignore les mois parsés comme artistes (le bug "Jun")
-            if (!MONTHS_EN.includes(artistName)) {
-                console.log(`🎸 Concert trouvé : ${artistName} le ${foundDate} à ${venueName}`);
+            // --- SAUVEGARDE SANS VÉRIFICATION ---
+            // Si on a au moins un artiste et un jour, on ajoute.
+            if (artistName && day) {
+                const fullDate = `${day} ${month} ${year}`;
+                
+                console.log(`➕ Ajout: ${artistName} le ${fullDate}`);
                 
                 upcomingConcerts.push({
-                    id: `scan-${upcomingConcerts.length}`,
+                    id: `scraped-${i}`,
                     artist: { name: artistName },
-                    eventDate: foundDate,
-                    venue: { name: venueName }
+                    eventDate: fullDate,
+                    venue: { name: venueName || "Lieu inconnu" }
                 });
-                
-                processedIds.add(uniqueId);
             }
-        }
-    });
-
-    // Tri chronologique simple
-    upcomingConcerts.sort((a, b) => {
-        // Astuce pour trier grossièrement par année
-        if (a.eventDate.includes('2025') && b.eventDate.includes('2026')) return -1;
-        if (a.eventDate.includes('2026') && b.eventDate.includes('2025')) return 1;
-        return 0;
-    });
-
-    console.log(`✅ ${upcomingConcerts.length} concerts envoyés au front.`);
+        });
+    } else {
+        console.log("⚠️ Bloc 'Upcoming' introuvable via le titre.");
+        // PLAN B : Si le titre a changé, on cherche juste les icônes de calendrier (souvent signe d'un concert)
+        // Mais pour l'instant, restons sur le Plan A qui est le plus sûr.
+    }
 
     return res.status(200).json({ 
       results: upcomingConcerts,
@@ -136,7 +112,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('❌ Scraping error:', error);
-    return res.status(500).json({ error: 'Failed to fetch shows', results: [] });
+    console.error('❌ Erreur:', error);
+    return res.status(500).json({ error: 'Erreur serveur', results: [] });
   }
 }
