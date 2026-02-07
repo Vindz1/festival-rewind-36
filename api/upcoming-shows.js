@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Récupération de la page "Attended" (ou profil)
+    // On cible la page de profil principale qui contient généralement la Sidebar "Upcoming"
     const response = await fetch(`https://www.setlist.fm/user/${username}`, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -16,107 +16,99 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      // Fallback: essayer l'URL /attended si /user échoue (dépend de la config privacy)
-       console.log("Profile page failed, trying attended page...");
-       // Note: La page /attended liste rarement les "Upcoming". 
-       // Les "Upcoming" sont généralement en sidebar sur la page de profil principale.
+      console.log("❌ Profile page fetch failed");
+      return res.status(404).json({ error: 'User not found' });
     }
 
     const html = await response.text();
     const $ = cheerio.load(html);
     
     const upcomingConcerts = [];
-    
-    // 2. Stratégie de recherche : On cherche le titre "Upcoming Shows" ou "Upcoming Events"
-    // Sur setlist.fm, c'est souvent dans une div col-xs-12 sidebar ou main content.
-    // On cherche tous les H2 ou H3 qui contiennent "Upcoming"
-    let upcomingContainer = null;
-    $('h2, h3').each((i, el) => {
-        if ($(el).text().includes('Upcoming')) {
-            // Le conteneur est souvent le parent ou le sibling
-            upcomingContainer = $(el).parent(); 
-        }
-    });
+    const today = new Date();
+    // On retire les heures pour comparer uniquement les jours
+    today.setHours(0, 0, 0, 0);
 
-    if (!upcomingContainer) {
-        console.log('⚠️ Section "Upcoming" non trouvée sur la page de profil.');
-        // Tentative alternative: Chercher directement les lignes de concerts qui ont une date future ?
-        // Difficile sans contexte. On renvoie vide pour ne pas crasher.
-        return res.status(200).json({ results: [], source: 'scraper' });
-    }
-
-    // 3. Extraction des données dans le conteneur trouvé
-    // Structure typique Setlist.fm (Sidebar ou Main) :
-    // Une ligne par concert. Souvent: 
-    // <div class="row"> ... <span class="month">Jun</span> ... <a href="...">Metallica</a> ... </div>
+    // Setlist.fm utilise souvent des div class="row" pour lister les events.
+    // Chaque event a généralement une date stylisée avec .month, .day, .year
     
-    upcomingContainer.find('.row').each((i, row) => {
+    $('.row').each((i, row) => {
         const $row = $(row);
         
-        // --- EXTRACTION DATE ---
-        // Chercher le bloc date (souvent class="date" ou composé de month/day/year)
-        let month = $row.find('.month').text().trim();
-        let day = $row.find('.day').text().trim();
-        let year = $row.find('.year').text().trim();
-        
-        // Si pas de classes spécifiques, on cherche un texte de date (ex: "Feb 7 2026")
-        let eventDate = 'Date à confirmer';
-        if (month && day && year) {
-            eventDate = `${day} ${month} ${year}`; // Ex: 24 Jun 2026
-        } else {
-             // Fallback: chercher un span date générique
-             const rawDate = $row.find('.date').text().trim();
-             if (rawDate) eventDate = rawDate;
+        // 1. Extraction de la Date
+        const monthStr = $row.find('.month').text().trim();
+        const dayStr = $row.find('.day').text().trim();
+        let yearStr = $row.find('.year').text().trim();
+
+        // Si on n'a pas au moins le mois et le jour, ce n'est pas une ligne de concert
+        if (!monthStr || !dayStr) return;
+
+        // Si l'année est absente (cas fréquent pour l'année en cours sur setlist.fm), on devine
+        if (!yearStr) {
+            const currentYear = new Date().getFullYear();
+            yearStr = currentYear.toString();
         }
 
-        // --- EXTRACTION ARTISTE ---
-        // L'artiste est souvent dans un <strong><a> ou juste <a> au début du bloc content
-        // On évite les liens qui sont des villes ou des lieux
+        // Conversion en objet Date JS pour vérifier si c'est futur ou passé
+        const dateString = `${dayStr} ${monthStr} ${yearStr}`;
+        const concertDate = new Date(dateString);
+
+        // Si la date est invalide, on saute
+        if (isNaN(concertDate.getTime())) return;
+
+        // FILTRE MAGIQUE : Si le concert est avant aujourd'hui, on l'ignore (c'est du passé)
+        if (concertDate < today) {
+            return;
+        }
+
+        // 2. Extraction Artiste et Lieu
+        // L'artiste est souvent dans un <strong> > <a> ou juste un <a> au début
         let artistName = null;
-        
-        // Chercher le lien le plus proéminent (souvent le premier lien dans le bloc de détails)
+        let venueName = null;
+
         const $links = $row.find('a');
         
         $links.each((j, link) => {
             const href = $(link).attr('href') || '';
-            // Les liens d'artistes contiennent souvent /setlists/ ou /artist/
-            // Les liens de lieux contiennent /venue/
-            if ((href.includes('/setlists/') || href.includes('/artist/')) && !artistName) {
-                artistName = $(link).text().trim();
-            }
-        });
-        
-        // Fallback si pas de lien explicite: chercher le texte en gras qui n'est pas le mois
-        if (!artistName) {
-            const strongText = $row.find('strong').first().text().trim();
-            const IGNORED = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            if (strongText && !IGNORED.includes(strongText)) {
-                artistName = strongText;
-            }
-        }
+            const text = $(link).text().trim();
 
-        // --- EXTRACTION LIEU ---
-        let venueName = 'Lieu inconnu';
-        // Le lieu est souvent un lien contenant '/venue/'
-        $links.each((j, link) => {
-            const href = $(link).attr('href') || '';
-            if (href.includes('/venue/')) {
-                venueName = $(link).text().trim();
+            // Lien Artiste (contient /setlists/ ou /artist/)
+            if (!artistName && (href.includes('/setlists/') || href.includes('/artist/'))) {
+                artistName = text;
+            }
+            // Lien Lieu (contient /venue/)
+            if (!venueName && href.includes('/venue/')) {
+                venueName = text;
             }
         });
 
-        // Validation finale pour éviter les "Jun" ou vides
+        // Nettoyage final pour éviter les bugs "Jun" ou vides
         if (artistName && artistName.length > 1) {
-             upcomingConcerts.push({
-                id: `scraped-${i}-${Date.now()}`,
-                artist: { name: artistName },
-                eventDate: eventDate,
-                venue: { name: venueName }
-            });
+             
+             // Création d'une date lisible pour l'affichage (ex: "24 Jun 2026")
+             const displayDate = `${dayStr} ${monthStr} ${yearStr}`;
+
+             // Vérification doublon (parfois la page mobile/desktop duplique les rows)
+             const alreadyExists = upcomingConcerts.some(c => 
+                 c.artist.name === artistName && c.eventDate === displayDate
+             );
+
+             if (!alreadyExists) {
+                 upcomingConcerts.push({
+                    id: `scraped-${upcomingConcerts.length}-${Date.now()}`,
+                    artist: { name: artistName },
+                    eventDate: displayDate, // Sera formaté par MyConcerts.tsx
+                    venue: { name: venueName || 'Lieu inconnu' }
+                });
+             }
         }
     });
+
+    // Tri par date (le plus proche d'abord)
+    upcomingConcerts.sort((a, b) => {
+        return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+    });
     
-    console.log(`✅ ${upcomingConcerts.length} concerts à venir trouvés.`);
+    console.log(`✅ ${upcomingConcerts.length} concerts FUTURS trouvés via Date-Parsing.`);
 
     return res.status(200).json({ 
       results: upcomingConcerts,
