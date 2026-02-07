@@ -332,7 +332,7 @@ export default function Generate() {
   // Mode upcoming: afficher l'interface différente
   if (isUpcomingMode) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] text-white pt-20 px-4">
+      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
         <Header />
         
         <div className="max-w-4xl mx-auto">
@@ -452,7 +452,7 @@ export default function Generate() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-20 px-4">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 px-4">
       <Header />
       
       <div className="max-w-4xl mx-auto">
