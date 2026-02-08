@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion'; // <--- IL MANQUAIT CETTE LIGNE
 import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Zap } from 'lucide-react';
+// ... reste des imports
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import {
@@ -115,17 +117,18 @@ export const Header = () => {
       </div>
 
       {/* MOBILE MENU */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <div className="md:hidden bg-[#1a1a1a] border-b border-[#333] px-6 py-8 space-y-6 flex flex-col items-center text-center animate-in slide-in-from-top-5">
-            <Link to="/my-concerts" className="text-xl font-black uppercase italic" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
-            <Link to="/hellfest-2026" className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" onClick={() => setIsMenuOpen(false)}>Hellfest 2026</Link>
-            <Link to="/tickets" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Billets</Link>
-            <Link to="/merch" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Boutique</Link>
-            <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>Premium</Link>
-          </div>
-        )}
-      </AnimatePresence>
+<AnimatePresence>
+  {isMenuOpen && (
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="md:hidden bg-[#1a1a1a] border-b border-[#333] px-6 py-8 space-y-6 flex flex-col items-center text-center"
+    >
+      {/* ... vos liens ... */}
+    </motion.div>
+  )}
+</AnimatePresence>
     </header>
   );
 };
