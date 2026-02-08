@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion'; // <--- IL MANQUAIT CETTE LIGNE
+import { motion, AnimatePresence } from 'framer-motion'; 
 import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Zap } from 'lucide-react';
 // ... reste des imports
 import { Button } from '@/components/ui/button';
@@ -67,7 +67,7 @@ export const Header = () => {
 
             <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
               <Crown className="w-4 h-4 fill-yellow-500" />
-              PRO
+              PREMIUM
             </Link>
           </nav>
 
@@ -90,7 +90,7 @@ export const Header = () => {
                     Mon Tableau de bord
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
-                    Passer en PRO
+                    Passer en PREMIUM
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-[#333]" />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white">
