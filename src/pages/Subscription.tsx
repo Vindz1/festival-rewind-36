@@ -1,8 +1,49 @@
-import { Header } from '@/components/Header';
+import { useState } from 'react';
+import { useAuth } from '@/AuthContext';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Zap, Star, ShieldCheck } from 'lucide-react';
 
 export default function Subscription() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!user) {
+      toast.error("Connectez-vous pour vous abonner !");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Appel à notre API Backend
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          email: user.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        // Redirection vers la page de paiement Stripe
+        window.location.href = data.url;
+      } else {
+        throw new Error("Pas d'URL de paiement reçue");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Erreur lors de l'initialisation du paiement");
+      setLoading(false);
+    }
+  };
+  
   const plans = [
     {
       name: "Standard",
@@ -71,13 +112,19 @@ export default function Subscription() {
               </ul>
 
               <Button 
+                onClick={plan.premium ? handleSubscribe : undefined}
+                disabled={loading}
                 className={`w-full h-12 font-bold uppercase tracking-widest transition-all ${
                   plan.premium 
                   ? 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white' 
                   : 'bg-[#333] text-[#a0a0a0] hover:bg-[#444]'
                 }`}
               >
-                {plan.button}
+                {loading && plan.premium ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  plan.button
+                )}
               </Button>
             </div>
           ))}
