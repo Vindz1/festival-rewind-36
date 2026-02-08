@@ -38,36 +38,28 @@ export const Header = () => {
             </span>
           </Link>
 
-          {/* NAVIGATION DESKTOP */}
+          // Dans src/components/Header.tsx, modifie la partie Navigation Desktop :
           <nav className="hidden md:flex items-center gap-5">
             <Link to="/my-concerts" className="text-sm font-bold uppercase tracking-widest text-[#a0a0a0] hover:text-white transition-colors">
               Mes Concerts
             </Link>
             
-            {/* BOUTON HELLFEST 2026 : STYLE LINEUP OFFICIEL (VERT ACIDE) */}
-            <Link 
-              to="/hellfest-2026" 
-              className="group relative flex items-center gap-2 px-4 py-1.5 bg-[#00ff00] text-black text-xs font-black uppercase tracking-tighter transform -skew-x-12 hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
-            >
+            <Link to="/hellfest-2026" className="group relative flex items-center gap-2 px-4 py-1.5 bg-[#00ff00] text-black text-xs font-black uppercase tracking-tighter transform -skew-x-12 hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none">
               <div className="skew-x-12 flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 fill-black" />
                 Hellfest 2026
               </div>
             </Link>
-
-            <Link to="/tickets" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
-              <Ticket className="w-4 h-4" />
-              Billets
-            </Link>
-
-            <Link to="/merch" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
+          
+            {/* ON FUSIONNE BILLETS ET BOUTIQUE EN UN SEUL LIEN "SHOP" */}
+            <Link to="/shop" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
               <ShoppingBag className="w-4 h-4" />
-              Boutique
+              Shop
             </Link>
-
+          
             <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
               <Crown className="w-4 h-4 fill-yellow-500" />
-              PREMIUM
+              PRO
             </Link>
           </nav>
 
