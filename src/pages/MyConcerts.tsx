@@ -7,6 +7,7 @@ import { useAuth } from "@/AuthContext";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Footer } from '@/components/Footer';
 
 const MyConcerts = () => {
   const navigate = useNavigate();
@@ -176,6 +177,7 @@ const MyConcerts = () => {
           </TabsContent>
         </Tabs>
       </div>
+    <Footer />
     </div>
   );
 };
