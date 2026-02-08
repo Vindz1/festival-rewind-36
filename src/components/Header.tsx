@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Flame } from 'lucide-react';
+import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import {
@@ -22,45 +22,50 @@ export const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/80 backdrop-blur-md border-b border-[#404040]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
-          {/* LOGO & NOM */}
+          {/* LOGO : SETLIVE.FR */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-[#4d94ff] p-1.5 rounded-lg transition-transform group-hover:scale-110">
+            <div className="bg-[#4d94ff] p-1.5 rounded-lg transition-all group-hover:shadow-[0_0_15px_rgba(77,148,255,0.4)]">
               <Music className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tighter text-white italic">
-              SETLIVE<span className="text-[#4d94ff]">.</span>
+            <span className="text-xl font-black tracking-tighter text-white uppercase italic">
+              SETLIVE<span className="text-[#4d94ff]">.FR</span>
             </span>
           </Link>
 
           {/* NAVIGATION DESKTOP */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/my-concerts" className="text-sm font-medium text-[#a0a0a0] hover:text-white transition-colors">
+          <nav className="hidden md:flex items-center gap-5">
+            <Link to="/my-concerts" className="text-sm font-bold uppercase tracking-widest text-[#a0a0a0] hover:text-white transition-colors">
               Mes Concerts
             </Link>
             
-            {/* LIEN SPECIAL HELLFEST 2026 */}
-            <Link to="/hellfest-2026" className="text-sm font-medium flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20 hover:bg-orange-500/20 transition-all">
-              <Flame className="w-4 h-4" />
-              Hellfest 2026
+            {/* BOUTON HELLFEST 2026 : STYLE LINEUP OFFICIEL (VERT ACIDE) */}
+            <Link 
+              to="/hellfest-2026" 
+              className="group relative flex items-center gap-2 px-4 py-1.5 bg-[#00ff00] text-black text-xs font-black uppercase tracking-tighter transform -skew-x-12 hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+            >
+              <div className="skew-x-12 flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 fill-black" />
+                Hellfest 2026
+              </div>
             </Link>
 
-            <Link to="/tickets" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1">
+            <Link to="/tickets" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
               <Ticket className="w-4 h-4" />
-              Tickets
+              Billets
             </Link>
 
-            <Link to="/merch" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1">
+            <Link to="/merch" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
               <ShoppingBag className="w-4 h-4" />
-              Merch
+              Boutique
             </Link>
 
-            <Link to="/subscription" className="text-sm font-medium text-yellow-500 hover:text-yellow-400 flex items-center gap-1">
-              <Crown className="w-4 h-4" />
-              Premium
+            <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
+              <Crown className="w-4 h-4 fill-yellow-500" />
+              PRO
             </Link>
           </nav>
 
@@ -69,26 +74,24 @@ export const Header = () => {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-[#2d2d2d] border border-[#404040]">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-[#2d2d2d] border border-[#404040] hover:border-[#4d94ff] transition-colors">
                     <User className="w-5 h-5 text-[#4d94ff]" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-[#2d2d2d] border-[#404040] text-white">
-                  <div className="flex items-center justify-start gap-2 p-2">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.email?.split('@')[0]}</p>
-                      <p className="text-xs leading-none text-[#a0a0a0]">{user.email}</p>
-                    </div>
+                <DropdownMenuContent align="end" className="w-56 bg-[#1a1a1a] border-[#404040] text-white shadow-2xl">
+                  <div className="p-3">
+                    <p className="text-xs text-[#a0a0a0] uppercase font-bold tracking-widest mb-1">Compte</p>
+                    <p className="text-sm truncate font-medium">{user.email}</p>
                   </div>
-                  <DropdownMenuSeparator className="bg-[#404040]" />
-                  <DropdownMenuItem onClick={() => navigate('/my-concerts')} className="cursor-pointer hover:bg-[#3d3d3d]">
-                    Tableau de bord
+                  <DropdownMenuSeparator className="bg-[#333]" />
+                  <DropdownMenuItem onClick={() => navigate('/my-concerts')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                    Mon Tableau de bord
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer hover:bg-[#3d3d3d] text-yellow-500">
-                    Gérer l'abonnement
+                  <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
+                    Passer en PRO
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-[#404040]" />
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-400 hover:bg-red-400/10 focus:text-red-400">
+                  <DropdownMenuSeparator className="bg-[#333]" />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white">
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
                   </DropdownMenuItem>
@@ -97,30 +100,32 @@ export const Header = () => {
             ) : (
               <Button 
                 onClick={() => navigate('/auth')}
-                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white rounded-full px-6"
+                className="bg-white text-black hover:bg-[#4d94ff] hover:text-white font-bold rounded-none uppercase text-xs tracking-widest h-9 px-6 transition-all"
               >
                 Connexion
               </Button>
             )}
 
-            {/* BOUTON MOBILE MENU */}
+            {/* MOBILE TOGGLE */}
             <button className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X /> : <Menu />}
+              {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* MENU MOBILE */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-[#1a1a1a] border-b border-[#404040] px-4 py-6 space-y-4 animate-in slide-in-from-top-4">
-          <Link to="/my-concerts" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
-          <Link to="/hellfest-2026" className="block text-lg text-orange-500 font-bold" onClick={() => setIsMenuOpen(false)}>🔥 Hellfest 2026</Link>
-          <Link to="/tickets" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Tickets</Link>
-          <Link to="/merch" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Merch</Link>
-          <Link to="/subscription" className="block text-lg text-yellow-500" onClick={() => setIsMenuOpen(false)}>Premium</Link>
-        </div>
-      )}
+      {/* MOBILE MENU */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <div className="md:hidden bg-[#1a1a1a] border-b border-[#333] px-6 py-8 space-y-6 flex flex-col items-center text-center animate-in slide-in-from-top-5">
+            <Link to="/my-concerts" className="text-xl font-black uppercase italic" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
+            <Link to="/hellfest-2026" className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" onClick={() => setIsMenuOpen(false)}>Hellfest 2026</Link>
+            <Link to="/tickets" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Billets</Link>
+            <Link to="/merch" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Boutique</Link>
+            <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>Premium</Link>
+          </div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
