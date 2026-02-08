@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { Footer } from '@/components/Footer';
 
 interface TrackInfo {
   title: string;
@@ -489,6 +490,7 @@ export default function Generate() {
 
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
