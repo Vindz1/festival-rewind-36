@@ -20,6 +20,7 @@ import SpotifyCallback from "./pages/SpotifyCallback";
 import HellfestPage from './pages/HellfestPage';
 import Shop from './pages/Shop';
 import Subscription from './pages/Subscription';
+import Legal from './pages/Legal';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/shop" element={<Shop />} />
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/success" element={<Success />} />
+            <Route path="/legal" element={<Legal />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
