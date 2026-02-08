@@ -227,6 +227,47 @@ export default function Generate() {
       console.log('💾 Sauvegarde songs setlist:', songs.length);
       localStorage.setItem('pending_songs', JSON.stringify(songs));
     }
+
+// Fonction d'export Universel (CSV)
+  const handleUniversalExport = () => {
+    // 1. Vérification Premium (À activer plus tard quand Stripe sera prêt)
+    /*
+    if (subscription?.subscription_status !== 'premium') {
+       toast.error("Fonction réservée aux membres Premium");
+       navigate('/subscription');
+       return;
+    }
+    */
+
+    if (tracksWithInfo.length === 0) {
+      toast.error("Aucun titre à exporter");
+      return;
+    }
+
+    // 2. Création du contenu CSV (Format standard : Title,Artist,Album)
+    const csvHeader = "Title,Artist,Album\n";
+    const csvRows = tracksWithInfo.map(track => {
+      // On nettoie les virgules pour ne pas casser le CSV
+      const cleanTitle = track.title.replace(/,/g, '');
+      const cleanArtist = track.artist.replace(/,/g, '');
+      const cleanAlbum = (track.album || '').replace(/,/g, '');
+      return `${cleanTitle},${cleanArtist},${cleanAlbum}`;
+    }).join("\n");
+
+    const csvContent = csvHeader + csvRows;
+
+    // 3. Téléchargement du fichier
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${playlistName.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Fichier exporté ! Importez-le sur Soundiiz ou TuneMyMusic.");
+  };
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
     
@@ -432,8 +473,9 @@ export default function Generate() {
             )}
 
             {/* FOOTER ACTIONS */}
-            <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-3 pb-4">
+            <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-4 pb-4 px-2">
                 
+                {/* 1. BOUTON PRÉVISUALISER (Seulement en mode Past et si pas encore de preview) */}
                 {!isUpcomingMode && !showPreview && (
                     <>
                         <Button 
@@ -460,24 +502,46 @@ export default function Generate() {
                     </>
                 )}
 
+                {/* 2. ZONE D'EXPORT (S'affiche si Upcoming OU si Preview active) */}
                 {(isUpcomingMode || showPreview) && (
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
+                    <div className="space-y-3 animate-in slide-in-from-bottom-4 fade-in">
+                        
+                        {/* A. Bouton Spotify (Principal) */}
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse group-hover:bg-[#4d94ff]/30 transition-all"></div>
+                            <Button 
+                                onClick={forceExport}
+                                disabled={isUpcomingMode && selectedArtists.size === 0}
+                                className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02] hover:-translate-y-1"
+                            >
+                                {!user && <Lock className="mr-3 w-5 h-5" />}
+                                <div className="flex items-center gap-2">
+                                    <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-6 w-auto mr-1 opacity-90" />
+                                    <span>{!user ? 'Se connecter' : 'Créer la playlist'}</span>
+                                </div>
+                                {user && <ArrowRight className="ml-3 w-5 h-5" />}
+                            </Button>
+                        </div>
+
+                        {/* B. Bouton Export Universel (CSV) - Discret */}
                         <Button 
-                            onClick={forceExport}
-                            disabled={isUpcomingMode && selectedArtists.size === 0}
-                            className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02] hover:-translate-y-1"
+                            onClick={handleUniversalExport}
+                            variant="ghost"
+                            className="w-full h-auto py-2 text-sm font-medium text-[#a0a0a0] hover:text-white hover:bg-[#2d2d2d] border border-transparent hover:border-[#404040] rounded-lg transition-all flex flex-col items-center gap-1"
                         >
-                            {!user && <Lock className="mr-3 w-5 h-5" />}
                             <div className="flex items-center gap-2">
-                                <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-6 w-auto mr-1 opacity-90" />
-                                <span>{!user ? 'Se connecter' : 'Créer la playlist'}</span>
+                                <span className="text-lg">📂</span>
+                                <span>Télécharger le fichier (Apple Music, Deezer...)</span>
                             </div>
-                            {user && <ArrowRight className="ml-3 w-5 h-5" />}
+                            <span className="text-[10px] text-[#606060] font-normal">
+                                Format universel compatible Soundiiz & TuneMyMusic
+                            </span>
                         </Button>
+
                     </div>
                 )}
 
+                {/* 3. Pub pour Premium (Si Free) */}
                 {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
                     <div className="text-center animate-in slide-in-from-bottom-2 fade-in">
                         <Button variant="ghost" size="sm" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
