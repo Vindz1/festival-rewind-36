@@ -196,6 +196,7 @@ export default function Generate() {
   };
 
   // --- EXPORT SPOTIFY ---
+  // --- EXPORT SPOTIFY ---
   const forceExport = () => {
     console.log('🔥 FORCE EXPORT APPELÉ');
     setIsExporting(true);
@@ -205,7 +206,34 @@ export default function Generate() {
       setIsExporting(false);
       return;
     }
+
+    // --- VÉRIFICATION DES QUOTAS ---
+    if (subscription?.subscription_type === 'premium') {
+        console.log("👑 Utilisateur PREMIUM : Export illimité autorisé.");
+    } else {
+        // Logique pour les utilisateurs GRATUITS
+        const today = new Date().toISOString().split('T')[0];
+        const lastExportDate = localStorage.getItem('last_export_date');
+        let dailyCount = parseInt(localStorage.getItem('daily_export_count') || '0');
+
+        if (lastExportDate !== today) {
+            dailyCount = 0;
+            localStorage.setItem('last_export_date', today);
+        }
+
+        if (dailyCount >= 2 && !subscription?.can_export) {
+            toast.error("Limite quotidienne atteinte (2/2). Passez Premium !");
+            setIsExporting(false);
+            // On pourrait rediriger vers /subscription ici
+            setTimeout(() => navigate('/subscription'), 1500);
+            return;
+        }
+
+        // On incrémente le compteur
+        localStorage.setItem('daily_export_count', (dailyCount + 1).toString());
+    }
     
+    // --- SUITE NORMALE DE L'EXPORT ---
     const client_id = "927dd1fd048148d3b71cb0b9e109af6e";
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     
