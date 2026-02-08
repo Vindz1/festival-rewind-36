@@ -38,7 +38,6 @@ export const Header = () => {
             </span>
           </Link>
 
-          // Dans src/components/Header.tsx, modifie la partie Navigation Desktop :
           <nav className="hidden md:flex items-center gap-5">
             <Link to="/my-concerts" className="text-sm font-bold uppercase tracking-widest text-[#a0a0a0] hover:text-white transition-colors">
               Mes Concerts
@@ -59,7 +58,7 @@ export const Header = () => {
           
             <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
               <Crown className="w-4 h-4 fill-yellow-500" />
-              PRO
+              PREMIUM
             </Link>
           </nav>
 
