@@ -1,5 +1,6 @@
 import { Header } from '@/components/Header';
 import { Ticket, ShoppingBag, Disc, ExternalLink, Speaker } from 'lucide-react';
+import { Footer } from '@/components/Footer';
 
 export default function Shop() {
   const sections = [
@@ -59,6 +60,7 @@ export default function Shop() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
