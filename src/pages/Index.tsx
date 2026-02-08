@@ -46,7 +46,7 @@ const Index = () => {
               <Music className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-white">setlistmemory</h1>
+              <h1 className="text-2xl font-semibold text-white">setlive.fr</h1>
               <p className="text-sm text-[#a0a0a0]">Transformez vos concerts en playlists Spotify</p>
             </div>
           </div>
