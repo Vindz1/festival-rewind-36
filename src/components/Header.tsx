@@ -116,19 +116,60 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* MOBILE MENU */}
-<AnimatePresence>
-  {isMenuOpen && (
-    <motion.div 
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="md:hidden bg-[#1a1a1a] border-b border-[#333] px-6 py-8 space-y-6 flex flex-col items-center text-center"
-    >
-      {/* ... vos liens ... */}
-    </motion.div>
-  )}
-</AnimatePresence>
+      {/* MENU MOBILE */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="md:hidden bg-[#1a1a1a] border-b border-[#333] overflow-hidden"
+          >
+            <div className="flex flex-col items-center py-8 space-y-6">
+              <Link 
+                to="/my-concerts" 
+                className="text-xl font-black uppercase italic text-[#a0a0a0] hover:text-white" 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Mes Concerts
+              </Link>
+              
+              <Link 
+                to="/hellfest-2026" 
+                className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Hellfest 2026
+              </Link>
+              
+              <Link 
+                to="/tickets" 
+                className="text-xl font-bold text-[#a0a0a0]" 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Billets
+              </Link>
+              
+              <Link 
+                to="/merch" 
+                className="text-xl font-bold text-[#a0a0a0]" 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Boutique
+              </Link>
+              
+              <Link 
+                to="/subscription" 
+                className="text-xl font-bold text-yellow-500" 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Premium
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };
