@@ -1,19 +1,20 @@
-import { Music, LogOut, User } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from "@/AuthContext";
+import { useAuth } from '@/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
 export const Header = () => {
-  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { user, signOut, loading: authLoading } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
@@ -21,118 +22,105 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-[#2d2d2d] border-b border-[#404040] sticky top-0 z-50">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo - Style setlist.fm sobre */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Music className="w-5 h-5 text-[#4d94ff]" />
-            <span className="text-lg font-semibold text-white tracking-tight">
-              setlist<span className="text-[#4d94ff]">memory</span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/80 backdrop-blur-md border-b border-[#404040]">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          
+          {/* LOGO & NOM */}
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="bg-[#4d94ff] p-1.5 rounded-lg transition-transform group-hover:scale-110">
+              <Music className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xl font-bold tracking-tighter text-white italic">
+              SETLIVE<span className="text-[#4d94ff]">.</span>
             </span>
           </Link>
 
-          {/* Navigation horizontale - Style setlist.fm */}
-          <nav className="hidden md:flex items-center">
-            <Link 
-              to="/my-concerts" 
-              className={`px-4 py-4 text-sm transition-colors border-b-2 ${
-                location.pathname === '/my-concerts' 
-                  ? 'text-white border-[#4d94ff]' 
-                  : 'text-[#a0a0a0] border-transparent hover:text-white hover:bg-[#3d3d3d]'
-              }`}
-            >
+          {/* NAVIGATION DESKTOP */}
+          <nav className="hidden md:flex items-center gap-6">
+            <Link to="/my-concerts" className="text-sm font-medium text-[#a0a0a0] hover:text-white transition-colors">
               Mes Concerts
             </Link>
             
-            {/* Hellfest 2026 - Style officiel vert */}
-            <Link 
-              to="/hellfest-2026" 
-              className={`px-4 py-4 text-sm font-bold transition-colors border-b-2 ${
-                location.pathname === '/hellfest-2026' 
-                  ? 'text-[#00ff00] border-[#00ff00]' 
-                  : 'text-[#00cc00] border-transparent hover:text-[#00ff00] hover:bg-[#3d3d3d]'
-              }`}
-            >
-              HELLFEST 2026
+            {/* LIEN SPECIAL HELLFEST 2026 */}
+            <Link to="/hellfest-2026" className="text-sm font-medium flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-full border border-orange-500/20 hover:bg-orange-500/20 transition-all">
+              <Flame className="w-4 h-4" />
+              Hellfest 2026
             </Link>
 
-            <a 
-              href="https://www.emp.fr" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
-            >
-              Boutique
-            </a>
-            <a 
-              href="https://www.discogs.com" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
-            >
-              Vinyles
-            </a>
-            <a 
-              href="https://www.bandsintown.com" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-4 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#3d3d3d] transition-colors"
-            >
-              Concerts
-            </a>
+            <Link to="/tickets" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1">
+              <Ticket className="w-4 h-4" />
+              Tickets
+            </Link>
+
+            <Link to="/merch" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1">
+              <ShoppingBag className="w-4 h-4" />
+              Merch
+            </Link>
+
+            <Link to="/subscription" className="text-sm font-medium text-yellow-500 hover:text-yellow-400 flex items-center gap-1">
+              <Crown className="w-4 h-4" />
+              Premium
+            </Link>
           </nav>
 
-          {/* Auth - Style setlist.fm */}
-          <div className="flex items-center gap-3">
-            {!authLoading && (
-              <>
-                {user ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="gap-2 hover:bg-[#3d3d3d] text-white h-9"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-[#4d94ff] flex items-center justify-center">
-                          <User className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <span className="hidden sm:inline text-sm max-w-[120px] truncate">
-                          {user.email?.split('@')[0]}
-                        </span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-[#2d2d2d] border-[#404040]">
-                      <div className="px-2 py-1.5">
-                        <p className="text-sm text-white truncate">{user.email}</p>
-                      </div>
-                      <DropdownMenuSeparator className="bg-[#404040]" />
-                      <DropdownMenuItem 
-                        onClick={handleSignOut} 
-                        className="text-red-400 hover:bg-[#3d3d3d] hover:text-red-300"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Déconnexion
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Link to="/auth">
-                    <Button 
-                      size="sm" 
-                      className="gap-2 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white h-9 px-4"
-                    >
-                      <User className="w-4 h-4" />
-                      Connexion
-                    </Button>
-                  </Link>
-                )}
-              </>
+          {/* ACTIONS UTILISATEUR */}
+          <div className="flex items-center gap-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-[#2d2d2d] border border-[#404040]">
+                    <User className="w-5 h-5 text-[#4d94ff]" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-[#2d2d2d] border-[#404040] text-white">
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.email?.split('@')[0]}</p>
+                      <p className="text-xs leading-none text-[#a0a0a0]">{user.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator className="bg-[#404040]" />
+                  <DropdownMenuItem onClick={() => navigate('/my-concerts')} className="cursor-pointer hover:bg-[#3d3d3d]">
+                    Tableau de bord
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer hover:bg-[#3d3d3d] text-yellow-500">
+                    Gérer l'abonnement
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-[#404040]" />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-400 hover:bg-red-400/10 focus:text-red-400">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                onClick={() => navigate('/auth')}
+                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white rounded-full px-6"
+              >
+                Connexion
+              </Button>
             )}
+
+            {/* BOUTON MOBILE MENU */}
+            <button className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+              {isMenuOpen ? <X /> : <Menu />}
+            </button>
           </div>
         </div>
       </div>
+
+      {/* MENU MOBILE */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-[#1a1a1a] border-b border-[#404040] px-4 py-6 space-y-4 animate-in slide-in-from-top-4">
+          <Link to="/my-concerts" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
+          <Link to="/hellfest-2026" className="block text-lg text-orange-500 font-bold" onClick={() => setIsMenuOpen(false)}>🔥 Hellfest 2026</Link>
+          <Link to="/tickets" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Tickets</Link>
+          <Link to="/merch" className="block text-lg text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Merch</Link>
+          <Link to="/subscription" className="block text-lg text-yellow-500" onClick={() => setIsMenuOpen(false)}>Premium</Link>
+        </div>
+      )}
     </header>
   );
 };
