@@ -195,7 +195,7 @@ export default function Generate() {
     }
   };
 
-  // --- C'EST ICI QUE LE FIX EST APPLIQUÉ ---
+  // --- EXPORT SPOTIFY ---
   const forceExport = () => {
     console.log('🔥 FORCE EXPORT APPELÉ');
     setIsExporting(true);
@@ -210,13 +210,12 @@ export default function Generate() {
     const redirectUri = "https://festivalrewind.vercel.app/spotify-callback";
     
     if (isUpcomingMode) {
-      // CORRECTION MAJEURE ICI : On mappe correctement l'artiste parent vers chaque track
       const selectedTracks = artistsWithTracks
         .filter(artist => selectedArtists.has(artist.artistId))
         .flatMap(artist => 
           artist.tracks.map(track => ({
             title: track.name,
-            artist: artist.artistName, // ON AJOUTE L'ARTISTE (C'était '' avant)
+            artist: artist.artistName,
             uri: track.uri
           }))
         );
@@ -227,36 +226,35 @@ export default function Generate() {
       console.log('💾 Sauvegarde songs setlist:', songs.length);
       localStorage.setItem('pending_songs', JSON.stringify(songs));
     }
+    
+    localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
+    
+    const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public%20playlist-modify-private`;
+    
+    console.log('🚀 REDIRECTION VERS:', url);
+    window.location.href = url;
+  };
 
-// Fonction d'export Universel (CSV)
+  // --- EXPORT UNIVERSEL (CSV) ---
   const handleUniversalExport = () => {
-    // 1. Vérification Premium (À activer plus tard quand Stripe sera prêt)
-    /*
-    if (subscription?.subscription_status !== 'premium') {
-       toast.error("Fonction réservée aux membres Premium");
-       navigate('/subscription');
-       return;
-    }
-    */
-
-    if (tracksWithInfo.length === 0) {
+    if (tracksWithInfo.length === 0 && songs.length === 0) {
       toast.error("Aucun titre à exporter");
       return;
     }
 
-    // 2. Création du contenu CSV (Format standard : Title,Artist,Album)
-    const csvHeader = "Title,Artist,Album\n";
-    const csvRows = tracksWithInfo.map(track => {
-      // On nettoie les virgules pour ne pas casser le CSV
+    // Utiliser tracksWithInfo si dispo (plus complet), sinon songs (plus basique)
+    const listToExport = tracksWithInfo.length > 0 ? tracksWithInfo : songs;
+
+    const csvHeader = "Title,Artist\n";
+    const csvRows = listToExport.map(track => {
+      // Nettoyage des virgules
       const cleanTitle = track.title.replace(/,/g, '');
       const cleanArtist = track.artist.replace(/,/g, '');
-      const cleanAlbum = (track.album || '').replace(/,/g, '');
-      return `${cleanTitle},${cleanArtist},${cleanAlbum}`;
+      return `${cleanTitle},${cleanArtist}`;
     }).join("\n");
 
     const csvContent = csvHeader + csvRows;
 
-    // 3. Téléchargement du fichier
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -266,18 +264,7 @@ export default function Generate() {
     link.click();
     document.body.removeChild(link);
     
-    toast.success("Fichier exporté ! Importez-le sur Soundiiz ou TuneMyMusic.");
-  };
-    
-    localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
-    
-    // URL SPOTIFY CORRIGÉE (Plus de googleusercontent)
-    const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public%20playlist-modify-private`;
-    
-    console.log('🚀 REDIRECTION VERS:', url);
-    
-    // Redirection directe
-    window.location.href = url;
+    toast.success("Fichier exporté !");
   };
 
   const toggleArtist = (artistId: string) => {
@@ -294,7 +281,18 @@ export default function Generate() {
     .filter(artist => selectedArtists.has(artist.artistId))
     .reduce((sum, artist) => sum + artist.tracks.length, 0);
 
+
   // --- RENDU ---
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-[#4d94ff]" />
+          <p className="text-xl text-[#a0a0a0]">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans selection:bg-[#4d94ff] selection:text-white">
@@ -302,7 +300,7 @@ export default function Generate() {
 
       <div className="max-w-4xl mx-auto px-4 py-8 pt-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* BOUTON RETOUR CORRIGÉ */}
+        {/* BOUTON RETOUR */}
         <div className="mb-6">
             <Button 
                 variant="ghost" 
@@ -313,25 +311,9 @@ export default function Generate() {
                 Retour à la sélection
             </Button>
         </div>
-
-        {/* LOADER */}
-        {loading ? (
-           <div className="flex flex-col items-center justify-center min-h-[50vh] animate-in zoom-in duration-500">
-             <div className="relative mb-6">
-                <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
-                <div className="relative bg-[#2d2d2d] p-6 rounded-full border border-[#4d94ff]/30 shadow-[0_0_30px_-5px_rgba(77,148,255,0.3)]">
-                    <Loader2 className="w-12 h-12 text-[#4d94ff] animate-spin" />
-                </div>
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Chargement en cours</h2>
-            <p className="text-[#a0a0a0]">
-              {isUpcomingMode ? 'Récupération des top tracks...' : 'Récupération des setlists...'}
-            </p>
-          </div>
-        ) : (
           
-          /* CONTENU PRINCIPAL */
-          <div className="space-y-8">
+        {/* CONTENU PRINCIPAL */}
+        <div className="space-y-8">
             
             <div className="text-center space-y-2">
                 <h1 className="text-4xl md:text-5xl font-bold italic tracking-tight">
@@ -340,14 +322,7 @@ export default function Generate() {
                     </span> TITRES
                 </h1>
                 <p className="text-[#a0a0a0]">
-                    {isUpcomingMode 
-                        ? `Top tracks de ${selectedArtists.size} artiste${selectedArtists.size > 1 ? 's' : ''}`
-                        : `Depuis ${(() => {
-                            const saved = localStorage.getItem('selected_concerts');
-                            const count = saved ? JSON.parse(saved).length : 0;
-                            return `${count} concert${count > 1 ? 's' : ''}`;
-                          })()}`
-                    }
+                   {isUpcomingMode ? 'Top tracks sélectionnés' : 'Setlists récupérées'}
                 </p>
             </div>
 
@@ -355,25 +330,20 @@ export default function Generate() {
                 <Alert className="max-w-xl mx-auto bg-[#2d2d2d] border-[#404040]">
                 <Lock className="h-4 w-4 text-[#a0a0a0]" />
                 <AlertDescription className="text-gray-300">
-                    <strong>Connectez-vous</strong> pour exporter votre playlist vers Spotify.
-                    <Link to="/auth" className="ml-2 underline text-[#4d94ff]">
-                    Se connecter
-                    </Link>
+                    <strong>Connectez-vous</strong> pour exporter.
+                    <Link to="/auth" className="ml-2 underline text-[#4d94ff]">Se connecter</Link>
                 </AlertDescription>
                 </Alert>
             )}
 
             <div className="max-w-xl mx-auto">
-                <label className="block text-sm font-medium mb-2 text-gray-400">
-                    Nom de la playlist
-                </label>
+                <label className="block text-sm font-medium mb-2 text-gray-400">Nom de la playlist</label>
                 <div className="relative">
                     <input
                         type="text"
                         value={playlistName}
                         onChange={(e) => setPlaylistName(e.target.value)}
-                        className="w-full pl-4 pr-10 py-4 bg-[#2d2d2d] border border-[#404040] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff] focus:border-transparent placeholder-gray-600 transition-all shadow-lg"
-                        placeholder={isUpcomingMode ? "Upcoming Concerts 2026" : "Ma Time Capsule Live"}
+                        className="w-full pl-4 pr-10 py-4 bg-[#2d2d2d] border border-[#404040] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#4d94ff]"
                     />
                     <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4d94ff] w-5 h-5 opacity-50" />
                 </div>
@@ -388,45 +358,12 @@ export default function Generate() {
                         <div
                         key={artist.artistId}
                         onClick={() => toggleArtist(artist.artistId)}
-                        className={`group bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
-                            isSelected 
-                            ? 'border-[#4d94ff] bg-[#4d94ff]/5 shadow-[0_0_20px_-10px_rgba(77,148,255,0.2)]' 
-                            : 'border-[#404040] hover:border-zinc-500 hover:bg-[#333]'
-                        }`}
+                        className={`bg-[#2d2d2d] border rounded-xl p-4 cursor-pointer ${isSelected ? 'border-[#4d94ff] bg-[#4d94ff]/5' : 'border-[#404040]'}`}
                         >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-14 h-14 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected ? 'bg-[#4d94ff]' : 'bg-[#3d3d3d]'
-                            }`}>
-                            {artist.artistImage ? (
-                                <img src={artist.artistImage} alt={artist.artistName} className="w-full h-full object-cover rounded-lg" />
-                            ) : (
-                                <Music className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
-                            )}
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-lg font-bold text-white">{artist.artistName}</h3>
+                                {isSelected && <CheckCircle2 className="w-5 h-5 text-[#4d94ff]" />}
                             </div>
-                            <div className="flex-1">
-                                <h3 className={`text-lg font-bold transition-colors ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
-                                    {artist.artistName}
-                                </h3>
-                                <p className="text-sm text-[#a0a0a0]">{artist.tracks.length} morceaux</p>
-                            </div>
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                isSelected ? 'border-[#4d94ff] bg-[#4d94ff]' : 'border-[#505050]'
-                            }`}>
-                                {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-                            </div>
-                        </div>
-
-                        {isSelected && (
-                            <div className="mt-4 space-y-2 border-t border-[#404040]/50 pt-3 animate-in slide-in-from-top-2">
-                            {artist.tracks.slice(0, 5).map((track, idx) => (
-                                <div key={track.id} className="flex items-center gap-3 text-sm text-[#a0a0a0] pl-2 py-1">
-                                    <span className="text-[#4d94ff] font-mono w-4">#{idx + 1}</span>
-                                    <span className="flex-1 truncate text-gray-400">{track.name}</span>
-                                </div>
-                            ))}
-                            </div>
-                        )}
                         </div>
                     );
                     })}
@@ -435,36 +372,16 @@ export default function Generate() {
 
             {/* LISTE PREVIEW (PAST) */}
             {!isUpcomingMode && showPreview && (
-                <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl animate-in slide-in-from-bottom-8">
-                    <h2 className="text-xl font-bold mb-6 flex items-center gap-3 text-white border-b border-[#404040] pb-4">
-                        <div className="bg-[#4d94ff]/20 p-2 rounded-lg">
-                            <Music className="text-[#4d94ff] w-5 h-5" />
-                        </div>
+                <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl">
+                    <h2 className="text-xl font-bold mb-6 text-white border-b border-[#404040] pb-4">
                         Prévisualisation ({tracksWithInfo.length} titres)
                     </h2>
-                    
                     <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {tracksWithInfo.map((track, index) => (
-                        <div 
-                            key={index}
-                            className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#3d3d3d] transition-colors group"
-                        >
-                            <div className="w-10 h-10 bg-[#252525] rounded flex-shrink-0 flex items-center justify-center border border-[#404040] overflow-hidden">
-                            {track.albumArt ? (
-                                <img src={track.albumArt} alt={track.album} className="w-full h-full object-cover" />
-                            ) : (
-                                <Music className="w-5 h-5 text-zinc-600" />
-                            )}
-                            </div>
+                        <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#3d3d3d]">
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-200 truncate group-hover:text-white transition-colors">{track.title}</p>
-                                <p className="text-xs text-[#a0a0a0] truncate">
-                                    {track.artist}
-                                    {track.album && <span className="hidden sm:inline"> • {track.album}</span>}
-                                </p>
-                            </div>
-                            <div className="text-xs text-gray-600 font-mono w-6 text-right">
-                                {index + 1}
+                                <p className="font-medium text-gray-200 truncate">{track.title}</p>
+                                <p className="text-xs text-[#a0a0a0] truncate">{track.artist}</p>
                             </div>
                         </div>
                         ))}
@@ -475,85 +392,71 @@ export default function Generate() {
             {/* FOOTER ACTIONS */}
             <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-4 pb-4 px-2">
                 
-                {/* 1. BOUTON PRÉVISUALISER (Seulement en mode Past et si pas encore de preview) */}
+                {/* 1. BOUTON PRÉVISUALISER */}
                 {!isUpcomingMode && !showPreview && (
                     <>
                         <Button 
                             onClick={fetchDetailedInfo} 
                             disabled={searching}
                             variant="outline"
-                            className="w-full h-16 text-lg font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white transition-all bg-[#1a1a1a]/80 backdrop-blur"
+                            className="w-full h-16 text-lg font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white bg-[#1a1a1a]/80 backdrop-blur"
                         >
                         {searching ? (
                             <>
-                            <Loader2 className="mr-3 animate-spin" />
-                            Analyse... {exportProgress}%
+                            <Loader2 className="mr-3 animate-spin" /> Analyse... {exportProgress}%
                             </>
                         ) : (
                             <>
-                            <Play className="mr-3 fill-current w-5 h-5" />
-                            Prévisualiser les morceaux
+                            <Play className="mr-3 w-5 h-5" /> Prévisualiser les morceaux
                             </>
                         )}
                         </Button>
-                        {searching && (
-                            <Progress value={exportProgress} className="w-full h-1.5 bg-[#2d2d2d] [&>div]:bg-[#4d94ff]" />
-                        )}
+                        {searching && <Progress value={exportProgress} className="w-full h-1.5 bg-[#2d2d2d] [&>div]:bg-[#4d94ff]" />}
                     </>
                 )}
 
-                {/* 2. ZONE D'EXPORT (S'affiche si Upcoming OU si Preview active) */}
+                {/* 2. BOUTONS D'EXPORT */}
                 {(isUpcomingMode || showPreview) && (
                     <div className="space-y-3 animate-in slide-in-from-bottom-4 fade-in">
-                        
-                        {/* A. Bouton Spotify (Principal) */}
+                        {/* A. Spotify */}
                         <div className="relative group">
-                            <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse group-hover:bg-[#4d94ff]/30 transition-all"></div>
+                            <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
                             <Button 
                                 onClick={forceExport}
                                 disabled={isUpcomingMode && selectedArtists.size === 0}
-                                className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl transition-all hover:scale-[1.02] hover:-translate-y-1"
+                                className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl"
                             >
                                 {!user && <Lock className="mr-3 w-5 h-5" />}
                                 <div className="flex items-center gap-2">
                                     <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-6 w-auto mr-1 opacity-90" />
                                     <span>{!user ? 'Se connecter' : 'Créer la playlist'}</span>
                                 </div>
-                                {user && <ArrowRight className="ml-3 w-5 h-5" />}
                             </Button>
                         </div>
 
-                        {/* B. Bouton Export Universel (CSV) - Discret */}
+                        {/* B. Export Universel */}
                         <Button 
                             onClick={handleUniversalExport}
                             variant="ghost"
-                            className="w-full h-auto py-2 text-sm font-medium text-[#a0a0a0] hover:text-white hover:bg-[#2d2d2d] border border-transparent hover:border-[#404040] rounded-lg transition-all flex flex-col items-center gap-1"
+                            className="w-full h-auto py-2 text-sm font-medium text-[#a0a0a0] hover:text-white hover:bg-[#2d2d2d] border border-transparent hover:border-[#404040] rounded-lg"
                         >
-                            <div className="flex items-center gap-2">
-                                <span className="text-lg">📂</span>
-                                <span>Télécharger le fichier (Apple Music, Deezer...)</span>
-                            </div>
-                            <span className="text-[10px] text-[#606060] font-normal">
-                                Format universel compatible Soundiiz & TuneMyMusic
-                            </span>
+                            <span className="text-lg mr-2">📂</span>
+                            <span>Télécharger le fichier (Apple Music, Deezer...)</span>
                         </Button>
-
                     </div>
                 )}
 
-                {/* 3. Pub pour Premium (Si Free) */}
+                {/* 3. Pub Premium */}
                 {user && subscription?.subscription_type === 'free' && !subscription.can_export && (
-                    <div className="text-center animate-in slide-in-from-bottom-2 fade-in">
+                    <div className="text-center">
                         <Button variant="ghost" size="sm" className="gap-2 text-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10">
-                            <Crown className="w-4 h-4" />
-                            Passer à Premium pour plus d'exports
+                            <Crown className="w-4 h-4" /> Passer à Premium
                         </Button>
                     </div>
                 )}
             </div>
 
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
