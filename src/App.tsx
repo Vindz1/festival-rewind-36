@@ -39,6 +39,9 @@ const App = () => (
             <Route path="/im-going" element={<ImGoing />} />
             <Route path="/spotify-callback" element={<SpotifyCallback />} />
             <Route path="/hellfest-2026" element={<HellfestPage />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/tickets" element={<Shop />} />
+            <Route path="/merch" element={<Shop />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
