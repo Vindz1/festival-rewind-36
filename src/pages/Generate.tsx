@@ -392,14 +392,14 @@ export default function Generate() {
             {/* FOOTER ACTIONS */}
             <div className="sticky bottom-6 z-10 max-w-xl mx-auto space-y-4 pb-4 px-2">
                 
-                {/* 1. BOUTON PRÉVISUALISER */}
-                {!isUpcomingMode && !showPreview && (
+                {/* 1. BOUTON PRÉVISUALISER (Optionnel : S'affiche si on a des chansons mais qu'on a pas encore cliqué) */}
+                {!isUpcomingMode && !showPreview && songs.length > 0 && (
                     <>
                         <Button 
                             onClick={fetchDetailedInfo} 
                             disabled={searching}
                             variant="outline"
-                            className="w-full h-16 text-lg font-bold border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white bg-[#1a1a1a]/80 backdrop-blur"
+                            className="w-full h-14 text-md font-bold border-[#4d94ff]/50 text-[#4d94ff] hover:bg-[#4d94ff] hover:text-white bg-[#1a1a1a]/90 backdrop-blur mb-2"
                         >
                         {searching ? (
                             <>
@@ -407,7 +407,7 @@ export default function Generate() {
                             </>
                         ) : (
                             <>
-                            <Play className="mr-3 w-5 h-5" /> Prévisualiser les morceaux
+                            <Play className="mr-3 w-4 h-4" /> Voir le détail des titres avant export
                             </>
                         )}
                         </Button>
@@ -415,15 +415,18 @@ export default function Generate() {
                     </>
                 )}
 
-                {/* 2. BOUTONS D'EXPORT */}
-                {(isUpcomingMode || showPreview) && (
+                {/* 2. BOUTONS D'EXPORT (S'affichent DÈS QU'IL Y A DES DONNÉES) */}
+                {/* Condition changée : soit on est en Upcoming, soit on a des chansons dans la liste */}
+                {(isUpcomingMode || songs.length > 0) && (
                     <div className="space-y-3 animate-in slide-in-from-bottom-4 fade-in">
+                        
                         {/* A. Spotify */}
                         <div className="relative group">
                             <div className="absolute inset-0 bg-[#4d94ff]/20 blur-xl rounded-full animate-pulse"></div>
                             <Button 
                                 onClick={forceExport}
-                                disabled={isUpcomingMode && selectedArtists.size === 0}
+                                // En Upcoming : désactivé si 0 artiste. En Past : désactivé si chargement
+                                disabled={(isUpcomingMode && selectedArtists.size === 0) || loading}
                                 className="relative w-full h-16 text-xl font-bold bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-xl rounded-xl"
                             >
                                 {!user && <Lock className="mr-3 w-5 h-5" />}
