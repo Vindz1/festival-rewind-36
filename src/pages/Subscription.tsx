@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Zap, Star, ShieldCheck } from 'lucide-react';
+import { Footer } from '@/components/Footer';
 
 export default function Subscription() {
   const { user } = useAuth();
@@ -130,6 +131,7 @@ export default function Subscription() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
