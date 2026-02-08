@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, Check, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { HELLFEST_LINEUP, ArtistData } from '@/data/hellfestData';
+import { Footer } from '@/components/Footer';
 
 const HellfestPage = () => {
   const navigate = useNavigate();
@@ -221,6 +222,7 @@ const HellfestPage = () => {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
