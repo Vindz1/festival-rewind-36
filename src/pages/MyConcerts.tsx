@@ -102,10 +102,11 @@ const MyConcerts = () => {
 
   if (loading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center"><Music className="animate-pulse text-white w-12 h-12"/></div>;
 
-  return (
-    <div className="min-h-screen bg-[#1a1a1a]">
-      <Header />
-      <div className="max-w-[1200px] mx-auto px-4 py-6">
+ return (
+  <div className="min-h-screen bg-[#1a1a1a]">
+    <Header />
+    {/* Ajout de pt-24 (padding-top) pour pousser le contenu sous le header */}
+    <div className="max-w-[1200px] mx-auto px-4 py-6 pt-24">
         <h1 className="text-2xl font-semibold text-white mb-6">MES CONCERTS</h1>
 
         <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="mb-6">
