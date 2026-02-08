@@ -13,7 +13,7 @@ export default function Legal() {
           <section>
             <h2 className="text-xl font-bold text-white mb-4 uppercase">1. Éditeur du site</h2>
             <p>
-              Le site <strong>Setlive.fr</strong> (ci-après "le Site") est édité par [Vincent DENIS, domicilié au 9 rue de la feltière, Lerné.<br/>
+              Le site <strong>Setlive.fr</strong> (ci-après "le Site") est édité par Vincent DENIS, domicilié au 9 rue de la feltière, Lerné.<br/>
               Contact : vindz1@pm.me<br/>
               Hébergeur : Vercel Inc., 340 S Lemon Ave #4133 Walnut, CA 91789, USA.
             </p>
@@ -33,7 +33,7 @@ export default function Legal() {
               <strong>Connexion Spotify :</strong> Setlive utilise l'API officielle de Spotify. Nous ne stockons JAMAIS votre mot de passe. Nous conservons uniquement un "token" d'accès temporaire pour créer les playlists sur votre compte à votre demande.
             </p>
             <p>
-              <strong>Données collectées :</strong> Nous stockons votre email et l'historique des setlists générées pour vous fournir le service "Historique". Vous pouvez demander la suppression intégrale de vos données à tout moment via contact@setlive.fr.
+              <strong>Données collectées :</strong> Nous stockons votre email et l'historique des setlists générées pour vous fournir le service "Historique". Vous pouvez demander la suppression intégrale de vos données à tout moment via vindz1@gmail.com.
             </p>
           </section>
 
