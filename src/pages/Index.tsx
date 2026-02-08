@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { Footer } from '@/components/Footer';
 
 const Index = () => {
   const [username, setUsername] = useState('');
@@ -166,7 +167,7 @@ const Index = () => {
             <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6">
               <h3 className="text-base font-semibold text-[#ffd700] mb-1">Premium</h3>
               <div className="text-2xl font-bold text-white mb-4">
-                7,99€<span className="text-sm font-normal text-[#a0a0a0]">/an</span>
+                9,99€<span className="text-sm font-normal text-[#a0a0a0]">/an</span>
               </div>
               <ul className="space-y-2 mb-6">
                 <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
@@ -234,6 +235,7 @@ const Index = () => {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
