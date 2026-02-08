@@ -17,6 +17,8 @@ import MyConcerts from "./pages/MyConcerts";
 import ImGoing from "./pages/ImGoing";
 import SpotifyCallback from "./pages/SpotifyCallback";
 import HellfestPage from './pages/HellfestPage';
+import Shop from './pages/Shop';
+import Subscription from './pages/Subscription';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/tickets" element={<Shop />} />
             <Route path="/merch" element={<Shop />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/subscription" element={<Subscription />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
