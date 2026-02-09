@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Footer } from '@/components/Footer';
 import { saveToHistory } from '@/lib/history';
+import { SmartAd } from '@/components/SmartAd';
 
 interface TrackInfo {
   title: string;
@@ -431,19 +432,41 @@ export default function Generate() {
                 </div>
             )}
 
-            {/* LISTE PREVIEW (PAST) */}
+           {/* LISTE PREVIEW (PAST) */}
             {!isUpcomingMode && showPreview && (
-                <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl">
+                <div className="bg-[#2d2d2d] rounded-3xl border border-[#404040] p-6 shadow-2xl animate-in slide-in-from-bottom-8">
                     <h2 className="text-xl font-bold mb-6 text-white border-b border-[#404040] pb-4">
                         Prévisualisation ({tracksWithInfo.length} titres)
                     </h2>
+                    
                     <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {tracksWithInfo.map((track, index) => (
-                        <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#3d3d3d]">
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-200 truncate">{track.title}</p>
-                                <p className="text-xs text-[#a0a0a0] truncate">{track.artist}</p>
+                        /* IMPORTANT : On met la "key" sur cette div enveloppe 
+                           pour qu'elle contienne le morceau + la pub potentielle 
+                        */
+                        <div key={index}>
+                            
+                            {/* --- LE MORCEAU (Ton design actuel) --- */}
+                            <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-[#3d3d3d] transition-colors group">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-200 truncate group-hover:text-white transition-colors">
+                                        {track.title}
+                                    </p>
+                                    <p className="text-xs text-[#a0a0a0] truncate">
+                                        {track.artist}
+                                    </p>
+                                </div>
+                                <div className="text-xs text-gray-600 font-mono w-6 text-right">
+                                    {index + 1}
+                                </div>
                             </div>
+
+                            {/* --- LA PUB INTELLIGENTE (Nouveau) --- */}
+                            {/* On affiche une pub tous les 8 morceaux, SAUF si Premium */}
+                            {(index + 1) % 8 === 0 && subscription?.subscription_type !== 'premium' && (
+                                <SmartAd artistName={track.artist} index={index} />
+                            )}
+                            
                         </div>
                         ))}
                     </div>
