@@ -38,18 +38,22 @@ export const Header = () => {
     checkStatus();
   }, [user]);
 
-  // Fonction de déconnexion "Force Brute"
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault();
+// Fonction de déconnexion "Nucléaire"
+  const handleSignOut = async () => {
+    // 1. On nettoie tout ce qu'on a en local immédiatement
+    localStorage.clear();
+    
+    // 2. On tente de prévenir Supabase (fire and forget)
     try {
       await signOut();
-      localStorage.clear();
-      window.location.href = '/';
     } catch (error) {
-      console.error("Erreur déco", error);
+      console.error("Erreur déconnexion silencieuse", error);
     }
-  };
 
+    // 3. Quoi qu'il arrive, on recharge la page vers l'accueil
+    window.location.href = '/';
+  };
+  
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
       <div className="container mx-auto px-4">
@@ -138,7 +142,10 @@ export const Header = () => {
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
                   {/* LIEN 4 : DÉCONNEXION */}
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white">
+                  <DropdownMenuItem 
+                    onSelect={handleSignOut} // <--- C'EST ICI LE CHANGEMENT (onSelect au lieu de onClick)
+                    className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
                   </DropdownMenuItem>
