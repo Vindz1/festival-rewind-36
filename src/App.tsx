@@ -21,6 +21,7 @@ import HellfestPage from './pages/HellfestPage';
 import Shop from './pages/Shop';
 import Subscription from './pages/Subscription';
 import Legal from './pages/Legal';
+import Profile from './pages/Profile';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/success" element={<Success />} />
             <Route path="/legal" element={<Legal />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
