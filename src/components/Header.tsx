@@ -40,11 +40,11 @@ export const Header = () => {
 
   // Fonction de déconnexion "Force Brute"
   const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Empêche le comportement par défaut
+    e.preventDefault();
     try {
       await signOut();
-      localStorage.clear(); // Nettoie le cache
-      window.location.href = '/'; // Force le rechargement vers l'accueil
+      localStorage.clear();
+      window.location.href = '/';
     } catch (error) {
       console.error("Erreur déco", error);
     }
