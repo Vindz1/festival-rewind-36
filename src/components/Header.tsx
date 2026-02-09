@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music, Menu, X, Crown, ShoppingBag, Ticket, User, LogOut, Zap } from 'lucide-react';
+import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
-import { getUserSubscription } from '@/lib/subscription'; // Assurez-vous que ce fichier existe
+import { getUserSubscription } from '@/lib/subscription';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,22 +19,35 @@ export const Header = () => {
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
 
-  // Vérification du statut Premium au chargement
+  // Vérification stricte du statut Premium
   useEffect(() => {
     const checkStatus = async () => {
       if (user) {
-        const sub = await getUserSubscription(user.id);
-        if (sub && sub.subscription_type === 'premium') {
-          setIsPremium(true);
+        try {
+          const sub = await getUserSubscription(user.id);
+          if (sub && sub.subscription_type === 'premium') {
+            setIsPremium(true);
+          } else {
+            setIsPremium(false);
+          }
+        } catch (e) {
+          console.error(e);
         }
       }
     };
     checkStatus();
   }, [user]);
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+  // Fonction de déconnexion "Force Brute"
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Empêche le comportement par défaut
+    try {
+      await signOut();
+      localStorage.clear(); // Nettoie le cache
+      window.location.href = '/'; // Force le rechargement vers l'accueil
+    } catch (error) {
+      console.error("Erreur déco", error);
+    }
   };
 
   return (
@@ -42,7 +55,7 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
-          {/* LOGO : DYNAMIQUE (OR SI PREMIUM) */}
+          {/* LOGO : OR si Premium, BLEU si Gratuit */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className={`p-1.5 rounded-lg transition-all ${
               isPremium 
@@ -105,13 +118,26 @@ export const Header = () => {
                     </p>
                   </div>
                   <DropdownMenuSeparator className="bg-[#333]" />
+                  
+                  {/* LIEN 1 : MON PROFIL */}
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                    <User className="mr-2 h-4 w-4" /> Mon Profil
+                  </DropdownMenuItem>
+
+                  {/* LIEN 2 : MES SETLISTS */}
                   <DropdownMenuItem onClick={() => navigate('/my-concerts')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
-                    Tableau de bord
+                    <Music className="mr-2 h-4 w-4" /> Mes Setlists
                   </DropdownMenuItem>
+
+                  {/* LIEN 3 : ABONNEMENT */}
                   <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
-                    {isPremium ? 'Mon Abonnement' : 'Passer en PREMIUM'}
+                    <Crown className="mr-2 h-4 w-4" />
+                    {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
                   </DropdownMenuItem>
+                  
                   <DropdownMenuSeparator className="bg-[#333]" />
+                  
+                  {/* LIEN 4 : DÉCONNEXION */}
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white">
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
@@ -146,10 +172,11 @@ export const Header = () => {
             className="md:hidden bg-[#1a1a1a] border-b border-[#333] overflow-hidden"
           >
             <div className="flex flex-col items-center py-8 space-y-6">
+              <Link to="/profile" className="text-xl font-bold text-white" onClick={() => setIsMenuOpen(false)}>Mon Profil</Link>
               <Link to="/my-concerts" className="text-xl font-black uppercase italic text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
               <Link to="/hellfest-2026" className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" onClick={() => setIsMenuOpen(false)}>Hellfest 2026</Link>
               <Link to="/shop" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Shop</Link>
-              <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>Premium</Link>
+              <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>PREMIUM</Link>
             </div>
           </motion.div>
         )}
