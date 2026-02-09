@@ -9,6 +9,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Footer } from '@/components/Footer';
+import { saveToHistory } from '@/lib/history';
 
 interface TrackInfo {
   title: string;
@@ -257,7 +258,28 @@ export default function Generate() {
     }
     
     localStorage.setItem('playlist_name', playlistName || 'Setlist Live');
+    // --- AJOUT DE L'HISTORIQUE ---
+    // On prépare la liste des tracks pour l'historique
+    let tracksForHistory = [];
+    if (isUpcomingMode) {
+         tracksForHistory = artistsWithTracks
+        .filter(artist => selectedArtists.has(artist.artistId))
+        .flatMap(artist => artist.tracks.map(t => ({ artist: artist.artistName })));
+    } else {
+         tracksForHistory = songs.map(s => ({ artist: s.artist }));
+    }
     
+    if (user) {
+        // On n'attend pas le 'await' pour ne pas ralentir la redirection
+        saveToHistory({
+            userId: user.id,
+            playlistName: playlistName,
+            tracks: tracksForHistory,
+            sourceType: isUpcomingMode ? 'upcoming' : 'concert',
+            platform: 'spotify'
+        });
+    }
+    // -----------------------------
     const url = `https://accounts.spotify.com/authorize?client_id=${client_id}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=playlist-modify-public%20playlist-modify-private`;
     
     console.log('🚀 REDIRECTION VERS:', url);
@@ -273,7 +295,17 @@ export default function Generate() {
 
     // Utiliser tracksWithInfo si dispo (plus complet), sinon songs (plus basique)
     const listToExport = tracksWithInfo.length > 0 ? tracksWithInfo : songs;
-
+    // --- AJOUT DE L'HISTORIQUE ---
+    if (user) {
+        saveToHistory({
+            userId: user.id,
+            playlistName: playlistName,
+            tracks: listToExport.map(t => ({ artist: t.artist })),
+            sourceType: isUpcomingMode ? 'upcoming' : 'concert',
+            platform: 'csv'
+        });
+    }
+    // -----------------------------
     const csvHeader = "Title,Artist\n";
     const csvRows = listToExport.map(track => {
       // Nettoyage des virgules
