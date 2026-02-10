@@ -289,6 +289,13 @@ export default function Generate() {
 
   // --- EXPORT UNIVERSEL (CSV) ---
   const handleUniversalExport = () => {
+    // 1. LA SÉCURITÉ : Si pas connecté, on bloque tout de suite
+    if (!user) {
+        toast.error("Veuillez vous connecter pour télécharger le fichier.");
+        // Optionnel : rediriger vers la connexion après 1 seconde
+        setTimeout(() => navigate('/auth'), 1000);
+        return;
+    }
     if (tracksWithInfo.length === 0 && songs.length === 0) {
       toast.error("Aucun titre à exporter");
       return;
