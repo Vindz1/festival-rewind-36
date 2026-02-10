@@ -1,243 +1,78 @@
 import { useState } from 'react';
-import { Music, Check, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Search, ArrowRight, Music, CheckCircle2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
+import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
-const Index = () => {
-  const [username, setUsername] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export default function Home() {
+  const [query, setQuery] = useState('');
   const navigate = useNavigate();
 
-  const handleStart = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim()) {
-      toast.error('Veuillez entrer votre nom d\'utilisateur setlist.fm');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      const response = await fetch(`/api/search?action=user&username=${username}`);
-      if (!response.ok) {
-        toast.error('Utilisateur setlist.fm introuvable');
-        setIsLoading(false);
-        return;
-      }
-      
-      localStorage.setItem('setlistfm_username', username);
-      toast.success('Compte setlist.fm connecté !');
-      navigate('/my-concerts');
-    } catch (error) {
-      toast.error('Erreur de connexion à setlist.fm');
-      setIsLoading(false);
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
-      {/* Header stats - Style setlist.fm */}
-      <div className="bg-[#2d2d2d] border-b border-[#404040]">
-        <div className="max-w-[1200px] mx-auto px-4 py-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded bg-[#4d94ff] flex items-center justify-center">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-white">setlive.fr</h1>
-              <p className="text-sm text-[#a0a0a0]">Transformez vos concerts en playlists Spotify</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col">
+      <Header />
 
-          {/* Stats - Style setlist.fm */}
-          <div className="flex gap-8 text-sm">
-            <div>
-              <span className="text-2xl font-bold text-white">9.6M</span>
-              <span className="text-[#a0a0a0] ml-2">setlists</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold text-white">430k</span>
-              <span className="text-[#a0a0a0] ml-2">artistes</span>
-            </div>
-            <div>
-              <span className="text-2xl font-bold text-white">∞</span>
-              <span className="text-[#a0a0a0] ml-2">souvenirs</span>
-            </div>
-          </div>
+      {/* HERO SECTION */}
+      <main className="flex-grow flex flex-col items-center justify-center px-4 pt-32 pb-16 text-center relative overflow-hidden">
+        
+        {/* Fond animé subtil */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 opacity-20">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-500 rounded-full blur-[120px] animate-pulse"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500 rounded-full blur-[120px] animate-pulse delay-700"></div>
         </div>
-      </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 py-12">
-        {/* Quick start */}
-        <div className="max-w-2xl mx-auto mb-16">
-          <h2 className="text-xl font-semibold text-white mb-4">Commencer</h2>
-          <form onSubmit={handleStart} className="bg-[#2d2d2d] border border-[#404040] rounded p-6">
-            <label className="block text-sm text-[#a0a0a0] mb-2">
-              Nom d'utilisateur setlist.fm
-            </label>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="votre_username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="flex-1 bg-[#3d3d3d] border-[#404040] text-white placeholder:text-[#606060] focus:border-[#4d94ff]"
-                disabled={isLoading}
+        <div className="animate-in fade-in zoom-in duration-700 slide-in-from-bottom-8 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#333] border border-[#404040] text-xs font-bold uppercase tracking-widest text-[#a0a0a0] mb-8">
+            <Globe className="w-3 h-3 text-[#4d94ff]" />
+            Compatible Spotify • Deezer • Apple Music
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-black italic text-white leading-[0.9] tracking-tighter mb-6">
+            VOS CONCERTS.<br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4d94ff] via-[#a361ff] to-[#ff4d94]">EN PLAYLIST.</span>
+          </h1>
+
+          <p className="text-xl text-[#a0a0a0] max-w-2xl mx-auto mb-10 font-medium">
+            Retrouvez la setlist exacte de n'importe quel concert (depuis Setlist.fm) et exportez-la vers <strong className="text-white">votre plateforme de streaming préférée</strong> en quelques secondes.
+          </p>
+
+          {/* BARRE DE RECHERCHE PRINCIPALE */}
+          <form onSubmit={handleSearch} className="max-w-xl mx-auto relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#4d94ff] to-[#ff4d94] rounded-full blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
+            <div className="relative flex items-center bg-[#252525] border border-[#404040] rounded-full p-2 shadow-2xl transition-transform group-hover:scale-[1.02]">
+              <Search className="ml-4 w-6 h-6 text-[#a0a0a0]" />
+              <Input 
+                type="text" 
+                placeholder="Artiste, Festival ou Lieu..." 
+                className="border-0 bg-transparent focus-visible:ring-0 text-lg placeholder:text-[#666] h-12"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
               />
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white px-6"
-              >
-                {isLoading ? 'Chargement...' : 'Continuer'}
-                <ArrowRight className="w-4 h-4 ml-2" />
+              <Button type="submit" size="lg" className="rounded-full bg-white text-black hover:bg-[#e6e6e6] font-bold px-8 h-12">
+                GO
               </Button>
             </div>
-            <p className="text-xs text-[#a0a0a0] mt-2">
-              Pas de compte ? <a href="https://www.setlist.fm/signup" target="_blank" rel="noopener noreferrer" className="text-[#4d94ff] hover:underline">Créez-en un gratuitement</a>
-            </p>
           </form>
-        </div>
 
-        {/* Pricing - Style sobre setlist.fm */}
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-xl font-semibold text-white mb-6">Formules</h2>
-          
-          <div className="grid md:grid-cols-3 gap-4">
-            {/* Visiteur */}
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6">
-              <h3 className="text-base font-semibold text-white mb-1">Visiteur</h3>
-              <div className="text-2xl font-bold text-white mb-4">Gratuit</div>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  Lier setlist.fm
-                </li>
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  Voir vos concerts
-                </li>
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  Prévisualiser playlists
-                </li>
-              </ul>
-              <Button 
-                variant="outline" 
-                className="w-full border-[#404040] text-white hover:bg-[#3d3d3d]"
-                onClick={() => document.querySelector('input')?.focus()}
-              >
-                Commencer
-              </Button>
-            </div>
-
-            {/* Gratuit */}
-            <div className="bg-[#2d2d2d] border-2 border-[#4d94ff] rounded p-6 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#4d94ff] px-3 py-1 rounded text-xs font-medium text-white">
-                RECOMMANDÉ
-              </div>
-              <h3 className="text-base font-semibold text-white mb-1">Gratuit</h3>
-              <div className="text-2xl font-bold text-white mb-4">0€</div>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  Tout du Visiteur
-                </li>
-                <li className="flex items-start gap-2 text-sm text-white">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  <strong>2 playlists / an</strong>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5" />
-                  Export Spotify
-                </li>
-              </ul>
-              <Button 
-                className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white"
-                onClick={() => navigate('/auth')}
-              >
-                S'inscrire
-              </Button>
-            </div>
-
-            {/* Premium */}
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6">
-              <h3 className="text-base font-semibold text-[#ffd700] mb-1">Premium</h3>
-              <div className="text-2xl font-bold text-white mb-4">
-                9,99€<span className="text-sm font-normal text-[#a0a0a0]">/an</span>
-              </div>
-              <ul className="space-y-2 mb-6">
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#ffd700] shrink-0 mt-0.5" />
-                  Tout du Gratuit
-                </li>
-                <li className="flex items-start gap-2 text-sm text-white">
-                  <Check className="w-4 h-4 text-[#ffd700] shrink-0 mt-0.5" />
-                  <strong>Playlists illimitées</strong>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#ffd700] shrink-0 mt-0.5" />
-                  Statistiques détaillées
-                </li>
-                <li className="flex items-start gap-2 text-sm text-[#a0a0a0]">
-                  <Check className="w-4 h-4 text-[#ffd700] shrink-0 mt-0.5" />
-                  Historique complet
-                </li>
-              </ul>
-              <Button 
-                variant="outline"
-                className="w-full border-[#404040] text-white hover:bg-[#3d3d3d]"
-                disabled
-              >
-                Bientôt disponible
-              </Button>
-            </div>
+          {/* BADGES DE CONFIANCE */}
+          <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm font-bold text-[#666] uppercase tracking-widest">
+            <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#4d94ff]"/> Gratuit</span>
+            <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#4d94ff]"/> Sans Inscription</span>
+            <span className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#4d94ff]"/> Setlist.fm Data</span>
           </div>
         </div>
+      </main>
 
-        {/* How it works - Style simple */}
-        <div className="max-w-3xl mx-auto mt-16">
-          <h2 className="text-xl font-semibold text-white mb-6">Comment ça fonctionne</h2>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-[#4d94ff] flex items-center justify-center text-lg font-bold mx-auto mb-3 text-white">
-                1
-              </div>
-              <h3 className="font-medium text-white mb-2 text-sm">Connectez setlist.fm</h3>
-              <p className="text-xs text-[#a0a0a0]">
-                Liez votre compte pour accéder à vos concerts
-              </p>
-            </div>
-            
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-[#4d94ff] flex items-center justify-center text-lg font-bold mx-auto mb-3 text-white">
-                2
-              </div>
-              <h3 className="font-medium text-white mb-2 text-sm">Sélectionnez vos concerts</h3>
-              <p className="text-xs text-[#a0a0a0]">
-                Choisissez les concerts à inclure
-              </p>
-            </div>
-            
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-[#4d94ff] flex items-center justify-center text-lg font-bold mx-auto mb-3 text-white">
-                3
-              </div>
-              <h3 className="font-medium text-white mb-2 text-sm">Exportez vers Spotify</h3>
-              <p className="text-xs text-[#a0a0a0]">
-                Créez votre playlist et revivez vos souvenirs
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
       <Footer />
     </div>
   );
-};
-
-export default Index;
+}
