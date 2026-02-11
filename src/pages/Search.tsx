@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Loader2, Music, Calendar, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
+import { Loader2, Music, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function Search() {
   const [searchParams] = useSearchParams();
@@ -23,24 +23,16 @@ export default function Search() {
       setResults([]);
 
       try {
-        // NOTE: Idéalement, passez par votre backend (api/setlist) pour cacher la clé API
-        // Ici j'utilise une structure fetch compatible avec votre proxy existant si configuré
-        // Sinon, remplacez par votre logique d'appel API Setlist.fm habituelle
+        // On appelle NOTRE nouvelle API
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         
-        const response = await fetch(`https://api.setlist.fm/rest/1.0/search/setlists?artistName=${encodeURIComponent(query)}&p=1`, {
-            headers: {
-                'x-api-key': import.meta.env.VITE_SETLIST_FM_API_KEY || '', // Votre clé API
-                'Accept': 'application/json'
-            }
-        });
-
         if (!response.ok) throw new Error("Erreur lors de la recherche");
         
         const data = await response.json();
         setResults(data.setlist || []);
       } catch (err) {
         console.error(err);
-        setError("Impossible de récupérer les résultats. Vérifiez votre connexion ou la clé API.");
+        setError("Impossible de récupérer les résultats.");
       } finally {
         setLoading(false);
       }
@@ -49,19 +41,9 @@ export default function Search() {
     fetchResults();
   }, [query]);
 
-  // Formatage de la date (DD-MM-YYYY)
-  const formatDate = (dateStr: string) => {
-    const [d, m, y] = dateStr.split('-');
-    const date = new Date(Number(y), Number(m) - 1, Number(d));
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
-
+  // Fonction pour gérer le clic sur un concert trouvé
   const handleSelect = (concert: any) => {
-    // On formate comme attendu par Generate.tsx
-    // Pour les concerts passés, on envoie les 'sets'
-    // Pour les concerts futurs (si setlist.fm les renvoie), on gère aussi
-    
-    // Astuce : On passe par le localStorage pour simuler un "panier" unique temporaire
+    // On formate les données pour Generate.tsx
     const formattedConcert = {
         id: concert.id,
         artist: concert.artist,
@@ -70,13 +52,19 @@ export default function Search() {
         sets: concert.sets
     };
 
-    // On utilise le mode "Direct" via location.state pour Generate
-    // Mais comme Generate attend un format spécifique, on va ruser :
-    // On stocke dans le localStorage "selected_concerts" (comme MyConcerts)
-    // Et on redirige.
-    
+    // On passe en mode "Direct" via le state de navigation
+    // C'est la méthode la plus propre pour le scénario "Je cherche -> Je clique -> Je génère"
+    navigate('/generate', { 
+        state: { 
+            artists: [concert.artist.name], // Pour le mode "Futur/BestOf" si besoin
+            eventName: `${concert.artist.name} @ ${concert.venue.name}`,
+            // On passe aussi les données brutes pour le mode "Passé" (Extraction Setlist)
+            // On le stocke temporairement dans le localStorage pour que Generate le retrouve comme un "concert sélectionné"
+        } 
+    });
+
+    // Astuce : On force le mode "Passé" en injectant ce concert dans le stockage
     localStorage.setItem('selected_concerts', JSON.stringify([formattedConcert]));
-    // On nettoie le futur pour être sûr
     localStorage.removeItem('selected_upcoming');
     
     navigate('/generate');
@@ -86,16 +74,16 @@ export default function Search() {
     <div className="min-h-screen bg-[#121212] text-white flex flex-col font-sans">
       <Header />
       
-      <div className="flex-grow max-w-5xl mx-auto w-full px-4 pt-32 pb-20">
-        <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-black italic uppercase mb-2">Résultats</h1>
-            <p className="text-[#a0a0a0] text-xl">Pour la recherche : <span className="text-white font-bold">"{query}"</span></p>
+      <div className="flex-grow max-w-4xl mx-auto w-full px-4 pt-32 pb-20">
+        <div className="mb-8">
+            <h1 className="text-3xl md:text-5xl font-black italic uppercase mb-2">Résultats</h1>
+            <p className="text-[#a0a0a0] text-lg">Recherche pour : <span className="text-white font-bold">"{query}"</span></p>
         </div>
 
         {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-12 h-12 text-[#4d94ff] animate-spin mb-4"/>
-                <p className="text-[#666] uppercase tracking-widest font-bold text-sm">Interrogation de Setlist.fm...</p>
+                <p className="text-[#666] uppercase tracking-widest font-bold text-sm">Recherche Setlist.fm...</p>
             </div>
         ) : error ? (
             <div className="bg-[#1a1a1a] border border-red-500/30 p-8 rounded-2xl text-center">
@@ -106,47 +94,61 @@ export default function Search() {
         ) : results.length === 0 ? (
             <div className="text-center py-20 bg-[#1a1a1a] rounded-3xl border border-[#333]">
                 <Music className="w-16 h-16 text-[#333] mx-auto mb-4"/>
-                <h3 className="text-xl font-bold mb-2">Aucun résultat trouvé</h3>
+                <h3 className="text-xl font-bold mb-2">Aucun résultat</h3>
                 <p className="text-[#666]">Essayez avec un autre nom d'artiste.</p>
             </div>
         ) : (
-            <div className="grid gap-4">
-                {results.map((concert) => (
-                    <div key={concert.id} className="group bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#4d94ff] p-6 rounded-xl transition-all flex flex-col md:flex-row gap-6 items-start md:items-center">
-                        
-                        {/* DATE */}
-                        <div className="flex-shrink-0 flex flex-col items-center justify-center bg-[#111] border border-[#333] w-20 h-20 rounded-lg group-hover:border-[#4d94ff]/50 transition-colors">
-                            <span className="text-xl font-black text-white">{concert.eventDate.split('-')[0]}</span>
-                            <span className="text-xs font-bold uppercase text-[#666]">{new Date(concert.eventDate.split('-').reverse().join('-')).toLocaleString('default', { month: 'short' })}</span>
-                            <span className="text-[10px] text-[#444]">{concert.eventDate.split('-')[2]}</span>
-                        </div>
+            <div className="space-y-4">
+                {results.map((concert) => {
+                    // Calcul de la date
+                    const [d, m, y] = concert.eventDate.split('-');
+                    const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+                    const monthName = dateObj.toLocaleString('default', { month: 'short' });
 
-                        {/* INFOS */}
-                        <div className="flex-grow min-w-0">
-                            <h3 className="text-2xl font-black italic uppercase text-white truncate mb-1">
-                                {concert.artist.name}
-                            </h3>
-                            <div className="flex flex-col gap-1 text-sm text-[#a0a0a0]">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-[#4d94ff]"/>
-                                    <span className="truncate">{concert.venue.name}, {concert.venue.city.name} ({concert.venue.city.country.code})</span>
+                    // Calcul du nombre de titres (approximation)
+                    const songsCount = concert.sets?.set?.reduce((acc: number, s: any) => acc + (s.song?.length || 0), 0) || 0;
+
+                    return (
+                        <div 
+                            key={concert.id} 
+                            onClick={() => handleSelect(concert)}
+                            className="flex gap-4 p-4 bg-[#1a1a1a] rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all cursor-pointer group animate-in fade-in slide-in-from-bottom-2"
+                        >
+                            {/* BLOC DATE (Style MyConcerts) */}
+                            <div className="flex-shrink-0 flex flex-col items-center justify-center w-20 h-20 bg-[#111] border border-[#333] rounded-lg group-hover:border-[#4d94ff]/50 transition-colors">
+                                <span className="text-xl font-black text-white">{d}</span>
+                                <span className="text-xs font-bold uppercase text-[#666]">{monthName}</span>
+                                <span className="text-[10px] text-[#444]">{y}</span>
+                            </div>
+
+                            {/* INFOS */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                <h3 className="text-xl font-black italic uppercase text-white truncate group-hover:text-[#4d94ff] transition-colors">
+                                    {concert.artist.name}
+                                </h3>
+                                <div className="flex items-center gap-2 text-[#a0a0a0] text-sm truncate mb-2">
+                                    <MapPin className="w-3 h-3 text-[#666]"/>
+                                    <span className="truncate">{concert.venue?.name}, {concert.venue?.city?.name}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-[#666]"/>
-                                    <span>{formatDate(concert.eventDate)}</span>
-                                </div>
+                                {/* Badge nombre de titres */}
+                                {songsCount > 0 ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#4d94ff]/10 text-[#4d94ff] border border-[#4d94ff]/20 w-fit">
+                                        {songsCount} Titres
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#333] text-[#666] border border-[#444] w-fit">
+                                        Setlist Vide
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* FLÈCHE */}
+                            <div className="flex items-center px-2">
+                                <ArrowRight className="text-[#333] group-hover:text-white transition-colors" />
                             </div>
                         </div>
-
-                        {/* ACTION */}
-                        <Button 
-                            onClick={() => handleSelect(concert)}
-                            className="w-full md:w-auto h-12 px-6 bg-[#252525] hover:bg-[#4d94ff] text-white hover:text-black font-bold uppercase tracking-widest transition-all"
-                        >
-                            Voir la setlist <ArrowRight className="ml-2 w-4 h-4"/>
-                        </Button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         )}
       </div>
