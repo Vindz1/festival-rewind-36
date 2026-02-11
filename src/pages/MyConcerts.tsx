@@ -1,521 +1,257 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Music, Calendar, ArrowRight, MapPin, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from "@/AuthContext";
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/supabaseClient'; // Vérifiez que ce chemin est bon chez vous
 import { toast } from 'sonner';
-import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Music } from 'lucide-react';
-import { useAuth } from '@/AuthContext';
-import { saveToHistory } from '@/lib/history';
 import { SmartAd } from '@/components/SmartAd';
 import { getUserSubscription } from '@/lib/subscription';
 
-interface Track {
-  artist: string;
-  name: string;
-}
-
-interface ConcertData {
-  id?: string;
-  artist: string | { name: string };
-  venue?: string;
-  eventDate?: string;
-  isFuture?: boolean;
-  sets?: any;
-  tracks?: Track[];
-}
-
-export default function Generate() {
-  const location = useLocation();
+export default function MyConcerts() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
-  const [songs, setSongs] = useState<Track[]>([]);
-  const [playlistName, setPlaylistName] = useState('');
-  const [mainArtist, setMainArtist] = useState('');
-  const [copied, setCopied] = useState(false);
+  // États des données
+  const [activeTab, setActiveTab] = useState<'past' | 'future'>(
+    searchParams.get('tab') === 'future' ? 'future' : 'past'
+  );
+  const [concerts, setConcerts] = useState<any[]>([]);
+  const [upcomingConcerts, setUpcomingConcerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Analyse...');
-  const [errorMsg, setErrorMsg] = useState('');
+  
+  // États de sélection
+  const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
+  const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
+  
+  // État Premium (pour les pubs)
   const [isPremium, setIsPremium] = useState(false);
 
-  useEffect(() => {
-    processGeneration();
-  }, [location.state]); // Dépend de location.state pour relancer si navigation
+  // Helpers pour éviter les crashs si l'API renvoie des formats bizarres
+  const getArtistName = (c: any) => c.artist?.name || c.artist || 'Artiste inconnu';
+  const getVenueName = (c: any) => c.venue?.name || c.venue_name || '—';
+  const getEventDate = (c: any) => c.eventDate || c.event_date || 'À venir';
 
+  // 1. Vérifier le statut Premium au chargement
   useEffect(() => {
     if (user) {
       getUserSubscription(user.id).then(sub => {
-        setIsPremium(sub.subscription_type === 'premium');
-      }).catch(err => {
-        console.error('Erreur récupération subscription:', err);
+         setIsPremium(sub.subscription_type === 'premium');
       });
     }
   }, [user]);
 
-  const processGeneration = async () => {
-    try {
+  // 2. Charger les concerts depuis Setlist.fm (via votre API locale)
+  useEffect(() => {
+    const fetchAllConcerts = async () => {
+      const username = localStorage.getItem('setlistfm_username');
+      
+      // Si pas d'username setlist.fm, on arrête le chargement
+      if (!username) { 
+        setLoading(false); 
+        return; 
+      }
+
       setLoading(true);
-      setErrorMsg('');
-      
-      // --- 1. RÉCUPÉRATION DES DONNÉES (sans suppression immédiate) ---
-      const stateData = location.state;
-      const mode = searchParams.get('mode'); // 'upcoming' ou null
-      
-      let dataToUse: ConcertData[] = [];
-      let type: 'festival' | 'past' | 'future' | null = null;
-      let pName = "Ma Setlist";
-
-      console.log('🔍 State data:', stateData);
-      console.log('🔍 Mode:', mode);
-
-      // PRIORITÉ 1 : Données directes depuis HellfestPage (via state)
-      if (stateData?.artists && Array.isArray(stateData.artists)) {
-        console.log('✅ Mode: Hellfest/Festival');
-        type = 'festival';
-        dataToUse = stateData.artists.map((artistName: string) => ({
-          artist: artistName,
-          isFuture: true,
-          id: artistName.toLowerCase().replace(/\s+/g, '-')
-        }));
-        pName = stateData.eventName || "Hellfest 2026";
-      } 
-      // PRIORITÉ 2 : Mode "upcoming" explicite via URL
-      else if (mode === 'upcoming') {
-        console.log('✅ Mode: Upcoming (I\'m Going)');
-        type = 'future';
-        const futureRaw = localStorage.getItem('selected_upcoming');
-        if (futureRaw) {
-          const parsed = JSON.parse(futureRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: true
-          }));
-          pName = parsed.length === 1 
-            ? `${dataToUse[0].artist} - Warmup` 
-            : "Ma Sélection Future";
-        }
-      }
-      // PRIORITÉ 3 : Mode "past" (par défaut si pas upcoming)
-      else {
-        console.log('✅ Mode: Past (I Was There)');
-        type = 'past';
-        const pastRaw = localStorage.getItem('selected_concerts');
-        if (pastRaw) {
-          const parsed = JSON.parse(pastRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: false
-          }));
-          pName = parsed.length === 1 
-            ? `${dataToUse[0].artist} Live` 
-            : "Mes Concerts (Passés)";
-        }
-      }
-
-      console.log('📊 Data to use:', dataToUse);
-      console.log('📊 Type:', type);
-
-      // Validation
-      if (!type || dataToUse.length === 0) {
-        throw new Error("Aucun concert ou artiste sélectionné. Veuillez retourner en arrière et sélectionner au moins un élément.");
-      }
-
-      setPlaylistName(pName);
-
-      // --- 2. EXTRACTION DES MORCEAUX ---
-      const isFutureMode = type === 'festival' || type === 'future';
-      setLoadingMessage(
-        isFutureMode 
-          ? `Récupération du Top 10 pour ${dataToUse.length} artiste(s)...` 
-          : "Extraction des setlists réelles..."
-      );
-
-      const finalTracks: Track[] = [];
-      let processedCount = 0;
-
-      for (const item of dataToUse) {
-        processedCount++;
-        const currentArtist = typeof item.artist === 'string' 
-          ? item.artist 
-          : item.artist?.name || "Artiste Inconnu";
-
-        console.log(`🎵 Processing ${processedCount}/${dataToUse.length}: ${currentArtist}`);
-        
-        setLoadingMessage(`${processedCount}/${dataToUse.length} - ${currentArtist}...`);
-        
+      try {
+        // A. CHARGEMENT "I WAS THERE" (Passés)
         try {
-          if (item.isFuture) {
-            // FUTUR : Top 10 iTunes
-            const top = await fetchItunes(currentArtist, 10);
-            console.log(`  ✅ iTunes: ${top.length} tracks`);
-            finalTracks.push(...top);
-          } else {
-            // PASSÉ : Setlist.fm
-            const tracks = extractFromSetlist(item, currentArtist);
-            console.log(`  ✅ Setlist: ${tracks.length} tracks`);
-            if (tracks.length > 0) {
-              finalTracks.push(...tracks);
-            } else {
-              console.warn(`  ⚠️ Aucune track trouvée pour ${currentArtist}`);
-            }
+          const res = await fetch(`/api/search?action=user&username=${username}`);
+          if (res.ok) {
+            const data = await res.json();
+            setConcerts(data.results || []);
           }
-        } catch (err) {
-          console.error(`  ❌ Erreur pour ${currentArtist}:`, err);
-          // Continue avec les autres artistes
-        }
-      }
+        } catch (e) { console.error("Erreur Past:", e); }
 
-      console.log('📝 Total tracks before dedup:', finalTracks.length);
-
-      // --- 3. DÉDUPLICATION AMÉLIORÉE ---
-      const uniqueTracks = deduplicateTracks(finalTracks);
-      console.log('📝 Total tracks after dedup:', uniqueTracks.length);
-
-      // --- 4. GESTION DU RÉSULTAT ---
-      if (uniqueTracks.length === 0) {
-        throw new Error(
-          isFutureMode
-            ? "Impossible de récupérer les morceaux pour cette sélection. Vérifiez les noms d'artistes."
-            : "Aucune setlist n'a été renseignée sur Setlist.fm pour ce(s) concert(s)."
-        );
-      }
-
-      setSongs(uniqueTracks);
-      setMainArtist(uniqueTracks[0].artist);
-
-      // Sauvegarder dans l'historique si utilisateur connecté
-      if (user) {
+        // B. CHARGEMENT "I'M GOING" (Futurs)
+        let upcoming: any[] = [];
         try {
-          await saveToHistory(user.id, {
-            name: pName,
-            songs: uniqueTracks,
-            createdAt: new Date().toISOString()
-          });
-        } catch (err) {
-          console.error('Erreur sauvegarde historique:', err);
+          const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
+          if (resUpcoming.ok) {
+            const data = await resUpcoming.json();
+            upcoming = data.results || [];
+          }
+        } catch (e) { console.error("Erreur Future:", e); }
+
+        // C. MERGE SUPABASE (Si l'utilisateur a ajouté manuellement des concerts futurs)
+        if (user) {
+          const { data: sbData } = await supabase
+            .from('upcoming_concerts')
+            .select('*')
+            .eq('user_id', user.id);
+          if (sbData) upcoming = [...upcoming, ...sbData];
         }
+
+        // D. DÉDOUBLONNAGE
+        const uniqueUpcoming = Array.from(new Map(upcoming.map(item => [getArtistName(item), item])).values());
+        setUpcomingConcerts(uniqueUpcoming);
+
+      } catch (error) {
+        toast.error('Erreur lors du chargement des concerts');
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // --- 5. NETTOYAGE DU LOCALSTORAGE (uniquement en cas de succès) ---
-      if (type === 'festival') {
-        localStorage.removeItem('selected_concerts');
-        localStorage.removeItem('selected_upcoming');
-      } else if (type === 'past') {
-        localStorage.removeItem('selected_concerts');
-      } else if (type === 'future') {
-        localStorage.removeItem('selected_upcoming');
-      }
+    fetchAllConcerts();
+  }, [user]);
 
-      toast.success(`${uniqueTracks.length} morceaux prêts ! 🎉`);
-
-    } catch (err: any) {
-      console.error('❌ Erreur génération:', err);
-      setErrorMsg(err.message || "Une erreur est survenue lors de la génération.");
-      toast.error('Erreur de génération');
-    } finally {
-      setLoading(false);
-    }
+  const toggleSelection = (setIds: Set<string>, setFunc: any, id: string) => {
+    const newSet = new Set(setIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setFunc(newSet);
   };
 
-  // --- FONCTIONS UTILITAIRES ---
-
-  /**
-   * Extraction robuste depuis les données Setlist.fm
-   */
-  const extractFromSetlist = (concert: ConcertData, defaultArtist: string): Track[] => {
-    const result: Track[] = [];
+  const handleGenerate = (isUpcoming: boolean) => {
+    const selected = isUpcoming ? selectedUpcoming : selectedConcerts;
+    const list = isUpcoming ? upcomingConcerts : concerts;
     
-    // Cas 1 : Tracks déjà formatées
-    if (concert.tracks && Array.isArray(concert.tracks)) {
-      return concert.tracks.filter(t => 
-        t.name && 
-        t.name.trim() !== '' && 
-        t.name.toLowerCase() !== 'titre inconnu' &&
-        t.name.toLowerCase() !== 'unknown'
-      );
-    }
-
-    // Cas 2 : Structure brute de l'API Setlist.fm
-    if (concert.sets?.set) {
-      const sets = Array.isArray(concert.sets.set) 
-        ? concert.sets.set 
-        : [concert.sets.set];
-      
-      sets.forEach((s: any) => {
-        if (!s.song) return;
-        
-        const songs = Array.isArray(s.song) ? s.song : [s.song];
-        
-        songs.forEach((song: any) => {
-          // Filtrer les tapes, inconnus, etc.
-          if (song.tape) return;
-          if (!song.name || song.name.trim() === '') return;
-          if (song.name.toLowerCase().includes('unknown')) return;
-          
-          result.push({
-            artist: song.cover?.name || defaultArtist,
-            name: song.name.trim()
-          });
-        });
-      });
-    }
-
-    return result;
-  };
-
-  /**
-   * Récupération depuis iTunes API
-   */
-  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
-    try {
-      const response = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${limit}&country=US`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`iTunes API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.results || data.results.length === 0) {
-        console.warn(`Aucun résultat iTunes pour: ${artist}`);
-        return [];
-      }
-      
-      return data.results.map((item: any) => ({
-        artist: item.artistName,
-        name: item.trackName
+    if (selected.size === 0) return toast.error('Sélectionnez au moins un concert');
+    
+    const dataToSave = list
+      .filter(c => selected.has(c.id))
+      .map(c => ({
+        id: c.id,
+        artist: getArtistName(c),
+        venue: getVenueName(c),
+        eventDate: getEventDate(c)
       }));
-    } catch (err) {
-      console.error(`Erreur iTunes pour ${artist}:`, err);
-      return [];
-    }
-  };
-
-  /**
-   * Déduplication intelligente (insensible à la casse, trim, normalisation)
-   */
-  const deduplicateTracks = (tracks: Track[]): Track[] => {
-    const seen = new Set<string>();
-    const unique: Track[] = [];
-
-    tracks.forEach(track => {
-      // Normalisation : lowercase + trim + suppression des caractères spéciaux
-      const normalizedName = track.name
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s]/g, ''); // Supprime ponctuation
       
-      const normalizedArtist = track.artist
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s]/g, '');
-      
-      const key = `${normalizedArtist}|||${normalizedName}`;
-      
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(track);
-      }
-    });
-
-    return unique;
+    localStorage.setItem(isUpcoming ? 'selected_upcoming' : 'selected_concerts', JSON.stringify(dataToSave));
+    navigate(isUpcoming ? '/generate?mode=upcoming' : '/generate');
   };
 
-  /**
-   * Copie dans le presse-papier
-   */
-  const handleCopy = () => {
-    const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      toast.success("Liste copiée dans le presse-papier !");
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(err => {
-      console.error('Erreur copie:', err);
-      toast.error("Erreur lors de la copie");
-    });
-  };
-
-  /**
-   * Téléchargement en fichier texte
-   */
-  const handleDownload = () => {
-    const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${playlistName.replace(/[^a-z0-9]/gi, '_')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Fichier téléchargé !");
-  };
-
-  // --- RENDU ---
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center text-white">
-        <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12 mb-4" />
-        <p className="text-[#a0a0a0] font-mono uppercase tracking-widest text-xs">
-          {loadingMessage}
-        </p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12"/>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
-      <div className="flex-grow max-w-4xl mx-auto w-full px-4 pb-20">
-        
-        {errorMsg ? (
-          <div className="bg-[#252525] border border-red-500/30 p-12 rounded-3xl text-center shadow-2xl">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black italic uppercase mb-4">Oups !</h2>
-            <p className="text-[#a0a0a0] mb-8 font-medium leading-relaxed">{errorMsg}</p>
-            <Button 
-              onClick={() => navigate(-1)} 
-              className="bg-white text-black hover:bg-[#4d94ff] hover:text-white rounded-none px-8 font-black italic uppercase transition-all shadow-[8px_8px_0px_rgba(255,255,255,0.1)]"
-            >
-              <ArrowLeft className="mr-2 w-4 h-4" /> Retour à la sélection
-            </Button>
-          </div>
-        ) : (
-          <div className="animate-in fade-in duration-500">
-            {/* HEADER */}
-            <div className="text-center mb-12">
-              <h1 className="text-5xl md:text-8xl font-black italic uppercase mb-4 tracking-tighter leading-none">
-                C'est prêt !
-              </h1>
-              <div className="inline-block bg-[#4d94ff] text-white px-6 py-2 text-xl md:text-2xl font-black italic uppercase skew-x-[-12deg] shadow-[8px_8px_0px_rgba(0,0,0,0.5)]">
-                {songs.length} MORCEAUX
-              </div>
-              <p className="text-[#666] mt-6 font-bold uppercase tracking-widest text-sm">
-                {playlistName}
-              </p>
-            </div>
-
-            {/* ACTIONS */}
-            <div className="grid md:grid-cols-2 gap-8 mb-16">
-              {/* Copier */}
-              <div className="bg-[#252525] border border-[#333] rounded-3xl p-10 flex flex-col justify-between shadow-xl group hover:border-[#4d94ff] transition-all">
-                <div>
-                  <h3 className="text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
-                    <span className="bg-[#00ff00] text-black w-10 h-10 rounded-full flex items-center justify-center text-lg not-italic">
-                      1
-                    </span> 
-                    Copier
-                  </h3>
-                  <p className="text-[#a0a0a0] mb-8 text-sm font-bold uppercase tracking-tight leading-relaxed">
-                    Copiez la liste pour l'importer dans Spotify ou Deezer via{' '}
-                    <span className="text-white">TuneMyMusic</span>.
-                  </p>
+      
+      <div className="flex-grow max-w-[1200px] mx-auto w-full px-4 pb-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <h1 className="text-3xl font-black italic uppercase text-white">Mes Concerts</h1>
+            {!localStorage.getItem('setlistfm_username') && (
+                <div className="text-sm text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/30">
+                    ⚠️ Aucun compte Setlist.fm relié. <button onClick={() => navigate('/')} className="underline font-bold">Relier maintenant</button>
                 </div>
-                <Button 
-                  onClick={handleCopy} 
-                  className={`w-full h-24 text-2xl font-black italic uppercase transition-all rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.3)] ${
-                    copied 
-                      ? 'bg-[#00ff00] text-black' 
-                      : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="mr-2 w-6 h-6" /> Copié !
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 w-6 h-6" /> Copier la liste
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Importer */}
-              <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-10 flex flex-col justify-between shadow-xl group hover:border-white transition-all">
-                <div>
-                  <h3 className="text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
-                    <span className="bg-[#4d94ff] text-white w-10 h-10 rounded-full flex items-center justify-center text-lg not-italic">
-                      2
-                    </span> 
-                    Importer
-                  </h3>
-                  <p className="text-[#a0a0a0] mb-8 text-sm font-bold uppercase tracking-tight leading-relaxed">
-                    Allez sur TuneMyMusic, choisissez{' '}
-                    <span className="text-white">"Texte"</span> comme source, et collez votre liste.
-                  </p>
-                </div>
-                <a 
-                  href="https://www.tunemymusic.com/fr/transfer" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="flex items-center justify-center gap-2 w-full py-8 bg-white text-black font-black italic uppercase transition-all hover:bg-[#4d94ff] hover:text-white text-xl shadow-[8px_8px_0px_rgba(77,148,255,0.2)]"
-                >
-                  Ouvrir TuneMyMusic
-                  <ExternalLink className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* LISTE DES MORCEAUX (optionnel - déplier) */}
-            <details className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden mb-8">
-              <summary className="cursor-pointer p-6 font-black uppercase text-lg hover:bg-[#2d2d2d] transition-colors flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Music className="w-5 h-5" /> Voir la liste complète
-                </span>
-                <span className="text-[#666] text-sm">{songs.length} titres</span>
-              </summary>
-              <div className="p-6 pt-0 max-h-96 overflow-y-auto">
-                <div className="space-y-2">
-                  {songs.map((song, idx) => (
-                    <div 
-                      key={idx} 
-                      className="flex items-start gap-3 p-3 rounded bg-[#1a1a1a] hover:bg-[#2d2d2d] transition-colors"
-                    >
-                      <span className="text-[#666] font-mono text-sm min-w-[2rem]">
-                        {String(idx + 1).padStart(2, '0')}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white truncate">{song.name}</p>
-                        <p className="text-sm text-[#a0a0a0] truncate">{song.artist}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-
-            {/* BOUTON TÉLÉCHARGER */}
-            <div className="text-center">
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                className="border-[#333] text-white hover:bg-[#2d2d2d]"
-              >
-                <Download className="mr-2 w-4 h-4" />
-                Télécharger en .txt
-              </Button>
-            </div>
-
-            {/* PUB (si pas premium) */}
-            {!isPremium && mainArtist && (
-              <div className="mt-20 pt-10 border-t border-[#333]">
-                <SmartAd artistName={mainArtist} index={0} />
-              </div>
             )}
-          </div>
-        )}
+        </div>
+
+        <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="mb-6">
+          <TabsList className="bg-[#2d2d2d] border-b border-[#404040] w-full justify-start p-0 h-auto rounded-none">
+            <TabsTrigger value="past" className="px-6 py-3 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#4d94ff] text-[#a0a0a0] data-[state=active]:text-white font-bold uppercase tracking-wider">
+                I Was There <span className="ml-2 bg-[#333] px-2 rounded-full text-xs text-white">{concerts.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="future" className="px-6 py-3 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#00ff00] text-[#a0a0a0] data-[state=active]:text-white font-bold uppercase tracking-wider">
+                I'm Going <span className="ml-2 bg-[#333] px-2 rounded-full text-xs text-white">{upcomingConcerts.length}</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ONGLET PASSÉ */}
+          <TabsContent value="past" className="mt-6">
+            <div className="bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden shadow-2xl">
+               {concerts.length === 0 ? <div className="p-12 text-center text-[#a0a0a0]">Aucun concert trouvé sur votre profil Setlist.fm</div> : (
+                 <div className="divide-y divide-[#404040]">
+                   {concerts.map((c, index) => (
+                     <div key={c.id}>
+                        {/* Ligne du concert */}
+                        <div 
+                            onClick={() => toggleSelection(selectedConcerts, setSelectedConcerts, c.id)} 
+                            className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${selectedConcerts.has(c.id) ? 'bg-[#4d94ff]/10' : 'hover:bg-[#3d3d3d]'}`}
+                        >
+                            <input type="checkbox" checked={selectedConcerts.has(c.id)} readOnly className="w-5 h-5 rounded border-[#404040] accent-[#4d94ff]"/>
+                            <div className="flex-1">
+                                <p className="text-white font-bold text-lg">{getArtistName(c)}</p>
+                                <div className="flex items-center gap-4 text-sm text-[#a0a0a0] mt-1">
+                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3"/> {getVenueName(c)}</span>
+                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {getEventDate(c)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* PUB INTELLIGENTE (Tous les 5 items) */}
+                        {(index + 1) % 5 === 0 && !isPremium && (
+                            <div className="px-4 py-2 bg-[#1a1a1a]">
+                                <SmartAd artistName={getArtistName(c)} index={index} />
+                            </div>
+                        )}
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+            
+            {/* Barre de génération flottante */}
+            {selectedConcerts.size > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
+                    <div className="max-w-[1200px] mx-auto flex justify-between items-center text-white">
+                        <span className="font-bold">{selectedConcerts.size} concert(s) sélectionné(s)</span>
+                        <Button onClick={() => handleGenerate(false)} className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold shadow-lg shadow-blue-500/20">
+                            Générer Playlist <ArrowRight className="ml-2 w-4 h-4"/>
+                        </Button>
+                    </div>
+                </div>
+            )}
+          </TabsContent>
+
+          {/* ONGLET FUTUR */}
+          <TabsContent value="future" className="mt-6">
+             <div className="bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden shadow-2xl">
+               {upcomingConcerts.length === 0 ? <div className="p-12 text-center text-[#a0a0a0]">Aucun concert à venir.</div> : (
+                 <div className="divide-y divide-[#404040]">
+                   {upcomingConcerts.map((c, index) => (
+                     <div key={c.id}>
+                        {/* Ligne du concert */}
+                        <div 
+                            onClick={() => toggleSelection(selectedUpcoming, setSelectedUpcoming, c.id)} 
+                            className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${selectedUpcoming.has(c.id) ? 'bg-[#00ff00]/10' : 'hover:bg-[#3d3d3d]'}`}
+                        >
+                            <input type="checkbox" checked={selectedUpcoming.has(c.id)} readOnly className="w-5 h-5 rounded border-[#404040] accent-[#00ff00]"/>
+                            <div className="flex-1">
+                                <p className="text-white font-bold text-lg">{getArtistName(c)}</p>
+                                <div className="flex items-center gap-4 text-sm text-[#a0a0a0] mt-1">
+                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3"/> {getVenueName(c)}</span>
+                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {getEventDate(c)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* PUB INTELLIGENTE (Tous les 5 items) */}
+                        {(index + 1) % 5 === 0 && !isPremium && (
+                            <div className="px-4 py-2 bg-[#1a1a1a]">
+                                <SmartAd artistName={getArtistName(c)} index={index} />
+                            </div>
+                        )}
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+            
+            {selectedUpcoming.size > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
+                    <div className="max-w-[1200px] mx-auto flex justify-between items-center text-white">
+                        <span className="font-bold">{selectedUpcoming.size} concert(s) sélectionné(s)</span>
+                        <Button onClick={() => handleGenerate(true)} className="bg-[#00ff00] hover:bg-[#33ff33] text-black font-bold shadow-lg shadow-green-500/20">
+                            Préparer Playlist <ArrowRight className="ml-2 w-4 h-4"/>
+                        </Button>
+                    </div>
+                </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
       <Footer />
     </div>
   );
-}
+};
