@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Music, Trash2 } from 'lucide-react';
+import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Music } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
 import { SmartAd } from '@/components/SmartAd';
@@ -20,13 +20,12 @@ export default function Generate() {
   const [mainArtist, setMainArtist] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Analyse des setlists...');
+  const [loadingMessage, setLoadingMessage] = useState('Analyse...');
   const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
-        // Reset au chargement
         setSongs([]);
         setErrorMsg('');
         
@@ -38,128 +37,110 @@ export default function Generate() {
         const storagePast = localStorage.getItem('selected_concerts');
         const storageUpcoming = localStorage.getItem('selected_upcoming');
 
-        // --- SCÉNARIO 1 : HELLFEST / NAVIGATION DIRECTE ---
-        if (directState?.artists && Array.isArray(directState.artists)) {
+        // 1. DÉTERMINER LA SOURCE ET LE MODE
+        let rawData = [];
+        let isFestival = false;
+
+        if (directState?.artists) {
+            rawData = directState.artists.map((a: string) => ({ artist: a, isFuture: true }));
             setPlaylistName(directState.eventName || "Festival Playlist");
-            setMainArtist(directState.artists[0] || "Festival");
-            await generateBestOfList(directState.artists, 10);
+            isFestival = true;
+        } else if (storagePast || storageUpcoming) {
+            const past = JSON.parse(storagePast || '[]');
+            const future = JSON.parse(storageUpcoming || '[]');
+            rawData = [...past.map((c: any) => ({ ...c, isFuture: false })), ...future.map((c: any) => ({ ...c, isFuture: true }))];
+            setPlaylistName(rawData.length > 1 ? "Ma Sélection" : "Ma Setlist");
         }
 
-        // --- SCÉNARIO 2 : CONCERTS PASSÉS (Strict) ---
-        else if (storagePast && JSON.parse(storagePast).length > 0) {
-            const rawData = JSON.parse(storagePast);
-            
-            let artistName = "Various Artists";
-            if (rawData[0].artist) artistName = rawData[0].artist.name || rawData[0].artist;
-            setMainArtist(artistName);
-            setPlaylistName(rawData.length > 1 ? "Mes Concerts" : `${artistName} Live`);
+        if (rawData.length === 0) {
+            setErrorMsg("Aucun concert sélectionné.");
+            setLoading(false);
+            return;
+        }
 
-            const allTracks: any[] = [];
+        // 2. EXTRACTION DES TITRES
+        setLoadingMessage("Récupération des morceaux...");
+        const allTracks: any[] = [];
 
-            for (const concert of rawData) {
-                const cArtist = concert.artist?.name || concert.artist || "Inconnu";
-                
-                // On extrait les titres du format Setlist.fm
-                if (concert.sets && concert.sets.set) {
-                    const tracks = extractTracks(concert, cArtist);
-                    tracks.forEach(t => allTracks.push(t));
-                } 
-                // Fallback si déjà formaté en tracks
-                else if (concert.tracks && concert.tracks.length > 0) {
-                    concert.tracks.forEach((t: any) => {
-                        if (t.name && t.name !== "Titre inconnu") {
-                            allTracks.push({ artist: t.artist || cArtist, name: t.name });
-                        }
-                    });
+        for (const item of rawData) {
+            const artistName = item.artist?.name || item.artist || "Inconnu";
+            if (artistName === "Inconnu") continue;
+
+            let foundInSetlist = false;
+
+            // A. Si c'est un concert passé, on tente l'extraction STRICTE de Setlist.fm
+            if (!item.isFuture && item.sets) {
+                const extracted = extractFromSets(item, artistName);
+                if (extracted.length > 0) {
+                    extracted.forEach(t => allTracks.push(t));
+                    foundInSetlist = true;
                 }
             }
-            finishLoading(allTracks, playlistName, artistName);
+
+            // B. Si c'est un concert futur OU si la setlist passée était vide (Fallback)
+            if (item.isFuture || !foundInSetlist) {
+                // On demande 10 titres pour le futur, et 15 pour réparer un passé vide
+                const limit = item.isFuture ? 10 : 15;
+                const topTracks = await fetchItunes(artistName, limit);
+                topTracks.forEach(t => allTracks.push(t));
+            }
         }
 
-        // --- SCÉNARIO 3 : CONCERTS FUTURS (Best Of) ---
-        else if (storageUpcoming && JSON.parse(storageUpcoming).length > 0) {
-            const rawData = JSON.parse(storageUpcoming);
-            const artistNames = rawData.map((c: any) => c.artist?.name || c.artist);
-            setPlaylistName("Mes Prochains Concerts");
-            setMainArtist(artistNames[0]);
-            await generateBestOfList(artistNames, 10);
+        // 3. FINALISATION
+        if (allTracks.length === 0) {
+            setErrorMsg("Impossible de trouver des titres pour cette sélection.");
+        } else {
+            // Dédoublonnage simple
+            const unique = allTracks.filter((v, i, a) => a.findIndex(t => (t.name === v.name && t.artist === v.artist)) === i);
+            setSongs(unique);
+            setMainArtist(allTracks[0].artist);
         }
-
-        else {
-            setErrorMsg("Aucune sélection trouvée.");
-            setLoading(false);
-        }
+        setLoading(false);
     };
 
     loadData();
-  }, [location.state]); // On ne dépend plus de 'user' ou 'location' entier pour éviter les boucles
+  }, [location.state]);
 
-  // Moteur d'extraction fidèle à Setlist.fm
-  const extractTracks = (data: any, defaultArtist: string) => {
-    const result: any[] = [];
-    if (!data.sets || !data.sets.set) return result;
-
-    const sets = Array.isArray(data.sets.set) ? data.sets.set : [data.sets.set];
-    
-    sets.forEach((set: any) => {
-      if (!set.song) return;
-      const songs = Array.isArray(set.song) ? set.song : [set.song];
-      
-      songs.forEach((song: any) => {
-        if (song.tape) return; // On ignore les intros sur bande
-        if (!song.name) return; // On ignore les lignes vides
-
-        // Gestion de la reprise (Cover) : on prend l'artiste original si dispo
-        const artist = song.cover ? song.cover.name : defaultArtist;
-        result.push({ artist, name: song.name });
-      });
-    });
-    return result;
+  // Extraction propre des données Setlist.fm
+  const extractFromSets = (concert: any, defaultArtist: string) => {
+    const tracks: any[] = [];
+    try {
+        const setsData = concert.sets?.set;
+        if (!setsData) return [];
+        const setsArray = Array.isArray(setsData) ? setsData : [setsData];
+        
+        setsArray.forEach((s: any) => {
+            if (!s.song) return;
+            const songsArray = Array.isArray(s.song) ? s.song : [s.song];
+            songsArray.forEach((song: any) => {
+                if (!song.name || song.tape) return;
+                tracks.push({
+                    artist: song.cover ? song.cover.name : defaultArtist,
+                    name: song.name
+                });
+            });
+        });
+    } catch (e) { console.error(e); }
+    return tracks;
   };
 
-  // Moteur iTunes (uniquement pour le futur)
+  // Moteur de secours iTunes
   const fetchItunes = async (artist: string, limit: number) => {
     try {
-      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${limit}`);
-      const data = await res.json();
-      return data.results.map((item: any) => ({ artist: item.artistName, name: item.trackName }));
-    } catch (e) {
-      return [];
-    }
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${limit}`);
+        const data = await res.json();
+        return data.results.map((item: any) => ({
+            artist: item.artistName,
+            name: item.trackName
+        }));
+    } catch (e) { return []; }
   };
 
-  const generateBestOfList = async (artists: string[], limit: number) => {
-    setLoadingMessage("Recherche des morceaux sur iTunes...");
-    const all: any[] = [];
-    for (const a of artists) {
-      const t = await fetchItunes(a, limit);
-      t.forEach(x => all.push(x));
-    }
-    finishLoading(all, playlistName, artists[0]);
+  const finishLoading = (tracks: any[]) => {
+      // (Logique intégrée au useEffect pour plus de simplicité)
   };
 
-  const finishLoading = (tracks: any[], name: string, artist: string) => {
-    if (tracks.length === 0) {
-      setErrorMsg("La setlist semble vide sur Setlist.fm.");
-      setLoading(false);
-      return;
-    }
-    setSongs(tracks);
-    setPlaylistName(name);
-    setMainArtist(artist);
-    setLoading(false);
-
-    if (user) {
-      saveToHistory(user.id, {
-        playlist_name: name,
-        track_count: tracks.length,
-        top_artists: [artist],
-        platform_target: 'universal'
-      }).catch(() => {});
-    }
-  };
-
-  // HANDLERS
+  // UI Handlers
   const handleCopy = () => {
     const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
     navigator.clipboard.writeText(text);
@@ -174,14 +155,14 @@ export default function Generate() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Setlive_${playlistName.replace(/\s+/g, '_')}.csv`;
+    link.download = `Setlive_Export.csv`;
     link.click();
   };
 
   if (loading) return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center text-white">
       <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12 mb-4" />
-      <p className="text-[#a0a0a0]">{loadingMessage}</p>
+      <p className="text-[#a0a0a0] font-mono">{loadingMessage}</p>
     </div>
   );
 
@@ -194,51 +175,51 @@ export default function Generate() {
         </Button>
 
         {errorMsg ? (
-          <div className="bg-[#252525] border border-[#333] p-12 rounded-3xl text-center">
+          <div className="bg-[#252525] border border-[#333] p-12 rounded-3xl text-center shadow-2xl">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-4">Oups !</h2>
+            <h2 className="text-2xl font-bold mb-4 italic uppercase">Oups !</h2>
             <p className="text-[#a0a0a0] mb-8">{errorMsg}</p>
-            <Button onClick={() => navigate('/')} className="bg-[#4d94ff] hover:bg-[#6ba6ff]">Retour à l'accueil</Button>
+            <Button onClick={() => navigate('/')} className="bg-[#4d94ff] hover:bg-[#6ba6ff] rounded-none px-8 font-bold italic uppercase">Retour à l'accueil</Button>
           </div>
         ) : (
-          <>
+          <div className="animate-in fade-in duration-500">
             <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-6xl font-black italic uppercase mb-4 italic">C'est prêt !</h1>
-              <p className="text-xl text-[#a0a0a0] uppercase tracking-widest font-bold">
-                <span className="text-[#4d94ff]">{songs.length}</span> TITRES EXTRAITS
-              </p>
+              <h1 className="text-4xl md:text-6xl font-black italic uppercase mb-4 tracking-tighter">C'est prêt !</h1>
+              <div className="inline-block bg-[#4d94ff] text-white px-4 py-1 text-sm font-black italic uppercase skew-x-[-10deg]">
+                {songs.length} titres trouvés
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-[#252525] border border-[#333] rounded-3xl p-8 flex flex-col justify-between shadow-xl">
+              <div className="bg-[#252525] border border-[#333] rounded-3xl p-8 flex flex-col justify-between shadow-xl group hover:border-[#4d94ff] transition-all">
                 <div>
-                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                    <CheckCircle2 className="text-[#00ff00] w-6 h-6" /> 1. COPIER
+                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2 italic uppercase">
+                    <Check className="text-[#00ff00] w-6 h-6" /> 1. Copier
                   </h3>
                   <p className="text-[#a0a0a0] mb-8 text-sm leading-relaxed">
-                    Copiez la liste des morceaux pour l'importer dans Spotify ou Deezer via TuneMyMusic.
+                    Copiez la liste pour l'importer dans votre plateforme de streaming (Spotify, Deezer...) via TuneMyMusic.
                   </p>
                 </div>
-                <Button onClick={handleCopy} className={`w-full h-16 text-lg font-bold uppercase tracking-widest transition-all ${copied ? 'bg-[#00ff00] text-black hover:bg-[#00ff00]' : 'bg-[#4d94ff] hover:bg-[#6ba6ff]'}`}>
+                <Button onClick={handleCopy} className={`w-full h-16 text-lg font-black italic uppercase transition-all rounded-none ${copied ? 'bg-[#00ff00] text-black' : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'}`}>
                   {copied ? 'Copié !' : 'Copier la liste'}
                 </Button>
               </div>
 
-              <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 flex flex-col justify-between shadow-xl">
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 flex flex-col justify-between shadow-xl group hover:border-white transition-all">
                 <div>
-                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                    <ExternalLink className="text-[#4d94ff] w-6 h-6" /> 2. IMPORTER
+                  <h3 className="text-2xl font-bold mb-4 flex items-center gap-2 italic uppercase text-white">
+                    <ExternalLink className="text-[#4d94ff] w-6 h-6" /> 2. Importer
                   </h3>
                   <p className="text-[#a0a0a0] mb-8 text-sm leading-relaxed">
                     Allez sur TuneMyMusic, choisissez "Texte" comme source, et collez votre liste.
                   </p>
                 </div>
                 <div className="space-y-4">
-                  <a href="https://www.tunemymusic.com/fr/" target="_blank" rel="noreferrer" className="block w-full text-center py-4 bg-[#333] hover:bg-[#444] rounded-xl font-bold uppercase tracking-widest transition-colors">
+                  <a href="https://www.tunemymusic.com/fr/" target="_blank" rel="noreferrer" className="block w-full text-center py-4 bg-white text-black font-black italic uppercase transition-colors hover:bg-[#4d94ff] hover:text-white">
                     Ouvrir TuneMyMusic
                   </a>
-                  <button onClick={handleCSV} className="w-full text-xs text-[#666] hover:text-white uppercase font-bold tracking-widest">
-                    Ou télécharger le CSV
+                  <button onClick={handleCSV} className="w-full text-xs text-[#666] hover:text-[#4d94ff] uppercase font-bold tracking-widest transition-colors">
+                    Ou télécharger le fichier CSV
                   </button>
                 </div>
               </div>
@@ -249,7 +230,7 @@ export default function Generate() {
                 <SmartAd artistName={mainArtist} index={0} />
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
       <Footer />
