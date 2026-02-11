@@ -20,7 +20,7 @@ export default function Generate() {
   const [mainArtist, setMainArtist] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Préparation...');
+  const [loadingMessage, setLoadingMessage] = useState('Analyse...');
   const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
 
@@ -32,84 +32,84 @@ export default function Generate() {
 
         const directState = location.state;
         
-        // --- CAS 1 : MODE FESTIVAL / HELLFEST (Liste d'artistes seulement) ---
+        // --- CAS 1 : HELLFEST / UPCOMING ---
         if (directState?.artists && Array.isArray(directState.artists)) {
             setPlaylistName(directState.eventName || "Festival Playlist");
             setMainArtist(directState.artists[0] || "Festival");
             await generateFromArtistList(directState.artists);
         }
         
-        // --- CAS 2 : RECHERCHE DIRECTE OU HISTORIQUE ---
+        // --- CAS 2 : HISTORIQUE / CSV / MES CONCERTS ---
         else {
-            const directSongs = location.state?.songs;
-            const directArtist = location.state?.artistName;
             const selectedConcertsStr = localStorage.getItem('selected_concerts');
             const selectedUpcomingStr = localStorage.getItem('selected_upcoming');
 
-            let finalTracks: any[] = [];
-            let name = "Ma Setlist";
-            let artistForAd = "Rock";
+            // On essaie de récupérer les données
+            let rawData = [];
+            try {
+                if (location.state?.songs) rawData = [{ tracks: location.state.songs }];
+                else rawData = JSON.parse(selectedConcertsStr || selectedUpcomingStr || '[]');
+            } catch (e) {
+                console.error("Erreur parsing", e);
+            }
 
-            // A. Données directes (propres)
-            if (directSongs && directSongs.length > 0) {
-                finalTracks = directSongs.map((s: any) => ({ artist: s.artist, name: s.name }));
-                if (directArtist) { name = `${directArtist} Setlist`; artistForAd = directArtist; }
-                finishLoading(finalTracks, name, artistForAd);
-            } 
-            // B. Données Historique / Mes Concerts (potentiellement sales ou incomplètes)
-            else if (selectedConcertsStr || selectedUpcomingStr) {
-                 try {
-                     const rawData = JSON.parse(selectedConcertsStr || selectedUpcomingStr || '[]');
-                     if (rawData.length > 0) {
-                        artistForAd = rawData[0].artist?.name || rawData[0].artist || "Rock";
-                        name = rawData.length > 1 ? "Mes Concerts" : `${artistForAd} Live`;
+            if (rawData.length > 0) {
+                let artistName = "Various Artists";
+                // Tentative de nommage intelligent
+                if (rawData[0].artist) artistName = rawData[0].artist.name || rawData[0].artist;
+                else if (rawData[0].tracks && rawData[0].tracks.length > 0) artistName = rawData[0].tracks[0].artist;
+                
+                setMainArtist(artistName);
+                setPlaylistName(rawData.length > 1 ? "Mes Concerts" : `${artistName} Live`);
 
-                        // Analyse de chaque concert
-                        const promises = rawData.map(async (concert: any) => {
-                            const cArtist = concert.artist?.name || concert.artist;
+                // --- ANALYSE ET RÉPARATION ---
+                setLoadingMessage("Réparation des titres manquants...");
+                const allTracks: any[] = [];
 
-                            // 1. Si setlist.fm a donné les titres
-                            if (concert.sets && concert.sets.set) {
-                                return extractTracksFromSets(concert, cArtist);
-                            }
-                            if (concert.tracks && concert.tracks.length > 0) {
-                                // Vérification anti "Titre inconnu"
-                                if (concert.tracks[0].name === "Titre inconnu") {
-                                    // C'est un CSV cassé -> On répare avec iTunes
-                                    return await fetchTopTracks(cArtist);
-                                }
-                                return concert.tracks;
-                            }
-                            // 2. Si c'est un concert futur ou sans setlist -> API iTunes
-                            if (concert.eventDate || !concert.sets) {
-                                 return await fetchTopTracks(cArtist);
-                            }
-                            // 3. Fallback ID
-                            if (concert.id) {
-                                try {
-                                    const res = await fetch(`/api/setlist?id=${concert.id}`);
-                                    if (res.ok) {
-                                        const fullData = await res.json();
-                                        return extractTracksFromSets(fullData, fullData.artist?.name);
-                                    }
-                                } catch (err) { console.error(err); }
-                            }
-                            return [];
-                        });
+                for (const concert of rawData) {
+                    const cArtist = concert.artist?.name || concert.artist || "Inconnu";
 
-                        const results = await Promise.all(promises);
-                        finalTracks = results.flat();
-                        finishLoading(finalTracks, name, artistForAd);
-                     } else {
-                        setErrorMsg("Aucune donnée sélectionnée.");
-                        setLoading(false);
-                     }
-                 } catch (e) {
-                     setErrorMsg("Erreur de lecture des données.");
-                     setLoading(false);
-                 }
+                    // A. On a déjà des pistes ?
+                    if (concert.tracks && concert.tracks.length > 0) {
+                        // VÉRIFICATION CRITIQUE : Est-ce que c'est le mauvais CSV ("Titre inconnu") ?
+                        const isBadData = concert.tracks.some((t: any) => 
+                            t.name === "Titre inconnu" || t.name === "Unknown Track"
+                        );
+
+                        if (isBadData) {
+                            // OUI -> On appelle iTunes pour réparer
+                            const repaired = await fetchTopTracks(cArtist);
+                            repaired.forEach((t: any) => allTracks.push(t));
+                        } else {
+                            // NON -> C'est bon, on garde
+                            concert.tracks.forEach((t: any) => allTracks.push({
+                                artist: t.artist || cArtist,
+                                name: t.name
+                            }));
+                        }
+                    }
+                    // B. C'est du format Setlist.fm (Sets) ?
+                    else if (concert.sets && concert.sets.set) {
+                         const extracted = extractTracksFromSets(concert, cArtist);
+                         if (extracted.length === 0) {
+                             // Setlist vide ? -> Fallback iTunes
+                             const fallback = await fetchTopTracks(cArtist);
+                             fallback.forEach((t: any) => allTracks.push(t));
+                         } else {
+                             extracted.forEach(t => allTracks.push(t));
+                         }
+                    }
+                    // C. Rien du tout ? -> iTunes direct
+                    else {
+                        const fallback = await fetchTopTracks(cArtist);
+                        fallback.forEach((t: any) => allTracks.push(t));
+                    }
+                }
+
+                finishLoading(allTracks, rawData.length > 1 ? "Mes Concerts" : `${artistName} Setlist`, artistName);
+
             } else {
-                setErrorMsg("Aucune donnée reçue.");
+                setErrorMsg("Aucune donnée trouvée. Retournez à l'accueil.");
                 setLoading(false);
             }
         }
@@ -118,25 +118,29 @@ export default function Generate() {
     loadData();
   }, [location, user]);
 
-  // --- LOGIQUE API ITUNES ---
+  // --- API CALL ---
   const fetchTopTracks = async (artistName: string) => {
+    if (!artistName || artistName === "Inconnu") return [];
     try {
         const res = await fetch(`/api/get-tracks?artist=${encodeURIComponent(artistName)}`);
-        if (res.ok) return await res.json();
+        if (res.ok) {
+            const data = await res.json();
+            return data;
+        }
     } catch (e) {
-        console.error(`Erreur iTunes pour ${artistName}`, e);
+        console.error(`Erreur fetch ${artistName}`, e);
     }
     return [];
   };
 
   const generateFromArtistList = async (artists: string[]) => {
-      setLoadingMessage(`Génération de la playlist pour ${artists.length} artistes...`);
+      setLoadingMessage(`Récupération des tubes pour ${artists.length} artistes...`);
       const allTracks: any[] = [];
-      const batchSize = 5; // iTunes est rapide, on peut en faire 5 à la fois
-
-      for (let i = 0; i < artists.length; i += batchSize) {
-          const batch = artists.slice(i, i + batchSize);
-          setLoadingMessage(`Récupération des tubes... (${Math.min(i + batchSize, artists.length)}/${artists.length})`);
+      
+      // Traitement par lots de 5 pour aller vite
+      for (let i = 0; i < artists.length; i += 5) {
+          const batch = artists.slice(i, i + 5);
+          setLoadingMessage(`Analyse... ${Math.min(i + 5, artists.length)} / ${artists.length}`);
           
           const promises = batch.map(a => fetchTopTracks(a));
           const results = await Promise.all(promises);
@@ -146,22 +150,20 @@ export default function Generate() {
       if (allTracks.length > 0) {
           finishLoading(allTracks, "Festival Playlist", artists[0]);
       } else {
-          setErrorMsg("Impossible de trouver des titres pour ces artistes.");
+          setErrorMsg("Impossible de trouver des titres. Vérifiez votre connexion.");
           setLoading(false);
       }
   };
 
-  // --- HELPERS ---
   const extractTracksFromSets = (data: any, defaultArtist: string) => {
     const tracks: any[] = [];
-    const artistName = defaultArtist || 'Inconnu';
     if (data.sets && data.sets.set) {
         data.sets.set.forEach((set: any) => {
             if (set.song) {
                 set.song.forEach((song: any) => {
                     if (song.name && !song.tape) {
                         tracks.push({
-                            artist: song.cover ? song.cover.name : artistName,
+                            artist: song.cover ? song.cover.name : defaultArtist,
                             name: song.name
                         });
                     }
@@ -174,7 +176,7 @@ export default function Generate() {
 
   const finishLoading = (tracks: any[], listName: string, adArtist: string) => {
     if (tracks.length === 0) {
-        setErrorMsg("Aucune chanson trouvée.");
+        setErrorMsg("Aucun titre trouvé. L'API ne répond pas.");
         setLoading(false);
         return;
     }
@@ -188,14 +190,15 @@ export default function Generate() {
     setPlaylistName(listName);
     setMainArtist(adArtist);
     setLoading(false);
-
+    
+    // Save history (silencieux en cas d'erreur)
     if (user && uniqueTracks.length > 0) {
-        saveToHistory(user.id, {
+         saveToHistory(user.id, {
             playlist_name: listName,
             track_count: uniqueTracks.length,
             top_artists: [adArtist],
             platform_target: 'universal'
-        }).catch(e => console.error(e));
+        }).catch(() => {});
     }
   };
 
@@ -203,7 +206,7 @@ export default function Generate() {
     const textList = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
     navigator.clipboard.writeText(textList);
     setCopied(true);
-    toast.success("Liste copiée !");
+    toast.success("Copié !");
     setTimeout(() => setCopied(false), 3000);
   };
 
@@ -224,7 +227,7 @@ export default function Generate() {
         <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12 mb-4"/>
         <p className="animate-pulse text-[#a0a0a0] font-mono text-sm">{loadingMessage}</p>
         <div className="mt-4 flex gap-2 text-xs text-[#666]">
-            <Wand2 className="w-4 h-4" /> Powered by iTunes API
+            <Wand2 className="w-4 h-4" /> Powered by iTunes
         </div>
     </div>
   );
@@ -232,7 +235,6 @@ export default function Generate() {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
-      
       <div className="flex-grow max-w-4xl mx-auto w-full px-4 pb-20">
         <Button variant="ghost" onClick={() => navigate('/')} className="mb-6 text-[#a0a0a0] hover:text-white pl-0">
             <ArrowLeft className="mr-2 h-4 w-4" /> Accueil
@@ -257,22 +259,15 @@ export default function Generate() {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8 mb-12">
-                    {/* Etape 1 : COPIER */}
+                    {/* GAUCHE : COPIER */}
                     <div className="bg-[#252525] border border-[#404040] rounded-3xl p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-[#4d94ff] text-white text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
-                            Étape 1
-                        </div>
+                        <div className="absolute top-0 right-0 bg-[#4d94ff] text-white text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">Étape 1</div>
                         <div>
                             <h3 className="text-2xl font-bold mb-2">Récupérer la liste</h3>
-                            <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste propre pour l'import.</p>
+                            <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste pour TuneMyMusic.</p>
                         </div>
                         <div className="space-y-3">
-                            <Button 
-                                onClick={handleCopyText} 
-                                className={`w-full h-16 font-bold text-lg uppercase tracking-widest transition-all ${
-                                    copied ? 'bg-[#00ff00] text-black hover:bg-[#00ff00]' : 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white'
-                                }`}
-                            >
+                            <Button onClick={handleCopyText} className={`w-full h-16 font-bold text-lg uppercase tracking-widest transition-all ${copied ? 'bg-[#00ff00] text-black hover:bg-[#00ff00]' : 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white'}`}>
                                 {copied ? <><Check className="mr-2 w-6 h-6"/> COPIÉ !</> : <><Copy className="mr-2 w-5 h-5"/> COPIER (TEXTE)</>}
                             </Button>
                             <button onClick={handleDownloadCSV} className="w-full text-xs text-[#a0a0a0] hover:text-white uppercase font-bold tracking-widest py-3 border border-[#404040] hover:border-white rounded transition-all flex items-center justify-center">
@@ -281,18 +276,16 @@ export default function Generate() {
                         </div>
                     </div>
 
-                    {/* Etape 2 : TUNEMYMUSIC */}
+                    {/* DROITE : TUNEMYMUSIC */}
                     <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 flex flex-col justify-between relative">
-                        <div className="absolute top-0 right-0 bg-[#333] text-[#a0a0a0] text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
-                            Étape 2
-                        </div>
+                        <div className="absolute top-0 right-0 bg-[#333] text-[#a0a0a0] text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">Étape 2</div>
                         <div>
-                            <h3 className="text-2xl font-bold mb-2 text-white">Importer partout</h3>
+                            <h3 className="text-2xl font-bold mb-2 text-white">Importer</h3>
                             <p className="text-[#a0a0a0] mb-6 text-sm">Via <strong className="text-white">TuneMyMusic</strong> (Gratuit).</p>
                             <ol className="space-y-4 text-sm text-[#a0a0a0]">
-                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span><span>Cliquez sur le bouton ci-dessous.</span></li>
+                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span><span>Cliquez sur le bouton.</span></li>
                                 <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span><span>Source <strong>"Texte libre"</strong>.</span></li>
-                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span><span><strong>Collez</strong> et choisissez Spotify/Deezer.</span></li>
+                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span><span><strong>Collez</strong> la liste.</span></li>
                             </ol>
                         </div>
                         <a href="https://www.tunemymusic.com/fr/" target="_blank" rel="noopener noreferrer" className="mt-8 flex items-center justify-center w-full h-14 bg-[#252525] border border-[#404040] hover:bg-[#333] hover:border-white text-white font-bold text-sm uppercase tracking-widest rounded-lg transition-all">
