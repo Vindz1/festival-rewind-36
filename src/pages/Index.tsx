@@ -38,101 +38,79 @@ export default function Index() {
     <div className="min-h-screen bg-[#1a1a1a] text-white flex flex-col font-sans">
       <Header />
 
-      <main className="flex-grow flex flex-col items-center justify-center px-6 pt-32 pb-20 text-center relative overflow-hidden">
+      <main className="flex-grow flex flex-col items-center justify-center px-4 pt-28 pb-16 text-center relative overflow-hidden">
         
-        {/* Fond animé plus subtil */}
-        <div className="absolute inset-0 overflow-hidden -z-10 opacity-10 pointer-events-none">
-            <div className="absolute top-[-20%] left-[-20%] w-[50%] h-[50%] bg-purple-600/30 rounded-full blur-[150px] animate-pulse"></div>
-            <div className="absolute bottom-[-20%] right-[-20%] w-[50%] h-[50%] bg-blue-600/30 rounded-full blur-[150px] animate-pulse delay-1000"></div>
-        </div>
-
-        <div className="max-w-3xl mx-auto w-full space-y-8 animate-in fade-in zoom-in duration-700 slide-in-from-bottom-8">
+        {/* TITRE ET ACCROCHE */}
+        <div className="max-w-4xl mx-auto w-full space-y-6 animate-in fade-in zoom-in duration-700 slide-in-from-bottom-8">
           
-          {/* Badge Universel */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#252525] border border-[#333] text-xs font-bold uppercase tracking-widest text-[#a0a0a0] shadow-sm">
-            <Globe className="w-4 h-4 text-[#4d94ff]" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#252525] border border-[#333] text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#a0a0a0] mb-4">
+            <Globe className="w-3 h-3 text-[#4d94ff]" />
             Compatible Toutes Plateformes
           </div>
 
-          {/* Titre Principal Aéré */}
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black italic text-white leading-tight tracking-tighter">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black italic text-white leading-none tracking-tight">
             VOS CONCERTS.<br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4d94ff] via-[#a361ff] to-[#ff4d94]">EN PLAYLIST.</span>
           </h1>
 
-          {/* Sous-titre clair */}
-          <p className="text-lg md:text-xl text-[#a0a0a0] max-w-2xl mx-auto leading-relaxed">
-            Retrouvez la setlist exacte de n'importe quel concert (data Setlist.fm) et exportez-la vers <strong className="text-white">Spotify, Deezer, Apple Music</strong> et plus.
+          <p className="text-base md:text-xl text-[#a0a0a0] max-w-2xl mx-auto leading-relaxed">
+            Récupérez la setlist exacte de vos concerts et exportez-la vers <strong className="text-white">Spotify, Deezer ou Apple Music</strong> en quelques secondes.
           </p>
 
-          {/* --- LA BOITE A OUTILS --- */}
-          <div className="max-w-xl mx-auto bg-[#252525] border border-[#333] rounded-3xl p-3 shadow-2xl mt-12">
+          {/* BOITE A OUTILS */}
+          <div className="max-w-xl mx-auto bg-[#252525] border border-[#333] rounded-2xl p-2 shadow-2xl mt-10">
               
-              {/* Switcher */}
-              <div className="flex p-1 bg-[#1a1a1a] rounded-2xl mb-4">
+              <div className="flex p-1 bg-[#1a1a1a] rounded-xl mb-3">
                   <button 
                     onClick={() => setMode('search')}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 ${mode === 'search' ? 'bg-[#333] text-white shadow-inner' : 'text-[#666] hover:text-[#a0a0a0]'}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 ${mode === 'search' ? 'bg-[#333] text-white' : 'text-[#666] hover:text-[#a0a0a0]'}`}
                   >
-                    <Search className="w-4 h-4"/> Chercher un Concert
+                    <Search className="w-4 h-4"/> Recherche
                   </button>
                   <button 
                     onClick={() => setMode('profile')}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 ${mode === 'profile' ? 'bg-[#4d94ff] text-white shadow' : 'text-[#666] hover:text-[#a0a0a0]'}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-2 ${mode === 'profile' ? 'bg-[#4d94ff] text-white' : 'text-[#666] hover:text-[#a0a0a0]'}`}
                   >
-                    <User className="w-4 h-4"/> Mon Profil Setlist.fm
+                    <User className="w-4 h-4"/> Mon Profil
                   </button>
               </div>
 
-              {/* RECHERCHE */}
               {mode === 'search' && (
                   <form onSubmit={handleSearch} className="relative flex items-center p-1">
-                    <Search className="absolute left-5 w-5 h-5 text-[#666]" />
+                    <Search className="absolute left-4 w-5 h-5 text-[#666]" />
                     <Input 
                         type="text" 
-                        placeholder="Artiste, Festival ou Lieu..." 
-                        className="border-0 bg-[#1a1a1a] rounded-xl focus-visible:ring-2 focus-visible:ring-[#4d94ff] text-lg placeholder:text-[#444] h-14 pl-12 pr-20 w-full transition-all"
+                        placeholder="Artiste, Festival..." 
+                        className="border-0 bg-[#1a1a1a] rounded-lg text-base h-12 pl-12 pr-4 w-full"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                     />
-                    <Button type="submit" size="lg" className="absolute right-2 top-2 bottom-2 rounded-lg bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 shadow-lg shadow-blue-500/20">
+                    <Button type="submit" className="absolute right-1 top-1 bottom-1 rounded-md bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-4 h-auto">
                         GO
                     </Button>
                   </form>
               )}
 
-              {/* PROFIL */}
               {mode === 'profile' && (
-                  <form onSubmit={handleProfileConnect} className="relative flex flex-col p-2 gap-4 animate-in fade-in">
+                  <form onSubmit={handleProfileConnect} className="relative flex flex-col p-2 gap-3 animate-in fade-in">
                     <div className="relative">
-                        <User className="absolute left-5 top-4 w-5 h-5 text-[#666]" />
+                        <User className="absolute left-4 top-3.5 w-5 h-5 text-[#666]" />
                         <Input 
                             type="text" 
-                            placeholder="Votre pseudo setlist.fm (ex: MetalFan85)" 
-                            className="border border-[#333] bg-[#1a1a1a] rounded-xl focus-visible:ring-2 focus-visible:ring-[#4d94ff] text-lg placeholder:text-[#444] h-14 pl-12"
+                            placeholder="Pseudo setlist.fm" 
+                            className="border border-[#333] bg-[#1a1a1a] rounded-lg text-base h-12 pl-12"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                         />
                     </div>
-                    <Button type="submit" size="lg" className="w-full rounded-xl bg-[#00ff00] hover:bg-[#33ff33] text-black font-black uppercase tracking-widest h-14 shadow-lg shadow-green-500/20">
-                        Importer mon historique
+                    <Button type="submit" className="w-full rounded-lg bg-[#00ff00] hover:bg-[#33ff33] text-black font-bold uppercase tracking-widest h-12">
+                        Importer
                     </Button>
-                    <p className="text-xs text-[#666] mt-2">
-                        Pas de compte ? <a href="https://www.setlist.fm/signup" target="_blank" className="underline hover:text-white transition-colors">Créer un compte gratuit sur setlist.fm</a>
-                    </p>
                   </form>
               )}
           </div>
-
-          {/* Badges */}
-          <div className="mt-16 flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-bold text-[#666] uppercase tracking-widest">
-            <span className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-[#4d94ff]"/> Gratuit</span>
-            <span className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-[#4d94ff]"/> Sans Inscription</span>
-            <span className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-[#4d94ff]"/> Data Officielle</span>
-          </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
