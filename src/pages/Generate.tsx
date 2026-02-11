@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Wand2 } from 'lucide-react';
+import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Wand2, Music } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
 import { SmartAd } from '@/components/SmartAd';
@@ -32,7 +32,7 @@ export default function Generate() {
 
         const directState = location.state;
         
-        // --- CAS 1 : HELLFEST / UPCOMING ---
+        // --- CAS 1 : HELLFEST / UPCOMING (Liste d'artistes) ---
         if (directState?.artists && Array.isArray(directState.artists)) {
             setPlaylistName(directState.eventName || "Festival Playlist");
             setMainArtist(directState.artists[0] || "Festival");
@@ -44,7 +44,6 @@ export default function Generate() {
             const selectedConcertsStr = localStorage.getItem('selected_concerts');
             const selectedUpcomingStr = localStorage.getItem('selected_upcoming');
 
-            // On essaie de récupérer les données
             let rawData = [];
             try {
                 if (location.state?.songs) rawData = [{ tracks: location.state.songs }];
@@ -55,15 +54,14 @@ export default function Generate() {
 
             if (rawData.length > 0) {
                 let artistName = "Various Artists";
-                // Tentative de nommage intelligent
+                // Tentative de trouver le nom principal
                 if (rawData[0].artist) artistName = rawData[0].artist.name || rawData[0].artist;
                 else if (rawData[0].tracks && rawData[0].tracks.length > 0) artistName = rawData[0].tracks[0].artist;
                 
                 setMainArtist(artistName);
                 setPlaylistName(rawData.length > 1 ? "Mes Concerts" : `${artistName} Live`);
 
-                // --- ANALYSE ET RÉPARATION ---
-                setLoadingMessage("Réparation des titres manquants...");
+                setLoadingMessage("Vérification des titres...");
                 const allTracks: any[] = [];
 
                 for (const concert of rawData) {
@@ -71,29 +69,29 @@ export default function Generate() {
 
                     // A. On a déjà des pistes ?
                     if (concert.tracks && concert.tracks.length > 0) {
-                        // VÉRIFICATION CRITIQUE : Est-ce que c'est le mauvais CSV ("Titre inconnu") ?
+                        // VÉRIFICATION : Est-ce le mauvais CSV ("Titre inconnu") ?
                         const isBadData = concert.tracks.some((t: any) => 
-                            t.name === "Titre inconnu" || t.name === "Unknown Track"
+                            !t.name || t.name === "Titre inconnu" || t.name === "Unknown Track"
                         );
 
                         if (isBadData) {
                             // OUI -> On appelle iTunes pour réparer
-                            const repaired = await fetchTopTracks(cArtist);
+                            const repaired = await fetchItunesTopTracks(cArtist);
                             repaired.forEach((t: any) => allTracks.push(t));
                         } else {
-                            // NON -> C'est bon, on garde
+                            // NON -> C'est bon
                             concert.tracks.forEach((t: any) => allTracks.push({
                                 artist: t.artist || cArtist,
                                 name: t.name
                             }));
                         }
                     }
-                    // B. C'est du format Setlist.fm (Sets) ?
+                    // B. Format Setlist.fm (Sets)
                     else if (concert.sets && concert.sets.set) {
                          const extracted = extractTracksFromSets(concert, cArtist);
                          if (extracted.length === 0) {
                              // Setlist vide ? -> Fallback iTunes
-                             const fallback = await fetchTopTracks(cArtist);
+                             const fallback = await fetchItunesTopTracks(cArtist);
                              fallback.forEach((t: any) => allTracks.push(t));
                          } else {
                              extracted.forEach(t => allTracks.push(t));
@@ -101,7 +99,7 @@ export default function Generate() {
                     }
                     // C. Rien du tout ? -> iTunes direct
                     else {
-                        const fallback = await fetchTopTracks(cArtist);
+                        const fallback = await fetchItunesTopTracks(cArtist);
                         fallback.forEach((t: any) => allTracks.push(t));
                     }
                 }
@@ -118,31 +116,45 @@ export default function Generate() {
     loadData();
   }, [location, user]);
 
-  // --- API CALL ---
-  const fetchTopTracks = async (artistName: string) => {
+  // --- APPEL DIRECT ITUNES (Sans passer par le serveur) ---
+  const fetchItunesTopTracks = async (artistName: string) => {
     if (!artistName || artistName === "Inconnu") return [];
+    
+    // Nettoyage du nom pour iTunes (enlève les caractères bizarres)
+    const cleanName = artistName.replace(/ \([^\)]+\)/g, '').trim(); 
+    
     try {
-        const res = await fetch(`/api/get-tracks?artist=${encodeURIComponent(artistName)}`);
-        if (res.ok) {
-            const data = await res.json();
-            return data;
-        }
+        // On appelle iTunes directement !
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanName)}&entity=song&limit=5&attribute=artistTerm`);
+        
+        if (!response.ok) throw new Error("Erreur réseau iTunes");
+        
+        const data = await response.json();
+        
+        // On renvoie les résultats formatés
+        return data.results.map((item: any) => ({
+            artist: item.artistName,
+            name: item.trackName,
+            preview: item.previewUrl
+        }));
+
     } catch (e) {
-        console.error(`Erreur fetch ${artistName}`, e);
+        console.error(`Erreur iTunes pour ${artistName}`, e);
+        return [];
     }
-    return [];
   };
 
   const generateFromArtistList = async (artists: string[]) => {
       setLoadingMessage(`Récupération des tubes pour ${artists.length} artistes...`);
       const allTracks: any[] = [];
       
-      // Traitement par lots de 5 pour aller vite
+      // On peut aller vite en parallèle car c'est le navigateur du client qui bosse
+      // On fait des paquets de 5 pour ne pas bloquer le navigateur
       for (let i = 0; i < artists.length; i += 5) {
           const batch = artists.slice(i, i + 5);
           setLoadingMessage(`Analyse... ${Math.min(i + 5, artists.length)} / ${artists.length}`);
           
-          const promises = batch.map(a => fetchTopTracks(a));
+          const promises = batch.map(a => fetchItunesTopTracks(a));
           const results = await Promise.all(promises);
           results.flat().forEach(t => allTracks.push(t));
       }
@@ -150,7 +162,7 @@ export default function Generate() {
       if (allTracks.length > 0) {
           finishLoading(allTracks, "Festival Playlist", artists[0]);
       } else {
-          setErrorMsg("Impossible de trouver des titres. Vérifiez votre connexion.");
+          setErrorMsg("Impossible de trouver des titres. Vérifiez votre connexion internet.");
           setLoading(false);
       }
   };
@@ -176,7 +188,7 @@ export default function Generate() {
 
   const finishLoading = (tracks: any[], listName: string, adArtist: string) => {
     if (tracks.length === 0) {
-        setErrorMsg("Aucun titre trouvé. L'API ne répond pas.");
+        setErrorMsg("Aucun titre trouvé. Essayez de recharger la page.");
         setLoading(false);
         return;
     }
@@ -191,7 +203,7 @@ export default function Generate() {
     setMainArtist(adArtist);
     setLoading(false);
     
-    // Save history (silencieux en cas d'erreur)
+    // Save history (silencieux)
     if (user && uniqueTracks.length > 0) {
          saveToHistory(user.id, {
             playlist_name: listName,
@@ -227,7 +239,7 @@ export default function Generate() {
         <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12 mb-4"/>
         <p className="animate-pulse text-[#a0a0a0] font-mono text-sm">{loadingMessage}</p>
         <div className="mt-4 flex gap-2 text-xs text-[#666]">
-            <Wand2 className="w-4 h-4" /> Powered by iTunes
+            <Music className="w-4 h-4" /> Recherche iTunes...
         </div>
     </div>
   );
