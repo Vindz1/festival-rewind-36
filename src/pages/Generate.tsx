@@ -149,9 +149,30 @@ export default function Generate() {
         
         try {
           if (item.isFuture) {
-            // FUTUR : Top 10 iTunes
-            const top = await fetchItunes(currentArtist, 10);
-            console.log(`  ✅ iTunes: ${top.length} tracks`);
+            // FUTUR : Top 10 iTunes (avec recherche multi-pays si besoin)
+            let top = await fetchItunes(currentArtist, 10);
+            
+            // Si on a moins de 7 résultats, chercher dans d'autres pays
+            if (top.length < 7) {
+              console.log(`  ⚠️ Seulement ${top.length} résultats US, recherche étendue...`);
+              const additionalCountries = ['FR', 'GB', 'DE'];
+              
+              for (const country of additionalCountries) {
+                if (top.length >= 10) break;
+                
+                const moreResults = await fetchItunesCountry(currentArtist, 10, country);
+                // Ajouter seulement les nouveaux (éviter doublons)
+                const existing = new Set(top.map(t => normalizeString(t.name)));
+                const newTracks = moreResults.filter(t => !existing.has(normalizeString(t.name)));
+                top = [...top, ...newTracks];
+                
+                if (newTracks.length > 0) {
+                  console.log(`  ✅ +${newTracks.length} depuis ${country}`);
+                }
+              }
+            }
+            
+            console.log(`  ✅ iTunes total: ${top.length} tracks`);
             finalTracks.push(...top);
           } else {
             // PASSÉ : Priorité Setlist.fm, fallback iTunes si vide
@@ -278,8 +299,8 @@ export default function Generate() {
    */
   const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
     try {
-      // On demande plus de résultats pour pouvoir filtrer ensuite
-      const searchLimit = Math.max(limit * 3, 30);
+      // On demande beaucoup plus de résultats pour les groupes moins connus
+      const searchLimit = Math.max(limit * 5, 50);
       
       const response = await fetch(
         `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=US`
@@ -319,38 +340,82 @@ export default function Generate() {
           }
           // CRITÈRE 3 : L'artiste recherché est au début du nom
           else if (normalizedArtistName.startsWith(normalizedSearchArtist)) {
-            score += 30;
+            score += 40;
           }
-          // CRITÈRE BLOQUANT : Si l'artiste recherché n'est PAS dans artistName, score = 0
+          // CRITÈRE 4 (NOUVEAU) : Accepter si l'artiste est dans le nom mais avec une pénalité
+          else if (normalizedSearchArtist.length > 4 && normalizedArtistName.includes(normalizedSearchArtist)) {
+            score += 25; // Score plus faible mais accepté
+          }
+          // CRITÈRE BLOQUANT : Si l'artiste recherché n'est vraiment PAS dans artistName
           else {
             return { ...item, score: 0 };
           }
           
-          // PÉNALITÉS : Réduire le score si l'artiste apparaît dans le titre/album
-          // (indique souvent un featuring ou une compilation)
-          if (normalizedTrackName.includes(normalizedSearchArtist)) {
-            score -= 20;
-          }
-          if (normalizedCollectionName.includes(normalizedSearchArtist) && 
-              !normalizedArtistName.includes(normalizedSearchArtist)) {
-            score -= 15;
+          // PÉNALITÉS MODÉRÉES : Réduire le score si l'artiste apparaît dans le titre/album
+          // MAIS ne pas rejeter complètement (car parfois c'est légitime)
+          if (normalizedTrackName.includes(normalizedSearchArtist) && 
+              normalizedArtistName !== normalizedSearchArtist) {
+            score -= 15; // Pénalité réduite de 20 à 15
           }
           
-          // BONUS : Popularité (plus un morceau est populaire, mieux c'est)
-          if (item.trackTimeMillis) {
-            score += Math.min(item.trackTimeMillis / 100000, 5); // Bonus léger
+          if (normalizedCollectionName.includes(normalizedSearchArtist) && 
+              !normalizedArtistName.includes(normalizedSearchArtist)) {
+            score -= 10; // Pénalité réduite de 15 à 10
+          }
+          
+          // BONUS : Préférer les morceaux avec un nom d'album
+          if (item.collectionName && item.collectionName.length > 0) {
+            score += 3;
+          }
+          
+          // BONUS : Popularité (durée du morceau comme proxy)
+          if (item.trackTimeMillis && item.trackTimeMillis > 60000) { // > 1 minute
+            score += Math.min(item.trackTimeMillis / 100000, 5);
           }
           
           return { ...item, score };
         })
-        // Filtrer les scores = 0 (pas de match pertinent)
-        .filter(item => item.score > 0)
+        // SEUIL AJUSTÉ : Au lieu de rejeter score = 0, on accepte score > 20
+        // Cela permet d'avoir des résultats même pour les groupes moins connus
+        .filter(item => item.score > 20)
         // Trier par score décroissant
         .sort((a, b) => b.score - a.score)
         // Prendre les meilleurs résultats
         .slice(0, limit);
       
-      console.log(`  📊 iTunes ${artist}: ${data.results.length} bruts → ${scoredResults.length} filtrés`);
+      console.log(`  📊 iTunes ${artist}: ${data.results.length} bruts → ${scoredResults.length} filtrés (seuil: 20)`);
+      
+      // Si on a moins de 5 résultats, on réessaie avec un seuil encore plus bas
+      if (scoredResults.length < 5 && data.results.length > limit) {
+        console.log(`  ⚠️ Peu de résultats (${scoredResults.length}), assouplissement du filtre...`);
+        
+        const relaxedResults = data.results
+          .map((item: any) => {
+            const normalizedArtistName = normalizeString(item.artistName);
+            let score = 0;
+            
+            // Critères encore plus souples
+            if (normalizedArtistName.includes(normalizedSearchArtist)) {
+              score += 50;
+            } else if (normalizedSearchArtist.includes(normalizedArtistName)) {
+              score += 30;
+            } else {
+              return { ...item, score: 0 };
+            }
+            
+            return { ...item, score };
+          })
+          .filter(item => item.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+        
+        console.log(`  ✅ Assouplissement : ${relaxedResults.length} résultats trouvés`);
+        
+        return relaxedResults.map((item: any) => ({
+          artist: item.artistName,
+          name: item.trackName
+        }));
+      }
       
       if (scoredResults.length === 0) {
         console.warn(`  ⚠️ Aucun résultat pertinent après filtrage pour: ${artist}`);
@@ -380,6 +445,62 @@ export default function Generate() {
       .replace(/[^\w\s]/g, '')
       // Réduire les espaces multiples
       .replace(/\s+/g, ' ');
+  };
+
+  /**
+   * Recherche iTunes dans un pays spécifique
+   */
+  const fetchItunesCountry = async (
+    artist: string, 
+    limit: number = 10, 
+    country: string = 'US'
+  ): Promise<Track[]> => {
+    try {
+      const searchLimit = 30;
+      
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=${country}`
+      );
+      
+      if (!response.ok) {
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        return [];
+      }
+      
+      const normalizedSearchArtist = normalizeString(artist);
+      
+      const scoredResults = data.results
+        .map((item: any) => {
+          const normalizedArtistName = normalizeString(item.artistName);
+          let score = 0;
+          
+          if (normalizedArtistName === normalizedSearchArtist) {
+            score += 100;
+          } else if (normalizedArtistName.includes(normalizedSearchArtist)) {
+            score += 50;
+          } else {
+            return { ...item, score: 0 };
+          }
+          
+          return { ...item, score };
+        })
+        .filter(item => item.score > 20)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+      
+      return scoredResults.map((item: any) => ({
+        artist: item.artistName,
+        name: item.trackName
+      }));
+    } catch (err) {
+      console.error(`Erreur iTunes ${country} pour ${artist}:`, err);
+      return [];
+    }
   };
 
   /**
