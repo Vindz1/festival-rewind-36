@@ -114,13 +114,17 @@ export default function MyConcerts() {
     
     if (selected.size === 0) return toast.error('Sélectionnez au moins un concert');
     
+    // CORRECTION : On sauvegarde TOUTES les données du concert (incluant sets)
     const dataToSave = list
       .filter(c => selected.has(c.id))
       .map(c => ({
         id: c.id,
         artist: getArtistName(c),
         venue: getVenueName(c),
-        eventDate: getEventDate(c)
+        eventDate: getEventDate(c),
+        // On garde la structure complète pour extraire les morceaux
+        sets: c.sets,
+        tracks: c.tracks
       }));
       
     localStorage.setItem(isUpcoming ? 'selected_upcoming' : 'selected_concerts', JSON.stringify(dataToSave));
