@@ -38,7 +38,7 @@ export default function Generate() {
         let name = "Ma Setlist";
         let artistForAd = "Rock";
 
-        // --- CAS 1 : DONNÉES DÉJÀ PROPRES (Recherche directe) ---
+        // CAS 1 : RECHERCHE DIRECTE (Déjà complet)
         if (directSongs && directSongs.length > 0) {
             finalTracks = directSongs.map((s: any) => ({ 
                 artist: s.artist || directArtist || 'Artiste Inconnu', 
@@ -48,91 +48,120 @@ export default function Generate() {
                 name = `${directArtist} Setlist`;
                 artistForAd = directArtist;
             }
+            processTracks(finalTracks, name, artistForAd);
         } 
-        // --- CAS 2 : DONNÉES BRUTES (Historique / Mes Concerts) ---
+        // CAS 2 : HISTORIQUE (Données souvent incomplètes)
         else if (selectedConcertsStr || selectedUpcomingStr) {
              try {
                  const rawData = JSON.parse(selectedConcertsStr || selectedUpcomingStr || '[]');
                  
                  if (rawData.length > 0) {
-                    // On prend le nom de l'artiste du premier concert pour le titre
+                    // Nom par défaut
                     artistForAd = rawData[0].artist?.name || rawData[0].artist || "Rock";
                     name = rawData.length > 1 ? "Mes Concerts" : `${artistForAd} Live`;
 
-                    // PARCOURS APPROFONDI DES DONNÉES SETLIST.FM
-                    rawData.forEach((concert: any) => {
-                        // Nom de l'artiste principal du concert
-                        const concertArtist = concert.artist?.name || concert.artist || 'Artiste Inconnu';
-
-                        // A. Format "Sets" (Le format officiel de l'API Setlist.fm)
-                        if (concert.sets && concert.sets.set && Array.isArray(concert.sets.set)) {
-                            concert.sets.set.forEach((set: any) => {
-                                if (set.song && Array.isArray(set.song)) {
-                                    set.song.forEach((song: any) => {
-                                        // On ignore les "tapes" (bandes son)
-                                        if (song.name && !song.tape) {
-                                            finalTracks.push({
-                                                artist: song.cover ? song.cover.name : concertArtist,
-                                                name: song.name
-                                            });
-                                        }
-                                    });
+                    // --- RÉCUPÉRATION INTELLIGENTE ---
+                    const promises = rawData.map(async (concert: any) => {
+                        // 1. Si on a déjà les pistes (format sets)
+                        if (concert.sets && concert.sets.set) {
+                            return extractTracksFromSets(concert, concert.artist?.name || concert.artist);
+                        }
+                        // 2. Si on a les pistes (format tracks)
+                        else if (concert.tracks && concert.tracks.length > 0) {
+                            return concert.tracks;
+                        }
+                        // 3. SI RIEN : On va chercher les détails via l'API !
+                        else if (concert.id) {
+                            try {
+                                const res = await fetch(`/api/setlist?id=${concert.id}`);
+                                if (res.ok) {
+                                    const fullData = await res.json();
+                                    return extractTracksFromSets(fullData, fullData.artist?.name);
                                 }
-                            });
+                            } catch (err) {
+                                console.error("Erreur fetch detail", err);
+                            }
                         }
-                        // B. Format "Tracks" (Si on a déjà nettoyé les données avant)
-                        else if (concert.tracks && Array.isArray(concert.tracks)) {
-                            concert.tracks.forEach((t: any) => {
-                                finalTracks.push({ 
-                                    artist: t.artist || concertArtist, 
-                                    name: t.name 
-                                });
-                            });
-                        }
-                        // C. Fallback : Si on a rien trouvé, on met au moins une trace
-                        else {
-                            console.log("Structure inconnue pour ce concert :", concert);
-                        }
+                        return [];
                     });
+
+                    // On attend que tout soit chargé
+                    const results = await Promise.all(promises);
+                    // On aplatit le tableau de tableaux
+                    finalTracks = results.flat();
+                    
+                    processTracks(finalTracks, name, artistForAd);
+                 } else {
+                    setErrorMsg("Aucun concert sélectionné.");
+                    setLoading(false);
                  }
              } catch (e) {
                  console.error("Erreur parsing JSON", e);
                  setErrorMsg("Erreur lors de la lecture des données.");
+                 setLoading(false);
              }
-        }
-
-        // Si après tout ça, c'est vide...
-        if (finalTracks.length === 0) {
-            setErrorMsg("Aucune chanson trouvée dans les données reçues. Essayez de recharger la page précédente.");
+        } else {
+            // Rien du tout
+            setErrorMsg("Aucune donnée reçue.");
             setLoading(false);
-            return;
-        }
-
-        // Dédoublonnage simple
-        const uniqueTracks = finalTracks.filter((track, index, self) =>
-            index === self.findIndex((t) => (
-                t.name.toLowerCase() === track.name.toLowerCase() && t.artist.toLowerCase() === track.artist.toLowerCase()
-            ))
-        );
-
-        setSongs(uniqueTracks);
-        setPlaylistName(name);
-        setMainArtist(artistForAd);
-        setLoading(false);
-
-        // Sauvegarde historique
-        if (user && uniqueTracks.length > 0) {
-            saveToHistory(user.id, {
-                playlist_name: name,
-                track_count: uniqueTracks.length,
-                top_artists: [artistForAd],
-                platform_target: 'universal'
-            }).catch(e => console.error(e));
         }
     };
 
     loadData();
   }, [location, user]);
+
+  // Helper pour extraire les pistes du format Setlist.fm
+  const extractTracksFromSets = (data: any, defaultArtist: string) => {
+    const tracks: any[] = [];
+    const artistName = defaultArtist || 'Inconnu';
+
+    if (data.sets && data.sets.set) {
+        data.sets.set.forEach((set: any) => {
+            if (set.song) {
+                set.song.forEach((song: any) => {
+                    if (song.name && !song.tape) {
+                        tracks.push({
+                            artist: song.cover ? song.cover.name : artistName,
+                            name: song.name
+                        });
+                    }
+                });
+            }
+        });
+    }
+    return tracks;
+  };
+
+  // Traitement final (Dédoublonnage + Affichage)
+  const processTracks = (tracks: any[], listName: string, adArtist: string) => {
+    if (tracks.length === 0) {
+        setErrorMsg("Aucune chanson trouvée pour ce(s) concert(s). (Peut-être que la setlist n'est pas encore renseignée sur setlist.fm ?)");
+        setLoading(false);
+        return;
+    }
+
+    // Dédoublonnage
+    const uniqueTracks = tracks.filter((track, index, self) =>
+        index === self.findIndex((t) => (
+            t.name.toLowerCase() === track.name.toLowerCase() && t.artist.toLowerCase() === track.artist.toLowerCase()
+        ))
+    );
+
+    setSongs(uniqueTracks);
+    setPlaylistName(listName);
+    setMainArtist(adArtist);
+    setLoading(false);
+
+    // Sauvegarde
+    if (user && uniqueTracks.length > 0) {
+        saveToHistory(user.id, {
+            playlist_name: listName,
+            track_count: uniqueTracks.length,
+            top_artists: [adArtist],
+            platform_target: 'universal'
+        }).catch(e => console.error(e));
+    }
+  };
 
   const handleCopyText = () => {
     const textList = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
@@ -143,13 +172,12 @@ export default function Generate() {
   };
 
   const handleDownloadCSV = () => {
-    // BOM pour Excel + Format CSV standard
-    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist}","${s.name}"`).join("\n");
+    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist.replace(/"/g, '""')}","${s.name.replace(/"/g, '""')}"`).join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${playlistName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`);
+    link.setAttribute('download', `${playlistName.replace(/[^a-z0-9]/gi, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -163,16 +191,16 @@ export default function Generate() {
       
       <div className="flex-grow max-w-4xl mx-auto w-full px-4 pb-20">
         
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 text-[#a0a0a0] hover:text-white pl-0">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+        <Button variant="ghost" onClick={() => navigate('/')} className="mb-6 text-[#a0a0a0] hover:text-white pl-0">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Accueil
         </Button>
 
         {errorMsg ? (
-            <div className="bg-red-500/10 border border-red-500/50 p-6 rounded-xl text-center">
+            <div className="bg-red-500/10 border border-red-500/50 p-6 rounded-xl text-center animate-in fade-in">
                 <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
                 <h2 className="text-xl font-bold text-red-500 mb-2">Oups !</h2>
                 <p className="text-white mb-4">{errorMsg}</p>
-                <Button onClick={() => navigate('/')} variant="outline">Retour à l'accueil</Button>
+                <Button onClick={() => navigate('/')} variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white">Retour</Button>
             </div>
         ) : (
             <>
@@ -181,7 +209,7 @@ export default function Generate() {
                         C'est prêt <span className="text-[#4d94ff]">!</span>
                     </h1>
                     <p className="text-xl text-[#a0a0a0]">
-                        Votre setlist contient <strong className="text-white">{songs.length} titres</strong>.
+                        <strong className="text-white">{songs.length} titres</strong> prêts à l'export.
                     </p>
                 </div>
 
