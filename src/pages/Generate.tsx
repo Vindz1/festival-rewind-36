@@ -4,31 +4,25 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
 import { SmartAd } from '@/components/SmartAd';
 import { getUserSubscription } from '@/lib/subscription';
-
-// Interface pour définir clairement une piste propre
-interface Track {
-    artist: string;
-    name: string;
-}
 
 export default function Generate() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [songs, setSongs] = useState<Track[]>([]);
+  const [songs, setSongs] = useState<any[]>([]);
   const [playlistName, setPlaylistName] = useState('Ma Setlist');
   const [mainArtist, setMainArtist] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
 
-  // 1. LE COEUR DU REACTEUR : CHARGEMENT ET NETTOYAGE DES DONNEES
   useEffect(() => {
     const loadData = async () => {
         if (user) {
@@ -40,95 +34,106 @@ export default function Generate() {
         const selectedConcertsStr = localStorage.getItem('selected_concerts');
         const selectedUpcomingStr = localStorage.getItem('selected_upcoming');
 
-        let finalTracks: Track[] = [];
+        let finalTracks: any[] = [];
         let name = "Ma Setlist";
         let artistForAd = "Rock";
 
-        // CAS 1 : On vient d'une recherche directe d'artiste (déjà propre)
+        // --- CAS 1 : DONNÉES DÉJÀ PROPRES (Recherche directe) ---
         if (directSongs && directSongs.length > 0) {
-            finalTracks = directSongs.map((s: any) => ({ artist: s.artist || directArtist, name: s.name }));
+            finalTracks = directSongs.map((s: any) => ({ 
+                artist: s.artist || directArtist || 'Artiste Inconnu', 
+                name: s.name || 'Titre Inconnu' 
+            }));
             if (directArtist) {
                 name = `${directArtist} Setlist`;
                 artistForAd = directArtist;
             }
         } 
-        // CAS 2 : On vient de l'historique (données brutes Setlist.fm à nettoyer)
+        // --- CAS 2 : DONNÉES BRUTES (Historique / Mes Concerts) ---
         else if (selectedConcertsStr || selectedUpcomingStr) {
              try {
                  const rawData = JSON.parse(selectedConcertsStr || selectedUpcomingStr || '[]');
                  
                  if (rawData.length > 0) {
+                    // On prend le nom de l'artiste du premier concert pour le titre
                     artistForAd = rawData[0].artist?.name || rawData[0].artist || "Rock";
                     name = rawData.length > 1 ? "Mes Concerts" : `${artistForAd} Live`;
 
-                    // --- NETTOYAGE DES DONNÉES BRUTES ---
+                    // PARCOURS APPROFONDI DES DONNÉES SETLIST.FM
                     rawData.forEach((concert: any) => {
-                        const concertArtist = concert.artist?.name || concert.artist || 'Inconnu';
-                        
-                        // Si les pistes sont déjà là (format court)
-                        if (concert.tracks && Array.isArray(concert.tracks)) {
-                            concert.tracks.forEach((t: any) => {
-                                finalTracks.push({ artist: t.artist || concertArtist, name: t.name });
-                            });
-                        }
-                        // Si c'est le format brut de setlist.fm (sets > song)
-                        else if (concert.sets && concert.sets.set) {
-                             concert.sets.set.forEach((set: any) => {
+                        // Nom de l'artiste principal du concert
+                        const concertArtist = concert.artist?.name || concert.artist || 'Artiste Inconnu';
+
+                        // A. Format "Sets" (Le format officiel de l'API Setlist.fm)
+                        if (concert.sets && concert.sets.set && Array.isArray(concert.sets.set)) {
+                            concert.sets.set.forEach((set: any) => {
                                 if (set.song && Array.isArray(set.song)) {
                                     set.song.forEach((song: any) => {
-                                        // On ignore les "tapes" (intro sur bande) si on veut
+                                        // On ignore les "tapes" (bandes son)
                                         if (song.name && !song.tape) {
-                                            // Si c'est une cover, l'artiste change
-                                            const trackArtist = song.cover ? song.cover.name : concertArtist;
-                                            finalTracks.push({ artist: trackArtist, name: song.name });
+                                            finalTracks.push({
+                                                artist: song.cover ? song.cover.name : concertArtist,
+                                                name: song.name
+                                            });
                                         }
                                     });
                                 }
-                             });
+                            });
+                        }
+                        // B. Format "Tracks" (Si on a déjà nettoyé les données avant)
+                        else if (concert.tracks && Array.isArray(concert.tracks)) {
+                            concert.tracks.forEach((t: any) => {
+                                finalTracks.push({ 
+                                    artist: t.artist || concertArtist, 
+                                    name: t.name 
+                                });
+                            });
+                        }
+                        // C. Fallback : Si on a rien trouvé, on met au moins une trace
+                        else {
+                            console.log("Structure inconnue pour ce concert :", concert);
                         }
                     });
-                    // --- FIN DU NETTOYAGE ---
                  }
              } catch (e) {
-                 console.error("Erreur parsing", e);
-                 toast.error("Erreur lors de la lecture des données.");
+                 console.error("Erreur parsing JSON", e);
+                 setErrorMsg("Erreur lors de la lecture des données.");
              }
         }
 
-        // DÉDOUBLONNAGE (Optionnel : pour éviter d'avoir 3 fois "Enter Sandman" si on a fait 3 concerts de Metallica)
+        // Si après tout ça, c'est vide...
+        if (finalTracks.length === 0) {
+            setErrorMsg("Aucune chanson trouvée dans les données reçues. Essayez de recharger la page précédente.");
+            setLoading(false);
+            return;
+        }
+
+        // Dédoublonnage simple
         const uniqueTracks = finalTracks.filter((track, index, self) =>
             index === self.findIndex((t) => (
                 t.name.toLowerCase() === track.name.toLowerCase() && t.artist.toLowerCase() === track.artist.toLowerCase()
             ))
         );
 
-        if (uniqueTracks.length === 0) {
-            toast.error("Aucun titre trouvé dans la sélection.");
-            navigate('/'); // Sécurité
-            setLoading(false);
-            return;
-        }
-
         setSongs(uniqueTracks);
         setPlaylistName(name);
         setMainArtist(artistForAd);
         setLoading(false);
 
-        // SAUVEGARDE HISTORIQUE
+        // Sauvegarde historique
         if (user && uniqueTracks.length > 0) {
             saveToHistory(user.id, {
                 playlist_name: name,
                 track_count: uniqueTracks.length,
                 top_artists: [artistForAd],
                 platform_target: 'universal'
-            });
+            }).catch(e => console.error(e));
         }
     };
 
     loadData();
-  }, [location, user, navigate]);
+  }, [location, user]);
 
-  // 2. FONCTION COPIER (Format : "Artiste - Titre")
   const handleCopyText = () => {
     const textList = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
     navigator.clipboard.writeText(textList);
@@ -137,24 +142,17 @@ export default function Generate() {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  // 3. FONCTION CSV (Corrigée)
   const handleDownloadCSV = () => {
-    // L'en-tête + chaque ligne entourée de guillemets pour gérer les virgules dans les titres
-    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist.replace(/"/g, '""')}","${s.name.replace(/"/g, '""')}"`).join("\n");
-    
-    // Création du fichier avec l'encodage UTF-8 BOM pour qu'Excel l'ouvre bien
+    // BOM pour Excel + Format CSV standard
+    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist}","${s.name}"`).join("\n");
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    // Lien de téléchargement unique (pas de boucle infinie)
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${playlistName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_Setlive.csv`);
+    link.setAttribute('download', `${playlistName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url); // Nettoyage de la mémoire
-    toast.success("Fichier téléchargé");
   };
 
   if (loading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center"><Loader2 className="animate-spin text-[#4d94ff] w-12 h-12"/></div>;
@@ -169,97 +167,76 @@ export default function Generate() {
             <ArrowLeft className="mr-2 h-4 w-4" /> Retour
         </Button>
 
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <h1 className="text-3xl md:text-5xl font-black italic uppercase mb-4 text-white">
-                C'est prêt <span className="text-[#4d94ff]">!</span>
-            </h1>
-            <p className="text-xl text-[#a0a0a0]">
-                Votre setlist contient <strong className="text-white">{songs.length} titres</strong>.
-            </p>
-            {songs.length > 0 && (
-                <p className="text-sm text-[#666] mt-2">Ex: {songs[0].artist} - {songs[0].name}...</p>
-            )}
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-            
-            {/* GAUCHE : ACTIONS */}
-            <div className="bg-[#252525] border border-[#404040] rounded-3xl p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-[#4d94ff] text-white text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
-                    Étape 1
-                </div>
-                
-                <div>
-                    <h3 className="text-2xl font-bold mb-2">Récupérer la liste</h3>
-                    <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste propre pour l'import.</p>
-                </div>
-
-                <div className="space-y-3">
-                    <Button 
-                        onClick={handleCopyText} 
-                        className={`w-full h-16 font-bold text-lg uppercase tracking-widest transition-all ${
-                            copied 
-                            ? 'bg-[#00ff00] text-black hover:bg-[#00ff00]' 
-                            : 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-[0_0_20px_rgba(77,148,255,0.3)]'
-                        }`}
-                    >
-                        {copied ? <><Check className="mr-2 w-6 h-6"/> COPIÉ !</> : <><Copy className="mr-2 w-5 h-5"/> COPIER (TEXTE)</>}
-                    </Button>
-                    
-                    <button 
-                        onClick={handleDownloadCSV}
-                        className="w-full text-xs text-[#a0a0a0] hover:text-white uppercase font-bold tracking-widest py-3 border border-[#404040] hover:border-white rounded transition-all flex items-center justify-center"
-                    >
-                        <Download className="mr-2 w-4 h-4"/> Ou télécharger en CSV
-                    </button>
-                </div>
+        {errorMsg ? (
+            <div className="bg-red-500/10 border border-red-500/50 p-6 rounded-xl text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4"/>
+                <h2 className="text-xl font-bold text-red-500 mb-2">Oups !</h2>
+                <p className="text-white mb-4">{errorMsg}</p>
+                <Button onClick={() => navigate('/')} variant="outline">Retour à l'accueil</Button>
             </div>
-
-            {/* DROITE : TUTO TUNEMYMUSIC */}
-            <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 flex flex-col justify-between relative">
-                <div className="absolute top-0 right-0 bg-[#333] text-[#a0a0a0] text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
-                    Étape 2
+        ) : (
+            <>
+                <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <h1 className="text-3xl md:text-5xl font-black italic uppercase mb-4 text-white">
+                        C'est prêt <span className="text-[#4d94ff]">!</span>
+                    </h1>
+                    <p className="text-xl text-[#a0a0a0]">
+                        Votre setlist contient <strong className="text-white">{songs.length} titres</strong>.
+                    </p>
                 </div>
 
-                <div>
-                    <h3 className="text-2xl font-bold mb-2 text-white">Importer partout</h3>
-                    <p className="text-[#a0a0a0] mb-6 text-sm">Utilisez l'outil gratuit <strong className="text-white">TuneMyMusic</strong>.</p>
-                    
-                    <ol className="space-y-4 text-sm text-[#a0a0a0]">
-                        <li className="flex gap-3 items-start">
-                            <span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
-                            <span>Cliquez sur le bouton ci-dessous.</span>
-                        </li>
-                        <li className="flex gap-3 items-start">
-                            <span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
-                            <span>Cliquez sur <strong>"Démarrer"</strong> puis source <strong>"Texte libre"</strong>.</span>
-                        </li>
-                        <li className="flex gap-3 items-start">
-                            <span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
-                            <span><strong>Collez</strong> (Ctrl+V) et choisissez votre plateforme (Spotify, Deezer, Apple...).</span>
-                        </li>
-                    </ol>
+                <div className="grid md:grid-cols-2 gap-8 mb-12">
+                    {/* GAUCHE : COPIER */}
+                    <div className="bg-[#252525] border border-[#404040] rounded-3xl p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-[#4d94ff] text-white text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
+                            Étape 1
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2">Récupérer la liste</h3>
+                            <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste propre pour l'import.</p>
+                        </div>
+                        <div className="space-y-3">
+                            <Button 
+                                onClick={handleCopyText} 
+                                className={`w-full h-16 font-bold text-lg uppercase tracking-widest transition-all ${
+                                    copied ? 'bg-[#00ff00] text-black hover:bg-[#00ff00]' : 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white'
+                                }`}
+                            >
+                                {copied ? <><Check className="mr-2 w-6 h-6"/> COPIÉ !</> : <><Copy className="mr-2 w-5 h-5"/> COPIER (TEXTE)</>}
+                            </Button>
+                            <button onClick={handleDownloadCSV} className="w-full text-xs text-[#a0a0a0] hover:text-white uppercase font-bold tracking-widest py-3 border border-[#404040] hover:border-white rounded transition-all flex items-center justify-center">
+                                <Download className="mr-2 w-4 h-4"/> Ou télécharger en CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* DROITE : TUNEMYMUSIC */}
+                    <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 flex flex-col justify-between relative">
+                        <div className="absolute top-0 right-0 bg-[#333] text-[#a0a0a0] text-xs font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-widest">
+                            Étape 2
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2 text-white">Importer partout</h3>
+                            <p className="text-[#a0a0a0] mb-6 text-sm">Via <strong className="text-white">TuneMyMusic</strong> (Gratuit).</p>
+                            <ol className="space-y-4 text-sm text-[#a0a0a0]">
+                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span><span>Cliquez sur le bouton ci-dessous.</span></li>
+                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span><span>Source <strong>"Texte libre"</strong>.</span></li>
+                                <li className="flex gap-3"><span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span><span><strong>Collez</strong> et choisissez Spotify/Deezer.</span></li>
+                            </ol>
+                        </div>
+                        <a href="https://www.tunemymusic.com/fr/" target="_blank" rel="noopener noreferrer" className="mt-8 flex items-center justify-center w-full h-14 bg-[#252525] border border-[#404040] hover:bg-[#333] hover:border-white text-white font-bold text-sm uppercase tracking-widest rounded-lg transition-all">
+                            Ouvrir TuneMyMusic <ExternalLink className="ml-2 w-4 h-4"/>
+                        </a>
+                    </div>
                 </div>
 
-                <a 
-                    href="https://www.tunemymusic.com/fr/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="mt-8 flex items-center justify-center w-full h-14 bg-[#252525] border border-[#404040] hover:bg-[#333] hover:border-white text-white font-bold text-sm uppercase tracking-widest rounded-lg transition-all"
-                >
-                    Ouvrir TuneMyMusic <ExternalLink className="ml-2 w-4 h-4"/>
-                </a>
-            </div>
-        </div>
-
-        {/* PUBLICITÉ */}
-        {!isPremium && mainArtist && (
-             <div className="mt-16 pt-8 border-t border-[#333]">
-                <p className="text-center text-xs text-[#666] uppercase font-bold tracking-widest mb-6">Sponsorisé</p>
-                <SmartAd artistName={mainArtist} index={0} />
-             </div>
+                {!isPremium && mainArtist && (
+                    <div className="mt-16 pt-8 border-t border-[#333]">
+                        <SmartAd artistName={mainArtist} index={0} />
+                    </div>
+                )}
+            </>
         )}
-
       </div>
       <Footer />
     </div>
