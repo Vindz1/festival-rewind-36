@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Check, Zap, Crown, User, ArrowRight, Music, ShieldCheck } from 'lucide-react';
+import { Search, Check, Crown, User, ArrowRight, Music, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Header } from '@/components/Header';
@@ -30,19 +30,18 @@ export default function Index() {
     <div className="min-h-screen bg-[#121212] text-white flex flex-col font-sans selection:bg-[#4d94ff] selection:text-white">
       <Header />
 
-      {/* --- 1. HERO MASSIF --- */}
+      {/* --- HERO SECTION --- */}
       <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 overflow-hidden pt-20">
-        {/* Background Effects */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#4d94ff] rounded-full blur-[150px] opacity-10 pointer-events-none" />
         
-        <div className="relative z-10 w-full max-w-5xl text-center space-y-10 animate-in fade-in zoom-in duration-700">
+        <div className="relative z-10 w-full max-w-5xl text-center space-y-12 animate-in fade-in zoom-in duration-700">
           
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#333] bg-[#1a1a1a]/50 backdrop-blur text-sm font-bold uppercase tracking-widest text-[#a0a0a0]">
             <span className="w-2 h-2 rounded-full bg-[#00ff00] animate-pulse"/> Compatible Spotify • Deezer • Apple
           </div>
 
-          {/* TITRE CORRIGÉ : Plus aéré */}
-          <h1 className="text-5xl sm:text-6xl md:text-8xl font-black italic text-white leading-tight tracking-tight uppercase drop-shadow-2xl">
+          {/* TITRE CORRIGÉ : Plus d'espacement (tracking-tight au lieu de tighter) et leading-tight */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black italic text-white leading-tight tracking-tight uppercase drop-shadow-2xl">
             Vos Concerts.<br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4d94ff] via-[#a361ff] to-[#ff4d94]">En Playlist.</span>
           </h1>
@@ -51,7 +50,6 @@ export default function Index() {
             L'outil ultime pour transformer vos souvenirs de concerts en playlists réelles. Setlists exactes, import instantané.
           </p>
 
-          {/* BARRE DE RECHERCHE */}
           <div className="max-w-2xl mx-auto w-full pt-8">
             <form onSubmit={handleSearch} className="relative group">
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-[#666] w-6 h-6 group-focus-within:text-[#4d94ff] transition-colors" />
@@ -65,20 +63,17 @@ export default function Index() {
                 GO
               </Button>
             </form>
-            <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs font-bold uppercase tracking-widest text-[#444]">
+            <div className="mt-6 flex flex-wrap justify-center gap-4 text-xs font-bold uppercase tracking-widest text-[#444]">
               <span>Essayez :</span>
               <button onClick={() => navigate('/search?q=Metallica')} className="hover:text-white transition-colors">Metallica</button>
               <button onClick={() => navigate('/search?q=Hellfest')} className="hover:text-white transition-colors">Hellfest</button>
-              <button onClick={() => navigate('/search?q=Muse')} className="hover:text-white transition-colors">Muse</button>
+              <button onClick={() => navigate('/search?q=Gojira')} className="hover:text-white transition-colors">Gojira</button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ... (LE RESTE DE LA PAGE RESTE IDENTIQUE : Section Profil + Pricing) ... */}
-      {/* Je ne remets pas tout le code du bas pour ne pas encombrer, gardez le code précédent pour les sections suivantes */}
-      
-      {/* --- 2. IMPORT RAPIDE (PROFIL) --- */}
+      {/* --- IMPORT RAPIDE --- */}
       <section className="py-24 bg-[#161616] border-y border-[#222]">
         <div className="max-w-5xl mx-auto px-6">
             <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -89,14 +84,13 @@ export default function Index() {
                     <p className="text-xl text-[#a0a0a0]">
                         Connectez votre compte pour importer automatiquement tout votre historique de concerts.
                     </p>
-                    
                     <form onSubmit={handleProfileConnect} className="flex gap-3 max-w-md">
                         <div className="relative flex-1">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666]" />
                             <Input 
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Votre pseudo Setlist.fm" 
+                                placeholder="Pseudo Setlist.fm" 
                                 className="h-14 pl-12 bg-[#000] border-[#333] rounded-xl focus:border-[#88c446]"
                             />
                         </div>
@@ -107,16 +101,16 @@ export default function Index() {
                 </div>
                 <div className="bg-[#1a1a1a] p-8 rounded-3xl border border-[#333] relative overflow-hidden group hover:border-[#88c446] transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-20"><Music size={100} /></div>
-                    <div className="space-y-4 relative z-10">
+                    <div className="space-y-4 relative z-10 opacity-50 group-hover:opacity-100 transition-opacity">
                         <div className="flex items-center gap-4 p-3 bg-black/50 rounded-lg border border-[#333]">
                             <div className="w-10 h-10 bg-[#333] rounded-full"/>
                             <div className="h-2 w-32 bg-[#333] rounded-full"/>
                         </div>
-                        <div className="flex items-center gap-4 p-3 bg-black/50 rounded-lg border border-[#333] translate-x-4">
+                        <div className="flex items-center gap-4 p-3 bg-black/50 rounded-lg border border-[#333] translate-x-8">
                             <div className="w-10 h-10 bg-[#333] rounded-full"/>
                             <div className="h-2 w-24 bg-[#333] rounded-full"/>
                         </div>
-                        <div className="flex items-center gap-4 p-3 bg-black/50 rounded-lg border border-[#333]">
+                         <div className="flex items-center gap-4 p-3 bg-black/50 rounded-lg border border-[#333]">
                             <div className="w-10 h-10 bg-[#333] rounded-full"/>
                             <div className="h-2 w-40 bg-[#333] rounded-full"/>
                         </div>
@@ -126,7 +120,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* --- 3. PRICING --- */}
+      {/* --- PRICING --- */}
        <section className="py-32 px-6 max-w-7xl mx-auto w-full" id="pricing">
         <div className="text-center mb-24 space-y-6">
           <h2 className="text-5xl md:text-7xl font-black italic uppercase">L'Export Universel</h2>
