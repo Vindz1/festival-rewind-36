@@ -274,12 +274,15 @@ export default function Generate() {
   };
 
   /**
-   * Récupération depuis iTunes API
+   * Récupération depuis iTunes API avec filtrage strict
    */
   const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
     try {
+      // On demande plus de résultats pour pouvoir filtrer ensuite
+      const searchLimit = Math.max(limit * 3, 30);
+      
       const response = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${limit}&country=US`
+        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=US`
       );
       
       if (!response.ok) {
@@ -293,7 +296,67 @@ export default function Generate() {
         return [];
       }
       
-      return data.results.map((item: any) => ({
+      // Normalisation du nom d'artiste recherché
+      const normalizedSearchArtist = normalizeString(artist);
+      
+      // Filtrage et scoring de pertinence
+      const scoredResults = data.results
+        .map((item: any) => {
+          const normalizedArtistName = normalizeString(item.artistName);
+          const normalizedTrackName = normalizeString(item.trackName);
+          const normalizedCollectionName = normalizeString(item.collectionName || '');
+          
+          // Calcul du score de pertinence
+          let score = 0;
+          
+          // CRITÈRE 1 : Match exact sur l'artiste (priorité maximale)
+          if (normalizedArtistName === normalizedSearchArtist) {
+            score += 100;
+          }
+          // CRITÈRE 2 : L'artiste recherché est dans le nom de l'artiste
+          else if (normalizedArtistName.includes(normalizedSearchArtist)) {
+            score += 50;
+          }
+          // CRITÈRE 3 : L'artiste recherché est au début du nom
+          else if (normalizedArtistName.startsWith(normalizedSearchArtist)) {
+            score += 30;
+          }
+          // CRITÈRE BLOQUANT : Si l'artiste recherché n'est PAS dans artistName, score = 0
+          else {
+            return { ...item, score: 0 };
+          }
+          
+          // PÉNALITÉS : Réduire le score si l'artiste apparaît dans le titre/album
+          // (indique souvent un featuring ou une compilation)
+          if (normalizedTrackName.includes(normalizedSearchArtist)) {
+            score -= 20;
+          }
+          if (normalizedCollectionName.includes(normalizedSearchArtist) && 
+              !normalizedArtistName.includes(normalizedSearchArtist)) {
+            score -= 15;
+          }
+          
+          // BONUS : Popularité (plus un morceau est populaire, mieux c'est)
+          if (item.trackTimeMillis) {
+            score += Math.min(item.trackTimeMillis / 100000, 5); // Bonus léger
+          }
+          
+          return { ...item, score };
+        })
+        // Filtrer les scores = 0 (pas de match pertinent)
+        .filter(item => item.score > 0)
+        // Trier par score décroissant
+        .sort((a, b) => b.score - a.score)
+        // Prendre les meilleurs résultats
+        .slice(0, limit);
+      
+      console.log(`  📊 iTunes ${artist}: ${data.results.length} bruts → ${scoredResults.length} filtrés`);
+      
+      if (scoredResults.length === 0) {
+        console.warn(`  ⚠️ Aucun résultat pertinent après filtrage pour: ${artist}`);
+      }
+      
+      return scoredResults.map((item: any) => ({
         artist: item.artistName,
         name: item.trackName
       }));
@@ -301,6 +364,22 @@ export default function Generate() {
       console.error(`Erreur iTunes pour ${artist}:`, err);
       return [];
     }
+  };
+  
+  /**
+   * Normalisation de chaîne pour comparaison
+   */
+  const normalizeString = (str: string): string => {
+    return str
+      .toLowerCase()
+      .trim()
+      // Supprimer les accents
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // Supprimer les caractères spéciaux sauf espaces
+      .replace(/[^\w\s]/g, '')
+      // Réduire les espaces multiples
+      .replace(/\s+/g, ' ');
   };
 
   /**
