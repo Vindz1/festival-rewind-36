@@ -26,8 +26,7 @@ export default function Generate() {
 
   useEffect(() => {
     const loadData = async () => {
-        // 1. GRAND NETTOYAGE AU DÉMARRAGE
-        // On vide les états pour ne pas afficher une ancienne playlist par erreur
+        // 1. Reset visuel
         setSongs([]);
         setErrorMsg('');
         
@@ -36,39 +35,34 @@ export default function Generate() {
         }
 
         // 2. RÉCUPÉRATION DES SOURCES
-        const directState = location.state; // Données venant d'un clic direct (Hellfest page etc)
-        const storageUpcoming = localStorage.getItem('selected_upcoming'); // Panier "Futur"
-        const storagePast = localStorage.getItem('selected_concerts'); // Panier "Passé"
+        const directState = location.state; // Clic direct (souvent Hellfest / Page Artiste)
+        const storagePast = localStorage.getItem('selected_concerts'); // Panier "Passé" (My Concerts)
+        const storageUpcoming = localStorage.getItem('selected_upcoming'); // Panier "Futur" (My Concerts / Hellfest)
 
-        // --- CAS A : FUTUR / HELLFEST (Priorité 1 : Navigation directe) ---
+        // --- PRIORITÉ 1 : NAVIGATION DIRECTE (via state) ---
+        // C'est le plus fiable. Si on vient d'une page avec des données, on les prend.
         if (directState?.artists && Array.isArray(directState.artists)) {
-            // C'est un festival ou une liste d'artistes futurs -> BEST OF 10
+            // Nettoyage préventif des autres stockages pour éviter les conflits futurs
+            localStorage.removeItem('selected_concerts'); 
+            localStorage.removeItem('selected_upcoming');
+
             setPlaylistName(directState.eventName || "Festival Playlist");
             setMainArtist(directState.artists[0] || "Festival");
             await generateBestOfList(directState.artists, 10);
         }
 
-        // --- CAS B : FUTUR / PANIER "IM GOING" (Priorité 2 : LocalStorage Upcoming) ---
-        else if (storageUpcoming && JSON.parse(storageUpcoming).length > 0) {
-            const rawData = JSON.parse(storageUpcoming);
-            const artistNames = rawData.map((c: any) => c.artist?.name || c.artist);
-            
-            setPlaylistName("Mes Prochains Concerts");
-            setMainArtist(artistNames[0]);
-            // Concerts futurs -> BEST OF 10
-            await generateBestOfList(artistNames, 10);
-        }
-
-        // --- CAS C : PASSÉ / PANIER "I WAS THERE" (Priorité 3 : LocalStorage Past) ---
+        // --- PRIORITÉ 2 : CONCERTS PASSÉS (Strict) ---
+        // On inverse l'ordre ! On regarde "Passé" AVANT "Futur".
         else if (storagePast && JSON.parse(storagePast).length > 0) {
+            // Nettoyage du "Futur" fantôme qui vous bloquait
+            localStorage.removeItem('selected_upcoming');
+
             const rawData = JSON.parse(storagePast);
             
-            // Nommage de la playlist
             let artistName = "Various Artists";
             if (rawData[0].artist) artistName = rawData[0].artist.name || rawData[0].artist;
             setMainArtist(artistName);
             setPlaylistName(rawData.length > 1 ? "Mes Concerts (Passés)" : `${artistName} Live Setlist`);
-
             setLoadingMessage("Récupération des Setlists exactes...");
             
             const allTracks: any[] = [];
@@ -76,53 +70,56 @@ export default function Generate() {
             for (const concert of rawData) {
                 const cArtist = concert.artist?.name || concert.artist || "Inconnu";
                 
-                // ICI ON EST STRICT : On veut la setlist réelle.
+                // LOGIQUE STRICTE (Setlist réelle uniquement)
                 
-                // 1. Format Setlist.fm (Sets > Set > Song)
+                // A. Format Setlist.fm complet
                 if (concert.sets && concert.sets.set) {
                     const realSetlist = extractRealSetlist(concert, cArtist);
                     if (realSetlist.length > 0) {
                         realSetlist.forEach(t => allTracks.push(t));
                     } else {
-                        // Si la setlist est vide sur setlist.fm (ça arrive), on peut soit ne rien mettre
-                        // soit mettre un best-of en fallback. 
-                        // Vu votre demande "STRICT", on met un avertissement console, 
-                        // mais on évite de mettre des chansons au hasard si le concert a vraiment eu lieu sans info.
-                        // Exception : Si l'utilisateur a cliqué "I was there" mais que setlist.fm est vide, 
-                        // on met quand même 10 titres pour ne pas avoir un écran vide buggé.
+                        // Si setlist vide mais concert passé -> Fallback Best Of 10 (mieux que rien)
                         const fallback = await fetchItunesTopTracks(cArtist, 10);
                         fallback.forEach(t => allTracks.push(t));
                     }
                 }
-                // 2. Format déjà traité (Tracks)
+                // B. Format déjà traité
                 else if (concert.tracks && concert.tracks.length > 0) {
-                    // On vérifie juste qu'on a pas de "Titre inconnu" (CSV cassé)
                     const isBroken = concert.tracks.some((t: any) => t.name === "Titre inconnu");
-                    
                     if (isBroken) {
-                        // CSV cassé -> On répare avec un Top 10 (mieux que rien)
                         const repaired = await fetchItunesTopTracks(cArtist, 10);
                         repaired.forEach(t => allTracks.push(t));
                     } else {
-                        // CSV valide -> On garde STRICTEMENT ça
                         concert.tracks.forEach((t: any) => allTracks.push({
                             artist: t.artist || cArtist,
                             name: t.name
                         }));
                     }
                 }
-                // 3. Pas de données de setlist (Concert passé mais setlist.fm vide)
+                // C. Pas de données -> Fallback
                 else {
-                    // Fallback de sécurité
                     const fallback = await fetchItunesTopTracks(cArtist, 10);
                     fallback.forEach(t => allTracks.push(t));
                 }
             }
-
             finishLoading(allTracks, rawData.length > 1 ? "Mes Concerts" : `${artistName} Setlist`, artistName);
         }
+
+        // --- PRIORITÉ 3 : CONCERTS FUTURS (Best Of) ---
+        // On ne regarde ici QUE si "Direct" et "Passé" sont vides.
+        else if (storageUpcoming && JSON.parse(storageUpcoming).length > 0) {
+            // Nettoyage du "Passé" pour éviter les conflits inverses
+            localStorage.removeItem('selected_concerts');
+
+            const rawData = JSON.parse(storageUpcoming);
+            const artistNames = rawData.map((c: any) => c.artist?.name || c.artist);
+            
+            setPlaylistName("Mes Prochains Concerts");
+            setMainArtist(artistNames[0]);
+            await generateBestOfList(artistNames, 10);
+        }
         
-        // --- CAS D : RIEN ---
+        // --- AUCUNE DONNÉE ---
         else {
             setErrorMsg("Aucune sélection trouvée. Retournez choisir des concerts.");
             setLoading(false);
@@ -130,20 +127,16 @@ export default function Generate() {
     };
 
     loadData();
-  }, [location, user]); // On recharge si l'URL ou l'user change
+  }, [location, user]);
 
-  // --- MOTEUR ITUNES (Pour le FUTUR uniquement ou réparation) ---
+  // --- MOTEUR ITUNES ---
   const fetchItunesTopTracks = async (artistName: string, limit: number) => {
     if (!artistName || artistName === "Inconnu") return [];
-    
-    // Nettoyage nom (ex: "Metallica (Live)" -> "Metallica")
     const cleanName = artistName.replace(/ \([^\)]+\)/g, '').trim(); 
-    
     try {
         const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanName)}&entity=song&limit=${limit}&attribute=artistTerm`);
         if (!response.ok) throw new Error("Erreur réseau iTunes");
         const data = await response.json();
-        
         return data.results.map((item: any) => ({
             artist: item.artistName,
             name: item.trackName,
@@ -155,21 +148,17 @@ export default function Generate() {
     }
   };
 
-  // --- GÉNÉRATEUR FUTUR (Best Of) ---
+  // --- GÉNÉRATEUR FUTUR ---
   const generateBestOfList = async (artists: string[], limitPerArtist: number) => {
       setLoadingMessage(`Génération playlist pour ${artists.length} artistes...`);
       const allTracks: any[] = [];
-      
-      // Batch processing pour ne pas saturer le navigateur
       for (let i = 0; i < artists.length; i += 5) {
           const batch = artists.slice(i, i + 5);
           setLoadingMessage(`Récupération des tubes... ${Math.min(i + 5, artists.length)} / ${artists.length}`);
-          
           const promises = batch.map(a => fetchItunesTopTracks(a, limitPerArtist));
           const results = await Promise.all(promises);
           results.flat().forEach(t => allTracks.push(t));
       }
-
       if (allTracks.length > 0) {
           finishLoading(allTracks, "Festival Playlist", artists[0]);
       } else {
@@ -178,17 +167,16 @@ export default function Generate() {
       }
   };
 
-  // --- EXTRACTION STRICTE SETLIST.FM (Passé) ---
+  // --- EXTRACTION PASSÉ (Strict) ---
   const extractRealSetlist = (data: any, defaultArtist: string) => {
     const tracks: any[] = [];
     if (data.sets && data.sets.set) {
         data.sets.set.forEach((set: any) => {
             if (set.song) {
                 set.song.forEach((song: any) => {
-                    // On exclut juste les bandes sons (Tape) car ce ne sont pas des chansons jouées
                     if (song.name && !song.tape) {
                         tracks.push({
-                            artist: song.cover ? song.cover.name : defaultArtist, // On gère les Covers
+                            artist: song.cover ? song.cover.name : defaultArtist,
                             name: song.name
                         });
                     }
@@ -205,10 +193,7 @@ export default function Generate() {
         setLoading(false);
         return;
     }
-    
-    // Note : Pour le PASSÉ, on ne dédoublonne PAS par nom. 
-    // Si un groupe joue 2 fois la même chanson (rappel), c'est la réalité du concert.
-    // On nettoie juste les doublons techniques (objets identiques)
+    // Dédoublonnage technique uniquement (on garde les rappels si c'est réel)
     const uniqueTracks = tracks.filter((track, index, self) =>
         index === self.findIndex((t) => (
             t.name === track.name && t.artist === track.artist
@@ -220,7 +205,6 @@ export default function Generate() {
     setMainArtist(adArtist);
     setLoading(false);
     
-    // Sauvegarde Historique (Silencieux)
     if (user && uniqueTracks.length > 0) {
          saveToHistory(user.id, {
             playlist_name: listName,
@@ -251,7 +235,6 @@ export default function Generate() {
     document.body.removeChild(link);
   };
 
-  // Bouton de secours pour vider le cache
   const handleClearCache = () => {
       localStorage.removeItem('selected_concerts');
       localStorage.removeItem('selected_upcoming');
@@ -273,7 +256,6 @@ export default function Generate() {
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
       <div className="flex-grow max-w-4xl mx-auto w-full px-4 pb-20">
-        
         <div className="flex justify-between items-center mb-6">
             <Button variant="ghost" onClick={() => navigate('/')} className="text-[#a0a0a0] hover:text-white pl-0">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Accueil
