@@ -31,9 +31,9 @@ export default function Index() {
       <Header />
 
       {/* --- 1. HERO MASSIF --- */}
-      <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 overflow-hidden">
+      <section className="relative min-h-[85vh] flex flex-col items-center justify-center px-6 overflow-hidden pt-20">
         {/* Background Effects */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#4d94ff] rounded-full blur-[200px] opacity-10 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#4d94ff] rounded-full blur-[150px] opacity-10 pointer-events-none" />
         
         <div className="relative z-10 w-full max-w-5xl text-center space-y-10 animate-in fade-in zoom-in duration-700">
           
@@ -41,7 +41,8 @@ export default function Index() {
             <span className="w-2 h-2 rounded-full bg-[#00ff00] animate-pulse"/> Compatible Spotify • Deezer • Apple
           </div>
 
-          <h1 className="text-6xl sm:text-7xl md:text-9xl font-black italic text-white leading-[0.85] tracking-tighter uppercase">
+          {/* TITRE CORRIGÉ : Plus aéré */}
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-black italic text-white leading-tight tracking-tight uppercase drop-shadow-2xl">
             Vos Concerts.<br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#4d94ff] via-[#a361ff] to-[#ff4d94]">En Playlist.</span>
           </h1>
@@ -50,7 +51,7 @@ export default function Index() {
             L'outil ultime pour transformer vos souvenirs de concerts en playlists réelles. Setlists exactes, import instantané.
           </p>
 
-          {/* BARRE DE RECHERCHE CENTRALE */}
+          {/* BARRE DE RECHERCHE */}
           <div className="max-w-2xl mx-auto w-full pt-8">
             <form onSubmit={handleSearch} className="relative group">
               <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-[#666] w-6 h-6 group-focus-within:text-[#4d94ff] transition-colors" />
@@ -64,7 +65,7 @@ export default function Index() {
                 GO
               </Button>
             </form>
-            <div className="mt-4 flex justify-center gap-4 text-xs font-bold uppercase tracking-widest text-[#444]">
+            <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs font-bold uppercase tracking-widest text-[#444]">
               <span>Essayez :</span>
               <button onClick={() => navigate('/search?q=Metallica')} className="hover:text-white transition-colors">Metallica</button>
               <button onClick={() => navigate('/search?q=Hellfest')} className="hover:text-white transition-colors">Hellfest</button>
@@ -74,7 +75,9 @@ export default function Index() {
         </div>
       </section>
 
-
+      {/* ... (LE RESTE DE LA PAGE RESTE IDENTIQUE : Section Profil + Pricing) ... */}
+      {/* Je ne remets pas tout le code du bas pour ne pas encombrer, gardez le code précédent pour les sections suivantes */}
+      
       {/* --- 2. IMPORT RAPIDE (PROFIL) --- */}
       <section className="py-24 bg-[#161616] border-y border-[#222]">
         <div className="max-w-5xl mx-auto px-6">
@@ -102,7 +105,6 @@ export default function Index() {
                         </Button>
                     </form>
                 </div>
-                {/* Visuel abstrait import */}
                 <div className="bg-[#1a1a1a] p-8 rounded-3xl border border-[#333] relative overflow-hidden group hover:border-[#88c446] transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-20"><Music size={100} /></div>
                     <div className="space-y-4 relative z-10">
@@ -124,9 +126,8 @@ export default function Index() {
         </div>
       </section>
 
-
-      {/* --- 3. PRICING (Aéré et Clair) --- */}
-      <section className="py-32 px-6 max-w-7xl mx-auto w-full" id="pricing">
+      {/* --- 3. PRICING --- */}
+       <section className="py-32 px-6 max-w-7xl mx-auto w-full" id="pricing">
         <div className="text-center mb-24 space-y-6">
           <h2 className="text-5xl md:text-7xl font-black italic uppercase">L'Export Universel</h2>
           <p className="text-[#a0a0a0] text-xl font-medium max-w-2xl mx-auto">
@@ -135,7 +136,6 @@ export default function Index() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 items-start">
-          
           {/* VISITEUR */}
           <div className="group p-8 rounded-[2rem] border border-[#333] hover:border-[#666] transition-all bg-[#1a1a1a] flex flex-col min-h-[500px]">
             <div className="mb-8">
@@ -154,7 +154,7 @@ export default function Index() {
             </Button>
           </div>
 
-          {/* MEMBRE (Populaire) */}
+          {/* MEMBRE */}
           <div className="p-8 rounded-[2rem] border-2 border-[#4d94ff] bg-[#1a1a1a] flex flex-col min-h-[500px] relative shadow-[0_0_50px_rgba(77,148,255,0.1)] scale-105 z-10">
             <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-[#4d94ff] text-white px-6 py-1 rounded-full text-xs font-black uppercase tracking-widest italic shadow-lg">
                 Recommandé
@@ -196,7 +196,6 @@ export default function Index() {
 
         </div>
 
-        {/* Note de bas de page */}
         <div className="mt-20 text-center">
             <p className="text-[#666] text-sm flex items-center justify-center gap-2">
                 <ShieldCheck size={16}/> Paiement sécurisé via Stripe. Annulation à tout moment.
