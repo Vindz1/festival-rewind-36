@@ -154,13 +154,19 @@ export default function Generate() {
             console.log(`  ✅ iTunes: ${top.length} tracks`);
             finalTracks.push(...top);
           } else {
-            // PASSÉ : Setlist.fm
+            // PASSÉ : Priorité Setlist.fm, fallback iTunes si vide
             const tracks = extractFromSetlist(item, currentArtist);
             console.log(`  ✅ Setlist: ${tracks.length} tracks`);
+            
             if (tracks.length > 0) {
               finalTracks.push(...tracks);
             } else {
-              console.warn(`  ⚠️ Aucune track trouvée pour ${currentArtist}`);
+              // FALLBACK : Si pas de setlist, on récupère le Top 5 iTunes
+              console.warn(`  ⚠️ Aucune setlist trouvée pour ${currentArtist}, fallback iTunes`);
+              const fallback = await fetchItunes(currentArtist, 5);
+              if (fallback.length > 0) {
+                finalTracks.push(...fallback);
+              }
             }
           }
         } catch (err) {
@@ -180,7 +186,7 @@ export default function Generate() {
         throw new Error(
           isFutureMode
             ? "Impossible de récupérer les morceaux pour cette sélection. Vérifiez les noms d'artistes."
-            : "Aucune setlist n'a été renseignée sur Setlist.fm pour ce(s) concert(s)."
+            : "Aucune setlist complète n'a été trouvée. Essayez avec d'autres concerts ou utilisez le mode 'I'm Going' pour générer une playlist basée sur les titres populaires."
         );
       }
 
