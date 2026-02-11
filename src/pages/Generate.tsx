@@ -1,132 +1,134 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
-import { saveToHistory } from '@/lib/history'; // Important : On garde l'historique
-import { SmartAd } from '@/components/SmartAd'; // Important : On garde la pub
+import { saveToHistory } from '@/lib/history';
+import { SmartAd } from '@/components/SmartAd';
 import { getUserSubscription } from '@/lib/subscription';
+
+// Interface pour définir clairement une piste propre
+interface Track {
+    artist: string;
+    name: string;
+}
 
 export default function Generate() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   
-  const [songs, setSongs] = useState<any[]>([]);
+  const [songs, setSongs] = useState<Track[]>([]);
   const [playlistName, setPlaylistName] = useState('Ma Setlist');
   const [mainArtist, setMainArtist] = useState('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
 
-  // 1. CHARGEMENT ET PARSING DES DONNÉES
+  // 1. LE COEUR DU REACTEUR : CHARGEMENT ET NETTOYAGE DES DONNEES
   useEffect(() => {
     const loadData = async () => {
-        // Vérif Premium pour les pubs
         if (user) {
-            getUserSubscription(user.id).then(sub => {
-                setIsPremium(sub.subscription_type === 'premium');
-            });
+            getUserSubscription(user.id).then(sub => setIsPremium(sub.subscription_type === 'premium'));
         }
 
         const directSongs = location.state?.songs;
         const directArtist = location.state?.artistName;
-        
-        const selectedConcerts = localStorage.getItem('selected_concerts');
-        const selectedUpcoming = localStorage.getItem('selected_upcoming');
+        const selectedConcertsStr = localStorage.getItem('selected_concerts');
+        const selectedUpcomingStr = localStorage.getItem('selected_upcoming');
 
-        let tracksFound: any[] = [];
+        let finalTracks: Track[] = [];
         let name = "Ma Setlist";
-        let artist = "Various Artists";
+        let artistForAd = "Rock";
 
-        // CAS 1 : On vient d'une recherche directe
+        // CAS 1 : On vient d'une recherche directe d'artiste (déjà propre)
         if (directSongs && directSongs.length > 0) {
-            tracksFound = directSongs;
+            finalTracks = directSongs.map((s: any) => ({ artist: s.artist || directArtist, name: s.name }));
             if (directArtist) {
                 name = `${directArtist} Setlist`;
-                artist = directArtist;
+                artistForAd = directArtist;
             }
         } 
-        // CAS 2 : On vient de l'historique ou sélection multiple
-        else if (selectedConcerts || selectedUpcoming) {
+        // CAS 2 : On vient de l'historique (données brutes Setlist.fm à nettoyer)
+        else if (selectedConcertsStr || selectedUpcomingStr) {
              try {
-                 const rawData = JSON.parse(selectedConcerts || selectedUpcoming || '[]');
+                 const rawData = JSON.parse(selectedConcertsStr || selectedUpcomingStr || '[]');
                  
                  if (rawData.length > 0) {
-                    // On définit le nom
-                    if (rawData.length === 1) {
-                        name = `${rawData[0].artist} @ ${rawData[0].venue}`;
-                        artist = rawData[0].artist;
-                    } else {
-                        name = "Mes Concerts";
-                        artist = rawData[0].artist; // On prend le premier pour la pub
-                    }
+                    artistForAd = rawData[0].artist?.name || rawData[0].artist || "Rock";
+                    name = rawData.length > 1 ? "Mes Concerts" : `${artistForAd} Live`;
 
-                    // On extrait les chansons (Flattening)
-                    // Note : Votre code précédent faisait peut-être un appel API ici.
-                    // Si rawData ne contient que des IDs, il faudrait refaire un fetch.
-                    // On suppose ici que rawData contient bien les infos (artist, song name) 
-                    // ou que vous avez stocké les détails.
-                    
-                    // Si rawData contient directement une structure de setlist.fm :
+                    // --- NETTOYAGE DES DONNÉES BRUTES ---
                     rawData.forEach((concert: any) => {
-                        // Si le concert a déjà une liste de tracks (format interne)
-                        if (concert.tracks) {
-                            tracksFound = [...tracksFound, ...concert.tracks];
-                        } 
-                        // Sinon, c'est peut-être juste artist/name
-                        else {
-                            // Fallback simple
-                            tracksFound.push({ 
-                                artist: concert.artist || 'Inconnu', 
-                                name: concert.name || 'Titre inconnu' 
+                        const concertArtist = concert.artist?.name || concert.artist || 'Inconnu';
+                        
+                        // Si les pistes sont déjà là (format court)
+                        if (concert.tracks && Array.isArray(concert.tracks)) {
+                            concert.tracks.forEach((t: any) => {
+                                finalTracks.push({ artist: t.artist || concertArtist, name: t.name });
                             });
                         }
+                        // Si c'est le format brut de setlist.fm (sets > song)
+                        else if (concert.sets && concert.sets.set) {
+                             concert.sets.set.forEach((set: any) => {
+                                if (set.song && Array.isArray(set.song)) {
+                                    set.song.forEach((song: any) => {
+                                        // On ignore les "tapes" (intro sur bande) si on veut
+                                        if (song.name && !song.tape) {
+                                            // Si c'est une cover, l'artiste change
+                                            const trackArtist = song.cover ? song.cover.name : concertArtist;
+                                            finalTracks.push({ artist: trackArtist, name: song.name });
+                                        }
+                                    });
+                                }
+                             });
+                        }
                     });
+                    // --- FIN DU NETTOYAGE ---
                  }
              } catch (e) {
                  console.error("Erreur parsing", e);
+                 toast.error("Erreur lors de la lecture des données.");
              }
         }
 
-        if (tracksFound.length === 0) {
-            // Si vide, on redirige (sécurité)
-            // navigate('/'); 
-            // Pour le dev, on met des données bidons si vide pour tester l'interface
-            setSongs([
-                { artist: 'Metallica', name: 'Enter Sandman' },
-                { artist: 'Metallica', name: 'Master of Puppets' },
-                { artist: 'Gojira', name: 'Stranded' }
-            ]);
-            setMainArtist('Metallica');
+        // DÉDOUBLONNAGE (Optionnel : pour éviter d'avoir 3 fois "Enter Sandman" si on a fait 3 concerts de Metallica)
+        const uniqueTracks = finalTracks.filter((track, index, self) =>
+            index === self.findIndex((t) => (
+                t.name.toLowerCase() === track.name.toLowerCase() && t.artist.toLowerCase() === track.artist.toLowerCase()
+            ))
+        );
+
+        if (uniqueTracks.length === 0) {
+            toast.error("Aucun titre trouvé dans la sélection.");
+            navigate('/'); // Sécurité
             setLoading(false);
             return;
         }
 
-        setSongs(tracksFound);
+        setSongs(uniqueTracks);
         setPlaylistName(name);
-        setMainArtist(artist);
+        setMainArtist(artistForAd);
         setLoading(false);
 
-        // SAUVEGARDE DANS L'HISTORIQUE (Vital pour la page Profil)
-        if (user && tracksFound.length > 0) {
+        // SAUVEGARDE HISTORIQUE
+        if (user && uniqueTracks.length > 0) {
             saveToHistory(user.id, {
                 playlist_name: name,
-                track_count: tracksFound.length,
-                top_artists: [artist],
-                platform_target: 'universal' // Nouveau type pour différencier
-            }).catch(err => console.error("Erreur save history", err));
+                track_count: uniqueTracks.length,
+                top_artists: [artistForAd],
+                platform_target: 'universal'
+            });
         }
     };
 
     loadData();
-  }, [location, user]);
+  }, [location, user, navigate]);
 
-  // FONCTION : COPIER
+  // 2. FONCTION COPIER (Format : "Artiste - Titre")
   const handleCopyText = () => {
     const textList = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
     navigator.clipboard.writeText(textList);
@@ -135,25 +137,27 @@ export default function Generate() {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  // FONCTION : CSV
+  // 3. FONCTION CSV (Corrigée)
   const handleDownloadCSV = () => {
-    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist}","${s.name}"`).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // L'en-tête + chaque ligne entourée de guillemets pour gérer les virgules dans les titres
+    const csvContent = "Artist,Track\n" + songs.map(s => `"${s.artist.replace(/"/g, '""')}","${s.name.replace(/"/g, '""')}"`).join("\n");
+    
+    // Création du fichier avec l'encodage UTF-8 BOM pour qu'Excel l'ouvre bien
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Lien de téléchargement unique (pas de boucle infinie)
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${playlistName.replace(/\s+/g, '_')}_Setlive.csv`);
+    link.setAttribute('download', `${playlistName.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_')}_Setlive.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Nettoyage de la mémoire
     toast.success("Fichier téléchargé");
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12"/>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center"><Loader2 className="animate-spin text-[#4d94ff] w-12 h-12"/></div>;
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
@@ -172,6 +176,9 @@ export default function Generate() {
             <p className="text-xl text-[#a0a0a0]">
                 Votre setlist contient <strong className="text-white">{songs.length} titres</strong>.
             </p>
+            {songs.length > 0 && (
+                <p className="text-sm text-[#666] mt-2">Ex: {songs[0].artist} - {songs[0].name}...</p>
+            )}
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 mb-12">
@@ -184,7 +191,7 @@ export default function Generate() {
                 
                 <div>
                     <h3 className="text-2xl font-bold mb-2">Récupérer la liste</h3>
-                    <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste des morceaux formatée spécialement pour l'import.</p>
+                    <p className="text-[#a0a0a0] mb-8 text-sm">Copiez la liste propre pour l'import.</p>
                 </div>
 
                 <div className="space-y-3">
@@ -196,18 +203,14 @@ export default function Generate() {
                             : 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white shadow-[0_0_20px_rgba(77,148,255,0.3)]'
                         }`}
                     >
-                        {copied ? (
-                            <><Check className="mr-2 w-6 h-6"/> COPIÉ !</>
-                        ) : (
-                            <><Copy className="mr-2 w-5 h-5"/> COPIER LA LISTE</>
-                        )}
+                        {copied ? <><Check className="mr-2 w-6 h-6"/> COPIÉ !</> : <><Copy className="mr-2 w-5 h-5"/> COPIER (TEXTE)</>}
                     </Button>
                     
                     <button 
                         onClick={handleDownloadCSV}
-                        className="w-full text-xs text-[#666] hover:text-white uppercase font-bold tracking-widest py-2 border border-transparent hover:border-[#404040] rounded transition-all"
+                        className="w-full text-xs text-[#a0a0a0] hover:text-white uppercase font-bold tracking-widest py-3 border border-[#404040] hover:border-white rounded transition-all flex items-center justify-center"
                     >
-                        Ou télécharger en CSV
+                        <Download className="mr-2 w-4 h-4"/> Ou télécharger en CSV
                     </button>
                 </div>
             </div>
@@ -220,7 +223,7 @@ export default function Generate() {
 
                 <div>
                     <h3 className="text-2xl font-bold mb-2 text-white">Importer partout</h3>
-                    <p className="text-[#a0a0a0] mb-6 text-sm">Utilisez l'outil gratuit <span className="text-white font-bold">TuneMyMusic</span> pour créer la playlist.</p>
+                    <p className="text-[#a0a0a0] mb-6 text-sm">Utilisez l'outil gratuit <strong className="text-white">TuneMyMusic</strong>.</p>
                     
                     <ol className="space-y-4 text-sm text-[#a0a0a0]">
                         <li className="flex gap-3 items-start">
@@ -233,7 +236,7 @@ export default function Generate() {
                         </li>
                         <li className="flex gap-3 items-start">
                             <span className="bg-[#333] text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
-                            <span><strong>Collez</strong> votre liste (Ctrl+V) et choisissez votre destination (Spotify, Deezer...).</span>
+                            <span><strong>Collez</strong> (Ctrl+V) et choisissez votre plateforme (Spotify, Deezer, Apple...).</span>
                         </li>
                     </ol>
                 </div>
@@ -249,7 +252,7 @@ export default function Generate() {
             </div>
         </div>
 
-        {/* PUBLICITÉ INTELLIGENTE (Si pas premium) */}
+        {/* PUBLICITÉ */}
         {!isPremium && mainArtist && (
              <div className="mt-16 pt-8 border-t border-[#333]">
                 <p className="text-center text-xs text-[#666] uppercase font-bold tracking-widest mb-6">Sponsorisé</p>
