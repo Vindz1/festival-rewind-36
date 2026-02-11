@@ -151,13 +151,22 @@ export const Header = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <Button 
-                onClick={() => navigate('/auth')}
-                className="bg-white text-black hover:bg-[#4d94ff] hover:text-white font-bold rounded-none uppercase text-xs tracking-widest h-9 px-6 transition-all"
-              >
-                Connexion
-              </Button>
+          ) : (
+              <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => navigate('/auth')}
+                    variant="ghost"
+                    className="text-[#a0a0a0] hover:text-white hover:bg-transparent font-bold uppercase text-[10px] tracking-widest"
+                  >
+                    Espace Membre
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/')}
+                    className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-full uppercase text-xs tracking-widest h-9 px-6 shadow-lg shadow-blue-500/20"
+                  >
+                    Commencer
+                  </Button>
+              </div>
             )}
 
             {/* MOBILE TOGGLE */}
