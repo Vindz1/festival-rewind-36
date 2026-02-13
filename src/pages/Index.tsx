@@ -381,7 +381,7 @@ export default function Index() {
                 <ul className="space-y-4 mb-8">
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-[#4d94ff] shrink-0 mt-0.5"/>
-                    <span className="text-gray-300"><strong className="text-white">2 exports</strong> par mois</span>
+                    <span className="text-gray-300"><strong className="text-white">2 exports</strong> par an</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-[#4d94ff] shrink-0 mt-0.5"/>
@@ -478,7 +478,7 @@ export default function Index() {
             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-white/10 bg-white/5">
               <ShieldCheck className="w-5 h-5 text-green-400"/>
               <span className="text-sm font-semibold text-gray-300">
-                Paiement sécurisé • Satisfait ou remboursé sous 30 jours
+                Paiement sécurisé
               </span>
             </div>
           </div>
