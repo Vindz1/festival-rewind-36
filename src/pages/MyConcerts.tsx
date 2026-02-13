@@ -68,11 +68,16 @@ export default function MyConcerts() {
           console.log('📡 Réponse API status:', res.status);
           
           if (res.ok) {
-            const data = await res.json();
-            console.log('✅ Concerts passés reçus:', data.results?.length || 0);
-            console.log('📊 Premier concert (échantillon):', data.results?.[0]);
-            setConcerts(data.results || []);
-          } else {
+          const data = await res.json();
+          console.log('✅ Concerts passés reçus:', data.results?.length || 0);
+          console.log('📊 Premier concert complet:', data.results?.[0]);
+          console.log('📊 Sets du premier:', data.results?.[0]?.sets);
+          
+          // Force la copie complète avec JSON parse/stringify
+          const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
+          setConcerts(concertsWithSets);
+          console.log('✅ Concerts stockés, vérif sets:', concertsWithSets[0]?.sets);
+        } else {
             console.error('❌ Erreur API:', res.status, res.statusText);
             const errorData = await res.text();
             console.error('❌ Détails:', errorData);
