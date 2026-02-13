@@ -253,46 +253,50 @@ export default function Generate() {
   /**
    * Extraction robuste depuis les données Setlist.fm
    */
-  const extractFromSetlist = (concert: ConcertData, defaultArtist: string): Track[] => {
-    const result: Track[] = [];
-    
-    // Cas 1 : Tracks déjà formatées
-    if (concert.tracks && Array.isArray(concert.tracks)) {
-      return concert.tracks.filter(t => 
-        t.name && 
-        t.name.trim() !== '' && 
-        t.name.toLowerCase() !== 'titre inconnu' &&
-        t.name.toLowerCase() !== 'unknown'
-      );
-    }
+const extractFromSetlist = (concert: any, defaultArtist: string): Track[] => {
+  const result: Track[] = [];
+  
+  console.log('🔍 Extraction pour:', defaultArtist);
+  console.log('🔍 Concert reçu:', concert);
+  console.log('🔍 Sets:', concert.sets);
+  
+  // Cas 1 : Tracks déjà formatées
+  if (concert.tracks && Array.isArray(concert.tracks)) {
+    console.log('✅ Cas 1: tracks array');
+    return concert.tracks.filter(t => 
+      t.name && t.name.trim() !== ''
+    );
+  }
 
-    // Cas 2 : Structure brute de l'API Setlist.fm
-    if (concert.sets?.set) {
-      const sets = Array.isArray(concert.sets.set) 
-        ? concert.sets.set 
-        : [concert.sets.set];
+  // Cas 2 : Structure Setlist.fm brute
+  if (concert.sets?.set) {
+    const sets = Array.isArray(concert.sets.set) 
+      ? concert.sets.set 
+      : [concert.sets.set];
+    
+    console.log('✅ Cas 2: sets.set -', sets.length, 'sets');
+    
+    sets.forEach((s: any) => {
+      if (!s.song) return;
       
-      sets.forEach((s: any) => {
-        if (!s.song) return;
+      const songs = Array.isArray(s.song) ? s.song : [s.song];
+      console.log('  → Set avec', songs.length, 'songs');
+      
+      songs.forEach((song: any) => {
+        if (song.tape) return;
+        if (!song.name || song.name.trim() === '') return;
         
-        const songs = Array.isArray(s.song) ? s.song : [s.song];
-        
-        songs.forEach((song: any) => {
-          // Filtrer les tapes, inconnus, etc.
-          if (song.tape) return;
-          if (!song.name || song.name.trim() === '') return;
-          if (song.name.toLowerCase().includes('unknown')) return;
-          
-          result.push({
-            artist: song.cover?.name || defaultArtist,
-            name: song.name.trim()
-          });
+        result.push({
+          artist: song.cover?.name || defaultArtist,
+          name: song.name.trim()
         });
       });
-    }
+    });
+  }
 
-    return result;
-  };
+  console.log('✅ Extraction terminée:', result.length, 'tracks');
+  return result;
+};
 
   /**
    * Récupération depuis iTunes API avec filtrage strict
