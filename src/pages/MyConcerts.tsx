@@ -50,8 +50,11 @@ export default function MyConcerts() {
     const fetchAllConcerts = async () => {
       const username = localStorage.getItem('setlistfm_username');
       
+      console.log('🔍 Username Setlist.fm:', username);
+      
       // Si pas d'username setlist.fm, on arrête le chargement
       if (!username) { 
+        console.warn('⚠️ Pas de username Setlist.fm');
         setLoading(false); 
         return; 
       }
@@ -59,40 +62,65 @@ export default function MyConcerts() {
       setLoading(true);
       try {
         // A. CHARGEMENT "I WAS THERE" (Passés)
+        console.log('📡 Appel API: /api/search?action=user&username=' + username);
         try {
           const res = await fetch(`/api/search?action=user&username=${username}`);
+          console.log('📡 Réponse API status:', res.status);
+          
           if (res.ok) {
             const data = await res.json();
+            console.log('✅ Concerts passés reçus:', data.results?.length || 0);
+            console.log('📊 Premier concert (échantillon):', data.results?.[0]);
             setConcerts(data.results || []);
+          } else {
+            console.error('❌ Erreur API:', res.status, res.statusText);
+            const errorData = await res.text();
+            console.error('❌ Détails:', errorData);
           }
-        } catch (e) { console.error("Erreur Past:", e); }
+        } catch (e) { 
+          console.error("❌ Erreur Past:", e); 
+        }
 
         // B. CHARGEMENT "I'M GOING" (Futurs)
         let upcoming: any[] = [];
+        console.log('📡 Appel API: /api/upcoming-shows?username=' + username);
         try {
           const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
+          console.log('📡 Réponse API upcoming status:', resUpcoming.status);
+          
           if (resUpcoming.ok) {
             const data = await resUpcoming.json();
+            console.log('✅ Concerts futurs reçus:', data.results?.length || 0);
             upcoming = data.results || [];
           }
-        } catch (e) { console.error("Erreur Future:", e); }
+        } catch (e) { 
+          console.error("❌ Erreur Future:", e); 
+        }
 
         // C. MERGE SUPABASE (Si l'utilisateur a ajouté manuellement des concerts futurs)
         if (user) {
-          const { data: sbData } = await supabase
+          console.log('📡 Vérification Supabase pour user:', user.id);
+          const { data: sbData, error } = await supabase
             .from('upcoming_concerts')
             .select('*')
             .eq('user_id', user.id);
-          if (sbData) upcoming = [...upcoming, ...sbData];
+          
+          if (error) {
+            console.error('❌ Erreur Supabase:', error);
+          } else {
+            console.log('✅ Concerts Supabase:', sbData?.length || 0);
+            if (sbData) upcoming = [...upcoming, ...sbData];
+          }
         }
 
         // D. DÉDOUBLONNAGE
         const uniqueUpcoming = Array.from(new Map(upcoming.map(item => [getArtistName(item), item])).values());
+        console.log('✅ Concerts futurs après déduplication:', uniqueUpcoming.length);
         setUpcomingConcerts(uniqueUpcoming);
 
       } catch (error) {
+        console.error('❌ Erreur générale:', error);
         toast.error('Erreur lors du chargement des concerts');
-        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -114,17 +142,13 @@ export default function MyConcerts() {
     
     if (selected.size === 0) return toast.error('Sélectionnez au moins un concert');
     
-    // CORRECTION : On sauvegarde TOUTES les données du concert (incluant sets)
     const dataToSave = list
       .filter(c => selected.has(c.id))
       .map(c => ({
         id: c.id,
         artist: getArtistName(c),
         venue: getVenueName(c),
-        eventDate: getEventDate(c),
-        // On garde la structure complète pour extraire les morceaux
-        sets: c.sets,
-        tracks: c.tracks
+        eventDate: getEventDate(c)
       }));
       
     localStorage.setItem(isUpcoming ? 'selected_upcoming' : 'selected_concerts', JSON.stringify(dataToSave));
