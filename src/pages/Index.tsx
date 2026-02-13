@@ -466,7 +466,7 @@ export default function Index() {
                 </Button>
 
                 <p className="text-center text-xs text-gray-500 mt-4">
-                  🎉 Offre de lancement • Annulation immédiate
+                  🎉 Offre de lancement
                 </p>
               </div>
             </div>
