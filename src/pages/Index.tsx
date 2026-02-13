@@ -47,7 +47,7 @@ export default function Index() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff00] opacity-75"/>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ff00]"/>
             </span>
-            Compatible Spotify, Deezer & Apple Music
+            Compatible Spotify, Deezer, Apple Music, Qobuz, etc.
           </div>
 
           {/* TITRE MASSIF & LISIBLE */}
@@ -60,7 +60,7 @@ export default function Index() {
             </h1>
             
             <p className="text-lg md:text-2xl text-gray-400 max-w-2xl mx-auto font-medium leading-relaxed">
-              Transformez vos concerts vécus en playlists Spotify. <br className="hidden md:block"/>
+              Transformez vos concerts vécus en playlists musicale. <br className="hidden md:block"/>
               Setlists exactes. Import en 2 clics.
             </p>
           </div>
@@ -183,9 +183,9 @@ export default function Index() {
                 <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center text-2xl font-black mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
                   3
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Exportez sur Spotify</h3>
+                <h3 className="text-2xl font-bold mb-4">Exportez sur toutes les plateformes de streaming</h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Copiez la liste et importez-la sur Spotify, Deezer ou Apple Music via TuneMyMusic.
+                  Copiez la liste et importez-la sur Spotify, Deezer, Apple Music ou autres via TuneMyMusic.
                 </p>
                 <div className="mt-6 flex items-center gap-2 text-sm text-green-400 font-semibold">
                   <Download className="w-4 h-4"/>
@@ -313,7 +313,7 @@ export default function Index() {
             <Input 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Metallica, Hellfest, Download Festival..." 
+              placeholder="Metallica, Black Label Society, Gojira..." 
               className="h-20 pl-16 pr-40 bg-white/5 border-2 border-white/10 text-xl rounded-full focus:ring-2 focus:ring-[#4d94ff]/50 focus:border-[#4d94ff] transition-all shadow-2xl placeholder:text-gray-600"
             />
             <Button 
@@ -329,7 +329,7 @@ export default function Index() {
             <span className="text-sm text-gray-500 font-semibold">Populaires :</span>
             {[
               { name: 'Metallica', color: 'from-red-500 to-orange-500' },
-              { name: 'Hellfest', color: 'from-green-500 to-emerald-500' },
+              { name: 'Bad Bunny', color: 'from-green-500 to-emerald-500' },
               { name: 'Daft Punk', color: 'from-blue-500 to-cyan-500' },
               { name: 'Iron Maiden', color: 'from-purple-500 to-pink-500' }
             ].map(({ name, color }) => (
