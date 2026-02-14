@@ -34,6 +34,7 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [quota, setQuota] = useState({ remaining: 0, used: 0 });
+  const [activeTab, setActiveTab] = useState<'playlists' | 'exports'>('playlists');
 
   useEffect(() => {
     if (!user) {
@@ -154,7 +155,7 @@ export default function History() {
           <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#333] rounded-2xl p-5 sm:p-6">
             <div className="flex items-center justify-between mb-3">
               <Download className="w-8 h-8 sm:w-10 sm:h-10 text-green-400" />
-              <span className="text-2xl sm:text-3xl font-black">{quota.used}</span>
+              <span className="text-2xl sm:text-3xl font-black">{exports.length}</span>
             </div>
             <p className="text-xs sm:text-sm text-gray-400 font-semibold uppercase tracking-wider">
               Exports cette année
@@ -210,90 +211,140 @@ export default function History() {
         {/* Tabs */}
         <div className="border-b border-[#333] mb-6 sm:mb-8">
           <div className="flex gap-4 sm:gap-8 overflow-x-auto">
-            <button className="pb-3 sm:pb-4 border-b-2 border-[#4d94ff] font-bold text-sm sm:text-base whitespace-nowrap">
+            <button 
+              onClick={() => setActiveTab('playlists')}
+              className={`pb-3 sm:pb-4 border-b-2 font-bold text-sm sm:text-base whitespace-nowrap transition-colors ${
+                activeTab === 'playlists' 
+                  ? 'border-[#4d94ff] text-white' 
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
               Playlists générées ({playlists.length})
             </button>
             <button 
-              onClick={() => {}} 
-              className="pb-3 sm:pb-4 border-b-2 border-transparent text-gray-400 hover:text-white font-bold text-sm sm:text-base whitespace-nowrap"
+              onClick={() => setActiveTab('exports')}
+              className={`pb-3 sm:pb-4 border-b-2 font-bold text-sm sm:text-base whitespace-nowrap transition-colors ${
+                activeTab === 'exports' 
+                  ? 'border-[#4d94ff] text-white' 
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
             >
               Exports ({exports.length})
             </button>
           </div>
         </div>
 
-        {/* Liste des playlists */}
-        {playlists.length === 0 ? (
-          <div className="text-center py-16 sm:py-20">
-            <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-400">Aucune playlist générée</h3>
-            <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">
-              Commencez par créer votre première playlist !
-            </p>
-            <Button 
-              onClick={() => navigate('/my-concerts')}
-              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 sm:px-8 rounded-lg"
-            >
-              Mes concerts
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            {playlists.map((playlist) => (
-              <div 
-                key={playlist.id}
-                className="bg-[#252525] border border-[#333] hover:border-[#4d94ff]/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all group"
+        {/* Liste des playlists OU exports */}
+        {activeTab === 'playlists' ? (
+          // ONGLET PLAYLISTS
+          playlists.length === 0 ? (
+            <div className="text-center py-16 sm:py-20">
+              <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-400">Aucune playlist générée</h3>
+              <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">
+                Commencez par créer votre première playlist !
+              </p>
+              <Button 
+                onClick={() => navigate('/my-concerts')}
+                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 sm:px-8 rounded-lg"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  
-                  {/* Infos */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold mb-2 truncate">{playlist.playlist_name}</h3>
+                Mes concerts
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {playlists.map((playlist) => (
+                <div 
+                  key={playlist.id}
+                  className="bg-[#252525] border border-[#333] hover:border-[#4d94ff]/50 rounded-xl sm:rounded-2xl p-4 sm:p-6 transition-all group"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400">
-                      <span className="flex items-center gap-1.5">
-                        <Music className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        {playlist.track_count} morceaux
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        {formatDate(playlist.created_at)}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${
-                        playlist.source_type === 'concert' 
-                          ? 'bg-blue-500/10 text-blue-400' 
-                          : 'bg-green-500/10 text-green-400'
-                      }`}>
-                        {playlist.source_type === 'concert' ? 'Concert passé' : 'À venir'}
-                      </span>
-                    </div>
-
-                    {/* Top artistes */}
-                    {playlist.top_artists && playlist.top_artists.length > 0 && (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        <span className="truncate">
-                          {playlist.top_artists.slice(0, 3).join(', ')}
+                    {/* Infos */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-xl font-bold mb-2 truncate">{playlist.playlist_name}</h3>
+                      
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400">
+                        <span className="flex items-center gap-1.5">
+                          <Music className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          {playlist.track_count} morceaux
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          {formatDate(playlist.created_at)}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${
+                          playlist.source_type === 'concert' 
+                            ? 'bg-blue-500/10 text-blue-400' 
+                            : 'bg-green-500/10 text-green-400'
+                        }`}>
+                          {playlist.source_type === 'concert' ? 'Concert passé' : 'À venir'}
                         </span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <Button
-                      onClick={() => deletePlaylist(playlist.id)}
-                      variant="ghost"
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2"
-                    >
-                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </Button>
-                  </div>
+                      {/* Top artistes */}
+                      {playlist.top_artists && playlist.top_artists.length > 0 && (
+                        <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                          <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          <span className="truncate">
+                            {playlist.top_artists.slice(0, 3).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Button
+                        onClick={() => deletePlaylist(playlist.id)}
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2"
+                      >
+                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </Button>
+                    </div>
+
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
+        ) : (
+          // ONGLET EXPORTS
+          exports.length === 0 ? (
+            <div className="text-center py-16 sm:py-20">
+              <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-400">Aucun export cette année</h3>
+              <p className="text-sm sm:text-base text-gray-500">
+                Les exports sont enregistrés quand vous cliquez sur "Copier" dans la page de génération.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
+              {exports.map((exportItem) => (
+                <div 
+                  key={exportItem.id}
+                  className="bg-[#252525] border border-[#333] rounded-xl sm:rounded-2xl p-4 sm:p-6"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold mb-2 truncate">{exportItem.playlist_name}</h3>
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400">
+                        <span className="flex items-center gap-1.5">
+                          <Music className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          {exportItem.track_count} morceaux
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
+                          {formatDate(exportItem.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
 
       </div>
