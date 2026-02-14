@@ -5,6 +5,7 @@ import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History } from '
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
+import { SearchBar } from '@/components/SearchBar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +95,9 @@ export const Header = () => {
               Shop
             </Link>
 
+            {/* SearchBar */}
+            <SearchBar />
+
             {!isPremium && (
                 <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 fill-yellow-500" />
@@ -104,6 +108,12 @@ export const Header = () => {
 
           {/* ACTIONS UTILISATEUR */}
           <div className="flex items-center gap-4">
+            
+            {/* SearchBar mobile */}
+            <div className="md:hidden">
+              <SearchBar />
+            </div>
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
