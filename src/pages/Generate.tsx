@@ -4,11 +4,11 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Music } from 'lucide-react';
+import { Download, Copy, ExternalLink, Check, ArrowLeft, Loader2, AlertCircle, Music, Lock, Crown } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
 import { SmartAd } from '@/components/SmartAd';
-import { getUserSubscription } from '@/lib/subscription';
+import { getUserSubscription, checkExportQuota, trackExport, type ExportQuota } from '@/lib/subscription';
 
 interface Track {
   artist: string;
@@ -39,6 +39,15 @@ export default function Generate() {
   const [loadingMessage, setLoadingMessage] = useState('Analyse...');
   const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
+  
+  // Quota state
+  const [quota, setQuota] = useState<ExportQuota>({
+    canExport: false,
+    remaining: 0,
+    isPremium: false,
+    renewalDate: '',
+    used: 0
+  });
 
   useEffect(() => {
     processGeneration();
@@ -50,6 +59,14 @@ export default function Generate() {
         setIsPremium(sub.subscription_type === 'premium');
       }).catch(err => {
         console.error('Erreur récupération subscription:', err);
+      });
+      
+      // Charger le quota
+      checkExportQuota(user.id).then(q => {
+        setQuota(q);
+        console.log('📊 Quota utilisateur:', q);
+      }).catch(err => {
+        console.error('Erreur récupération quota:', err);
       });
     }
   }, [user]);
@@ -204,10 +221,12 @@ export default function Generate() {
       // Sauvegarde historique
       if (user) {
         try {
-          await saveToHistory(user.id, {
-            name: pName,
-            songs: uniqueTracks,
-            createdAt: new Date().toISOString()
+          await saveToHistory({
+            userId: user.id,
+            playlistName: pName,
+            tracks: uniqueTracks.map(t => ({ artist: t.artist })),
+            sourceType: isFutureMode ? 'upcoming' : 'concert',
+            platform: 'csv'
           });
         } catch (err) {
           console.error('Erreur sauvegarde historique:', err);
@@ -382,16 +401,72 @@ export default function Generate() {
     return unique;
   };
 
-  const handleCopy = () => {
-    const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
-    navigator.clipboard.writeText(text).then(() => {
+  // === HANDLE COPY AVEC PROTECTION QUOTA ===
+  const handleCopy = async () => {
+    // 1. Vérifier connexion
+    if (!user) {
+      toast.error('Connectez-vous pour exporter votre playlist');
+      navigate('/auth');
+      return;
+    }
+
+    // 2. Vérifier quota
+    if (!quota.canExport) {
+      if (quota.isPremium) {
+        toast.error('Erreur lors de la vérification du quota');
+        return;
+      }
+      
+      // Utilisateur gratuit sans quota
+      toast.error(
+        `Quota épuisé ! Vous avez déjà utilisé vos 2 exports de l'année.`,
+        { 
+          duration: 5000,
+          action: {
+            label: 'Passer Premium',
+            onClick: () => navigate('/subscription')
+          }
+        }
+      );
+      return;
+    }
+
+    // 3. Copier
+    try {
+      const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
+      await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast.success("Liste copiée !");
+
+      // 4. Tracker l'export
+      const tracked = await trackExport(user.id, playlistName, songs.length);
+      
+      if (tracked) {
+        // Mettre à jour le quota localement
+        setQuota(prev => ({
+          ...prev,
+          remaining: Math.max(0, prev.remaining - 1),
+          used: prev.used + 1
+        }));
+
+        // Message de succès avec quota restant
+        if (quota.isPremium) {
+          toast.success('Liste copiée ! (Exports illimités)');
+        } else {
+          const newRemaining = quota.remaining - 1;
+          toast.success(
+            `Liste copiée ! ${newRemaining} export${newRemaining > 1 ? 's' : ''} restant${newRemaining > 1 ? 's' : ''} cette année`,
+            { duration: 4000 }
+          );
+        }
+      } else {
+        toast.success('Liste copiée !');
+      }
+
       setTimeout(() => setCopied(false), 2000);
-    }).catch(err => {
+    } catch (err) {
       console.error('Erreur copie:', err);
-      toast.error("Erreur lors de la copie");
-    });
+      toast.error('Erreur lors de la copie');
+    }
   };
 
   const handleDownload = () => {
@@ -450,6 +525,49 @@ export default function Generate() {
               </p>
             </div>
 
+            {/* BADGE QUOTA */}
+            {user && (
+              <div className="mb-8 text-center">
+                {quota.isPremium ? (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/30">
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                    <span className="text-yellow-500 font-bold">Premium</span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-300">Exports illimités</span>
+                    {quota.renewalDate && (
+                      <>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-400 text-sm">
+                          Renouvellement : {new Date(quota.renewalDate).toLocaleDateString('fr-FR')}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30">
+                    <span className={`font-bold ${quota.remaining === 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                      {quota.remaining}/2 exports restants
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-400 text-sm">
+                      Réinit. : {new Date(quota.renewalDate).toLocaleDateString('fr-FR')}
+                    </span>
+                    {quota.remaining === 0 && (
+                      <>
+                        <span className="text-gray-400">•</span>
+                        <button 
+                          onClick={() => navigate('/subscription')}
+                          className="text-yellow-500 hover:text-yellow-400 font-semibold underline"
+                        >
+                          Passer Premium
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 gap-8 mb-16">
               <div className="bg-[#252525] border border-[#333] rounded-3xl p-10 flex flex-col justify-between shadow-xl group hover:border-[#4d94ff] transition-all">
                 <div>
@@ -464,16 +582,23 @@ export default function Generate() {
                   </p>
                 </div>
                 <Button 
-                  onClick={handleCopy} 
+                  onClick={handleCopy}
+                  disabled={user && !quota.canExport}
                   className={`w-full h-24 text-2xl font-black italic uppercase transition-all rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.3)] ${
                     copied 
                       ? 'bg-[#00ff00] text-black' 
+                      : user && !quota.canExport
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                       : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'
                   }`}
                 >
                   {copied ? (
                     <>
                       <Check className="mr-2 w-6 h-6" /> Copié !
+                    </>
+                  ) : user && !quota.canExport ? (
+                    <>
+                      <Lock className="mr-2 w-6 h-6" /> Quota épuisé
                     </>
                   ) : (
                     <>
