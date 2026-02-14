@@ -53,7 +53,7 @@ export default function Index() {
           </div>
 
           <div className="space-y-4 sm:space-y-8 pt-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 px-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 justify-center items-center px-2">
               <Button onClick={() => document.getElementById('connect-profile')?.scrollIntoView({ behavior: 'smooth' })} className="h-12 sm:h-16 px-6 sm:px-10 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white text-sm sm:text-lg font-bold rounded-full">
                 <User className="mr-2 w-4 h-4"/><span className="truncate">Connecter mon profil</span><ArrowRight className="ml-2 w-4 h-4"/>
               </Button>
