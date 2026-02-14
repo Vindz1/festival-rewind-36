@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap } from 'lucide-react';
+import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
@@ -133,7 +133,12 @@ export const Header = () => {
                     <Music className="mr-2 h-4 w-4" /> Mes Setlists
                   </DropdownMenuItem>
 
-                  {/* LIEN 3 : ABONNEMENT */}
+                  {/* NOUVEAU : LIEN 3 : HISTORIQUE */}
+                  <DropdownMenuItem onClick={() => navigate('/history')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                    <History className="mr-2 h-4 w-4" /> Historique
+                  </DropdownMenuItem>
+
+                  {/* LIEN 4 : ABONNEMENT */}
                   <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
                     <Crown className="mr-2 h-4 w-4" />
                     {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
@@ -141,9 +146,9 @@ export const Header = () => {
                   
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 4 : DÉCONNEXION */}
+                  {/* LIEN 5 : DÉCONNEXION */}
                   <DropdownMenuItem 
-                    onSelect={handleSignOut} // <--- C'EST ICI LE CHANGEMENT (onSelect au lieu de onClick)
+                    onSelect={handleSignOut}
                     className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
@@ -190,6 +195,11 @@ export const Header = () => {
             <div className="flex flex-col items-center py-8 space-y-6">
               <Link to="/profile" className="text-xl font-bold text-white" onClick={() => setIsMenuOpen(false)}>Mon Profil</Link>
               <Link to="/my-concerts" className="text-xl font-black uppercase italic text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
+              {/* NOUVEAU : Historique dans menu mobile */}
+              <Link to="/history" className="text-xl font-bold text-white flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
+                <History className="w-5 h-5" />
+                Historique
+              </Link>
               <Link to="/hellfest-2026" className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" onClick={() => setIsMenuOpen(false)}>Hellfest 2026</Link>
               <Link to="/shop" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Shop</Link>
               <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>PREMIUM</Link>
