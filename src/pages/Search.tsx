@@ -4,12 +4,15 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search as SearchIcon, Music, Loader2, ArrowRight, TrendingUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search as SearchIcon, Music, Loader2, Calendar, MapPin, Check, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Track {
-  artist: string;
-  name: string;
+interface Concert {
+  id: string;
+  artist: { name: string };
+  venue: { name: string; city?: { name?: string; country?: { name?: string } } };
+  eventDate: string;
 }
 
 export default function Search() {
@@ -19,7 +22,8 @@ export default function Search() {
   
   const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
-  const [tracks, setTracks] = useState<Track[]>([]);
+  const [concerts, setConcerts] = useState<Concert[]>([]);
+  const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [artistName, setArtistName] = useState('');
 
   useEffect(() => {
@@ -27,65 +31,6 @@ export default function Search() {
       handleSearch(initialQuery);
     }
   }, [initialQuery]);
-
-  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
-    try {
-      const searchLimit = Math.max(limit * 5, 50);
-      
-      const response = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=US`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`iTunes API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.results || data.results.length === 0) {
-        return [];
-      }
-      
-      const normalizedSearchArtist = normalizeString(artist);
-      
-      const scoredResults = data.results
-        .map((item: any) => {
-          const normalizedArtistName = normalizeString(item.artistName);
-          let score = 0;
-          
-          if (normalizedArtistName === normalizedSearchArtist) {
-            score += 100;
-          } else if (normalizedArtistName.includes(normalizedSearchArtist)) {
-            score += 50;
-          } else {
-            return { ...item, score: 0 };
-          }
-          
-          return { ...item, score };
-        })
-        .filter(item => item.score > 20)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit);
-      
-      return scoredResults.map((item: any) => ({
-        artist: item.artistName,
-        name: item.trackName
-      }));
-    } catch (err) {
-      console.error(`Erreur iTunes pour ${artist}:`, err);
-      return [];
-    }
-  };
-
-  const normalizeString = (str: string): string => {
-    return str
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ');
-  };
 
   const handleSearch = async (searchQuery?: string) => {
     const q = searchQuery || query;
@@ -96,60 +41,126 @@ export default function Search() {
 
     setLoading(true);
     setArtistName(q.trim());
+    setConcerts([]);
+    setSelectedConcerts(new Set());
     
     try {
-      console.log(`🔍 Recherche iTunes pour: ${q}`);
-      const results = await fetchItunes(q.trim(), 10);
+      console.log(`🔍 Recherche concerts pour: ${q}`);
       
-      if (results.length === 0) {
-        toast.error(`Aucun résultat trouvé pour "${q}"`);
-        setTracks([]);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        toast.error(`Aucun concert trouvé pour "${q}"`);
+        setConcerts([]);
       } else {
-        console.log(`✅ ${results.length} morceaux trouvés`);
-        setTracks(results);
-        toast.success(`${results.length} morceaux trouvés pour ${q}`);
+        // Filtrer uniquement les concerts futurs
+        const now = new Date();
+        const futureConcerts = data.results.filter((concert: Concert) => {
+          const concertDate = parseDate(concert.eventDate);
+          return concertDate >= now;
+        });
+        
+        if (futureConcerts.length === 0) {
+          toast.warning(`Aucun concert à venir trouvé pour "${q}"`);
+          setConcerts([]);
+        } else {
+          console.log(`✅ ${futureConcerts.length} concert(s) trouvé(s)`);
+          setConcerts(futureConcerts);
+          toast.success(`${futureConcerts.length} concert(s) à venir trouvé(s)`);
+        }
       }
     } catch (error) {
       console.error('Erreur recherche:', error);
       toast.error('Erreur lors de la recherche');
-      setTracks([]);
+      setConcerts([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const parseDate = (dateStr: string): Date => {
+    // Format Setlist.fm : "DD-MM-YYYY"
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    return new Date(dateStr);
+  };
+
+  const formatDate = (dateStr: string): string => {
+    const date = parseDate(dateStr);
+    return date.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  };
+
+  const toggleConcert = (id: string) => {
+    const newSet = new Set(selectedConcerts);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedConcerts(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedConcerts.size === concerts.length) {
+      setSelectedConcerts(new Set());
+    } else {
+      setSelectedConcerts(new Set(concerts.map(c => c.id)));
+    }
+  };
+
   const handleGeneratePlaylist = () => {
-    if (tracks.length === 0) {
-      toast.error("Aucun morceau à exporter");
+    if (selectedConcerts.size === 0) {
+      toast.error("Sélectionnez au moins un concert");
       return;
     }
 
-    // Créer un objet "concert" fictif pour iTunes
-    const concertData = [{
-      id: artistName.toLowerCase().replace(/\s+/g, '-'),
-      artist: artistName,
-      eventDate: new Date().toLocaleDateString('fr-FR'),
-      isFuture: true, // Mode iTunes
-      tracks: tracks
-    }];
+    const selectedData = concerts
+      .filter(c => selectedConcerts.has(c.id))
+      .map(c => ({
+        id: c.id,
+        artist: c.artist.name,
+        venue: c.venue.name,
+        eventDate: c.eventDate,
+        isFuture: true // Mode iTunes pour concerts futurs
+      }));
 
-    localStorage.setItem('selected_upcoming', JSON.stringify(concertData));
+    localStorage.setItem('selected_upcoming', JSON.stringify(selectedData));
     navigate('/generate?mode=upcoming');
+  };
+
+  const getLocationString = (concert: Concert): string => {
+    const parts = [];
+    if (concert.venue?.city?.name) parts.push(concert.venue.city.name);
+    if (concert.venue?.city?.country?.name) parts.push(concert.venue.city.country.name);
+    return parts.join(', ') || 'Lieu non spécifié';
   };
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
       
-      <div className="flex-grow max-w-4xl mx-auto w-full px-4 sm:px-6 pb-20">
+      <div className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 pb-20">
         
         {/* Header */}
         <div className="mb-8 sm:mb-12 text-center">
           <h1 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
-            Recherche de <span className="text-[#4d94ff]">Concert</span>
+            Recherche de <span className="text-[#4d94ff]">Concerts</span>
           </h1>
           <p className="text-sm sm:text-base text-gray-400">
-            Trouvez n'importe quel artiste et générez une playlist de ses meilleurs morceaux
+            Trouvez les prochains concerts d'un artiste et générez une playlist de ses meilleurs morceaux
           </p>
         </div>
 
@@ -175,71 +186,102 @@ export default function Search() {
           </Button>
         </form>
 
-        {/* Résultats */}
+        {/* Loading */}
         {loading && (
           <div className="text-center py-20">
             <Loader2 className="w-12 h-12 animate-spin text-[#4d94ff] mx-auto mb-4" />
-            <p className="text-gray-400">Recherche en cours...</p>
+            <p className="text-gray-400">Recherche des concerts à venir...</p>
           </div>
         )}
 
-        {!loading && tracks.length > 0 && (
+        {/* Résultats */}
+        {!loading && concerts.length > 0 && (
           <div className="space-y-6">
-            {/* Header résultats */}
-            <div className="flex items-center justify-between bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-6">
+            {/* Toolbar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-5">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold mb-1">{artistName}</h2>
-                <p className="text-xs sm:text-sm text-gray-400 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
-                  Top {tracks.length} morceaux
+                <p className="text-xs sm:text-sm text-gray-400">
+                  {concerts.length} concert{concerts.length > 1 ? 's' : ''} à venir
                 </p>
               </div>
-              <Button 
-                onClick={handleGeneratePlaylist}
-                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 sm:px-8 rounded-lg"
-              >
-                <ArrowRight className="mr-2 w-4 h-4" />
-                Créer Playlist
-              </Button>
-            </div>
-
-            {/* Liste des morceaux */}
-            <div className="space-y-2">
-              {tracks.map((track, idx) => (
-                <div 
-                  key={idx}
-                  className="bg-[#252525] border border-[#333] hover:border-[#4d94ff]/50 rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all"
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <Button 
+                  variant="outline"
+                  onClick={handleSelectAll}
+                  className="text-xs border-[#404040] text-[#a0a0a0] hover:bg-[#3d3d3d] hover:text-white"
                 >
-                  <span className="text-[#666] font-mono text-xs sm:text-sm min-w-[2rem]">
-                    {String(idx + 1).padStart(2, '0')}
-                  </span>
-                  <Music className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm sm:text-base text-white truncate">{track.name}</p>
-                    <p className="text-xs sm:text-sm text-[#a0a0a0] truncate">{track.artist}</p>
-                  </div>
-                </div>
-              ))}
+                  {selectedConcerts.size === concerts.length ? (
+                    <><XCircle className="w-3 h-3 mr-1.5" /> Tout désélectionner</>
+                  ) : (
+                    <><Check className="w-3 h-3 mr-1.5" /> Tout sélectionner</>
+                  )}
+                </Button>
+                <Button 
+                  onClick={handleGeneratePlaylist}
+                  disabled={selectedConcerts.size === 0}
+                  className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 disabled:opacity-50"
+                >
+                  Créer Playlist ({selectedConcerts.size})
+                </Button>
+              </div>
             </div>
 
-            {/* CTA fixe mobile */}
-            <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
-              <Button 
-                onClick={handleGeneratePlaylist}
-                className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold h-12"
-              >
-                Créer Playlist ({tracks.length} morceaux)
-              </Button>
+            {/* Liste des concerts */}
+            <div className="space-y-2">
+              {concerts.map((concert) => {
+                const isSelected = selectedConcerts.has(concert.id);
+                
+                return (
+                  <div
+                    key={concert.id}
+                    onClick={() => toggleConcert(concert.id)}
+                    className={`
+                      flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer transition-colors border-l-2 rounded-r-lg
+                      ${isSelected 
+                        ? 'bg-[#4d94ff]/10 border-[#4d94ff]' 
+                        : 'bg-[#2d2d2d] border-transparent hover:bg-[#3d3d3d]'}
+                    `}
+                  >
+                    <div className={`
+                      w-4 h-4 sm:w-5 sm:h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors
+                      ${isSelected ? 'bg-[#4d94ff] border-[#4d94ff]' : 'border-[#404040]'}
+                    `}>
+                      {isSelected && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
+                    </div>
+                    
+                    <Music className={`w-4 h-4 sm:w-5 sm:h-5 ${isSelected ? 'text-[#4d94ff]' : 'text-gray-500'}`} />
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-sm sm:text-base font-bold truncate ${isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
+                        {concert.venue.name}
+                      </h3>
+                      <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-[#a0a0a0] mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          {formatDate(concert.eventDate)}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          {getLocationString(concert)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {!loading && query && tracks.length === 0 && (
+        {/* Aucun résultat */}
+        {!loading && query && concerts.length === 0 && (
           <div className="text-center py-20">
-            <SearchIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2 text-gray-400">Aucun résultat</h3>
+            <AlertCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2 text-gray-400">Aucun concert à venir</h3>
             <p className="text-gray-500 mb-8">
-              Impossible de trouver des morceaux pour "{artistName}"
+              Aucun concert trouvé pour "{artistName}"
             </p>
             <Button 
               onClick={() => navigate('/')}
@@ -247,6 +289,18 @@ export default function Search() {
               className="border-[#404040] text-white hover:bg-[#2d2d2d]"
             >
               Retour à l'accueil
+            </Button>
+          </div>
+        )}
+
+        {/* Barre flottante mobile */}
+        {selectedConcerts.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
+            <Button 
+              onClick={handleGeneratePlaylist}
+              className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold h-12"
+            >
+              Créer Playlist ({selectedConcerts.size} concert{selectedConcerts.size > 1 ? 's' : ''})
             </Button>
           </div>
         )}
