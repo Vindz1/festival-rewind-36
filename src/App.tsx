@@ -23,7 +23,6 @@ import Subscription from './pages/Subscription';
 import Legal from './pages/Legal';
 import Profile from './pages/Profile';
 import Search from './pages/Search';
-import History from './pages/History ;
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
