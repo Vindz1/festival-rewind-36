@@ -153,7 +153,9 @@ export default function MyConcerts() {
         id: c.id,
         artist: getArtistName(c),
         venue: getVenueName(c),
-        eventDate: getEventDate(c)
+        eventDate: getEventDate(c),
+        sets: c.sets,      // ← Doit sauvegarder les sets
+        tracks: c.tracks
       }));
       
     localStorage.setItem(isUpcoming ? 'selected_upcoming' : 'selected_concerts', JSON.stringify(dataToSave));
