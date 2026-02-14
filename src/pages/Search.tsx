@@ -1,157 +1,258 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Loader2, Music, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search as SearchIcon, Music, Loader2, ArrowRight, TrendingUp } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Track {
+  artist: string;
+  name: string;
+}
 
 export default function Search() {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get('q') || '';
   const navigate = useNavigate();
-
-  const [results, setResults] = useState<any[]>([]);
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  
+  const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [artistName, setArtistName] = useState('');
 
   useEffect(() => {
-    if (!query) return;
+    if (initialQuery) {
+      handleSearch(initialQuery);
+    }
+  }, [initialQuery]);
 
-    const fetchResults = async () => {
-      setLoading(true);
-      setError('');
-      setResults([]);
-
-      try {
-        // On appelle NOTRE nouvelle API
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        
-        if (!response.ok) throw new Error("Erreur lors de la recherche");
-        
-        const data = await response.json();
-        setResults(data.setlist || []);
-      } catch (err) {
-        console.error(err);
-        setError("Impossible de récupérer les résultats.");
-      } finally {
-        setLoading(false);
+  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
+    try {
+      const searchLimit = Math.max(limit * 5, 50);
+      
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=US`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`iTunes API error: ${response.status}`);
       }
-    };
+      
+      const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        return [];
+      }
+      
+      const normalizedSearchArtist = normalizeString(artist);
+      
+      const scoredResults = data.results
+        .map((item: any) => {
+          const normalizedArtistName = normalizeString(item.artistName);
+          let score = 0;
+          
+          if (normalizedArtistName === normalizedSearchArtist) {
+            score += 100;
+          } else if (normalizedArtistName.includes(normalizedSearchArtist)) {
+            score += 50;
+          } else {
+            return { ...item, score: 0 };
+          }
+          
+          return { ...item, score };
+        })
+        .filter(item => item.score > 20)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+      
+      return scoredResults.map((item: any) => ({
+        artist: item.artistName,
+        name: item.trackName
+      }));
+    } catch (err) {
+      console.error(`Erreur iTunes pour ${artist}:`, err);
+      return [];
+    }
+  };
 
-    fetchResults();
-  }, [query]);
+  const normalizeString = (str: string): string => {
+    return str
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ');
+  };
 
-  // Fonction pour gérer le clic sur un concert trouvé
-  const handleSelect = (concert: any) => {
-    // On formate les données pour Generate.tsx
-    const formattedConcert = {
-        id: concert.id,
-        artist: concert.artist,
-        venue: concert.venue,
-        eventDate: concert.eventDate,
-        sets: concert.sets
-    };
+  const handleSearch = async (searchQuery?: string) => {
+    const q = searchQuery || query;
+    if (!q.trim()) {
+      toast.error("Entrez un nom d'artiste");
+      return;
+    }
 
-    // On passe en mode "Direct" via le state de navigation
-    // C'est la méthode la plus propre pour le scénario "Je cherche -> Je clique -> Je génère"
-    navigate('/generate', { 
-        state: { 
-            artists: [concert.artist.name], // Pour le mode "Futur/BestOf" si besoin
-            eventName: `${concert.artist.name} @ ${concert.venue.name}`,
-            // On passe aussi les données brutes pour le mode "Passé" (Extraction Setlist)
-            // On le stocke temporairement dans le localStorage pour que Generate le retrouve comme un "concert sélectionné"
-        } 
-    });
-
-    // Astuce : On force le mode "Passé" en injectant ce concert dans le stockage
-    localStorage.setItem('selected_concerts', JSON.stringify([formattedConcert]));
-    localStorage.removeItem('selected_upcoming');
+    setLoading(true);
+    setArtistName(q.trim());
     
-    navigate('/generate');
+    try {
+      console.log(`🔍 Recherche iTunes pour: ${q}`);
+      const results = await fetchItunes(q.trim(), 10);
+      
+      if (results.length === 0) {
+        toast.error(`Aucun résultat trouvé pour "${q}"`);
+        setTracks([]);
+      } else {
+        console.log(`✅ ${results.length} morceaux trouvés`);
+        setTracks(results);
+        toast.success(`${results.length} morceaux trouvés pour ${q}`);
+      }
+    } catch (error) {
+      console.error('Erreur recherche:', error);
+      toast.error('Erreur lors de la recherche');
+      setTracks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGeneratePlaylist = () => {
+    if (tracks.length === 0) {
+      toast.error("Aucun morceau à exporter");
+      return;
+    }
+
+    // Créer un objet "concert" fictif pour iTunes
+    const concertData = [{
+      id: artistName.toLowerCase().replace(/\s+/g, '-'),
+      artist: artistName,
+      eventDate: new Date().toLocaleDateString('fr-FR'),
+      isFuture: true, // Mode iTunes
+      tracks: tracks
+    }];
+
+    localStorage.setItem('selected_upcoming', JSON.stringify(concertData));
+    navigate('/generate?mode=upcoming');
   };
 
   return (
-    <div className="min-h-screen bg-[#121212] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
       
-      <div className="flex-grow max-w-4xl mx-auto w-full px-4 pt-32 pb-20">
-        <div className="mb-8">
-            <h1 className="text-3xl md:text-5xl font-black italic uppercase mb-2">Résultats</h1>
-            <p className="text-[#a0a0a0] text-lg">Recherche pour : <span className="text-white font-bold">"{query}"</span></p>
+      <div className="flex-grow max-w-4xl mx-auto w-full px-4 sm:px-6 pb-20">
+        
+        {/* Header */}
+        <div className="mb-8 sm:mb-12 text-center">
+          <h1 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
+            Recherche de <span className="text-[#4d94ff]">Concert</span>
+          </h1>
+          <p className="text-sm sm:text-base text-gray-400">
+            Trouvez n'importe quel artiste et générez une playlist de ses meilleurs morceaux
+          </p>
         </div>
 
-        {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="w-12 h-12 text-[#4d94ff] animate-spin mb-4"/>
-                <p className="text-[#666] uppercase tracking-widest font-bold text-sm">Recherche Setlist.fm...</p>
-            </div>
-        ) : error ? (
-            <div className="bg-[#1a1a1a] border border-red-500/30 p-8 rounded-2xl text-center">
-                <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4"/>
-                <p className="text-white mb-4">{error}</p>
-                <Button onClick={() => navigate('/')} variant="outline">Retour</Button>
-            </div>
-        ) : results.length === 0 ? (
-            <div className="text-center py-20 bg-[#1a1a1a] rounded-3xl border border-[#333]">
-                <Music className="w-16 h-16 text-[#333] mx-auto mb-4"/>
-                <h3 className="text-xl font-bold mb-2">Aucun résultat</h3>
-                <p className="text-[#666]">Essayez avec un autre nom d'artiste.</p>
-            </div>
-        ) : (
-            <div className="space-y-4">
-                {results.map((concert) => {
-                    // Calcul de la date
-                    const [d, m, y] = concert.eventDate.split('-');
-                    const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-                    const monthName = dateObj.toLocaleString('default', { month: 'short' });
+        {/* Formulaire de recherche */}
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleSearch(); }} 
+          className="relative group max-w-2xl mx-auto mb-12"
+        >
+          <SearchIcon className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5 sm:w-6 sm:h-6 group-focus-within:text-[#4d94ff] transition-colors z-10" />
+          <Input 
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Metallica, Gojira, Bad Bunny..." 
+            className="h-16 sm:h-20 pl-12 sm:pl-16 pr-32 sm:pr-40 bg-white/5 border-2 border-white/10 text-base sm:text-xl rounded-full focus:ring-2 focus:ring-[#4d94ff]/50 focus:border-[#4d94ff] transition-all shadow-2xl placeholder:text-gray-600"
+            disabled={loading}
+          />
+          <Button 
+            type="submit" 
+            disabled={loading}
+            className="absolute right-2 top-2 bottom-2 px-6 sm:px-10 rounded-full bg-[#4d94ff] hover:bg-white hover:text-black font-bold uppercase transition-all text-sm sm:text-lg shadow-[0_0_30px_rgba(77,148,255,0.4)] hover:shadow-none disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'GO'}
+          </Button>
+        </form>
 
-                    // Calcul du nombre de titres (approximation)
-                    const songsCount = concert.sets?.set?.reduce((acc: number, s: any) => acc + (s.song?.length || 0), 0) || 0;
-
-                    return (
-                        <div 
-                            key={concert.id} 
-                            onClick={() => handleSelect(concert)}
-                            className="flex gap-4 p-4 bg-[#1a1a1a] rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all cursor-pointer group animate-in fade-in slide-in-from-bottom-2"
-                        >
-                            {/* BLOC DATE (Style MyConcerts) */}
-                            <div className="flex-shrink-0 flex flex-col items-center justify-center w-20 h-20 bg-[#111] border border-[#333] rounded-lg group-hover:border-[#4d94ff]/50 transition-colors">
-                                <span className="text-xl font-black text-white">{d}</span>
-                                <span className="text-xs font-bold uppercase text-[#666]">{monthName}</span>
-                                <span className="text-[10px] text-[#444]">{y}</span>
-                            </div>
-
-                            {/* INFOS */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                <h3 className="text-xl font-black italic uppercase text-white truncate group-hover:text-[#4d94ff] transition-colors">
-                                    {concert.artist.name}
-                                </h3>
-                                <div className="flex items-center gap-2 text-[#a0a0a0] text-sm truncate mb-2">
-                                    <MapPin className="w-3 h-3 text-[#666]"/>
-                                    <span className="truncate">{concert.venue?.name}, {concert.venue?.city?.name}</span>
-                                </div>
-                                {/* Badge nombre de titres */}
-                                {songsCount > 0 ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#4d94ff]/10 text-[#4d94ff] border border-[#4d94ff]/20 w-fit">
-                                        {songsCount} Titres
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#333] text-[#666] border border-[#444] w-fit">
-                                        Setlist Vide
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* FLÈCHE */}
-                            <div className="flex items-center px-2">
-                                <ArrowRight className="text-[#333] group-hover:text-white transition-colors" />
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+        {/* Résultats */}
+        {loading && (
+          <div className="text-center py-20">
+            <Loader2 className="w-12 h-12 animate-spin text-[#4d94ff] mx-auto mb-4" />
+            <p className="text-gray-400">Recherche en cours...</p>
+          </div>
         )}
+
+        {!loading && tracks.length > 0 && (
+          <div className="space-y-6">
+            {/* Header résultats */}
+            <div className="flex items-center justify-between bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-6">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold mb-1">{artistName}</h2>
+                <p className="text-xs sm:text-sm text-gray-400 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Top {tracks.length} morceaux
+                </p>
+              </div>
+              <Button 
+                onClick={handleGeneratePlaylist}
+                className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6 sm:px-8 rounded-lg"
+              >
+                <ArrowRight className="mr-2 w-4 h-4" />
+                Créer Playlist
+              </Button>
+            </div>
+
+            {/* Liste des morceaux */}
+            <div className="space-y-2">
+              {tracks.map((track, idx) => (
+                <div 
+                  key={idx}
+                  className="bg-[#252525] border border-[#333] hover:border-[#4d94ff]/50 rounded-lg p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all"
+                >
+                  <span className="text-[#666] font-mono text-xs sm:text-sm min-w-[2rem]">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <Music className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm sm:text-base text-white truncate">{track.name}</p>
+                    <p className="text-xs sm:text-sm text-[#a0a0a0] truncate">{track.artist}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA fixe mobile */}
+            <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
+              <Button 
+                onClick={handleGeneratePlaylist}
+                className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold h-12"
+              >
+                Créer Playlist ({tracks.length} morceaux)
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!loading && query && tracks.length === 0 && (
+          <div className="text-center py-20">
+            <SearchIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2 text-gray-400">Aucun résultat</h3>
+            <p className="text-gray-500 mb-8">
+              Impossible de trouver des morceaux pour "{artistName}"
+            </p>
+            <Button 
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="border-[#404040] text-white hover:bg-[#2d2d2d]"
+            >
+              Retour à l'accueil
+            </Button>
+          </div>
+        )}
+
       </div>
+
       <Footer />
     </div>
   );
