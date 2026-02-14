@@ -172,7 +172,7 @@ export default function Generate() {
           } else {
             // ========== MODE PASSÉ : SETLIST.FM STRICT ==========
             console.log('  → Mode PASSÉ : Setlist.fm strict');
-            const tracks = extractFromSetlist(item, currentArtist);
+            const tracks = await extractFromSetlist(item, currentArtist);
             console.log(`  ✅ Setlist: ${tracks.length} tracks`);
             
             if (tracks.length > 0) {
@@ -255,11 +255,12 @@ export default function Generate() {
   };
 
   // === EXTRACTION SETLIST.FM ===
-  const extractFromSetlist = (concert: ConcertData, defaultArtist: string): Track[] => {
+  const extractFromSetlist = async (concert: ConcertData, defaultArtist: string): Promise<Track[]> => {
     const result: Track[] = [];
     
     console.log('🔍 Extraction setlist pour:', defaultArtist);
     console.log('🔍 Structure concert:', { 
+      id: concert.id,
       hasTracksArray: !!concert.tracks,
       hasSets: !!concert.sets,
       setsStructure: concert.sets 
@@ -276,13 +277,40 @@ export default function Generate() {
       );
     }
 
-    // Cas 2 : Structure brute Setlist.fm
+    // Cas 2 : Si on a un ID de concert mais pas de sets, récupérer via API
+    if (concert.id && !concert.sets) {
+      console.log('🌐 Récupération setlist via API pour ID:', concert.id);
+      
+      try {
+        const response = await fetch(`/api/search?action=songs&setlistId=${concert.id}`);
+        
+        if (!response.ok) {
+          console.error(`❌ Erreur API pour ${concert.id}: ${response.status}`);
+          return [];
+        }
+        
+        const data = await response.json();
+        console.log('📦 Data reçue de l\'API:', data);
+        
+        if (data.sets?.set) {
+          concert.sets = data.sets; // On met à jour la structure
+        } else {
+          console.warn('⚠️ Pas de sets dans la réponse API');
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la récupération de la setlist:', error);
+        return [];
+      }
+    }
+
+    // Cas 3 : Structure brute Setlist.fm (maintenant que sets est rempli)
     if (concert.sets?.set) {
       const sets = Array.isArray(concert.sets.set) 
         ? concert.sets.set 
         : [concert.sets.set];
       
-      console.log(`✅ Cas 2: ${sets.length} set(s) trouvé(s)`);
+      console.log(`✅ ${sets.length} set(s) trouvé(s)`);
       
       sets.forEach((s: any, setIndex: number) => {
         if (!s.song) {
