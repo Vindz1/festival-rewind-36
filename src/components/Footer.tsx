@@ -7,7 +7,7 @@ export const Footer = () => {
         <Link to="/legal" className="hover:text-[#a0a0a0] transition-colors">Mentions Légales & CGV</Link>
         <a href="mailto:setlive@proton.me" className="hover:text-[#a0a0a0] transition-colors">Contact / Support</a>
       </div>
-      <p>© {new Date().getFullYear()} Setlive. Non affilié à Spotify ou Setlist.fm.</p>
+      <p>© {new Date().getFullYear()} Setlive. Non affilié à TuneMyMusic ou Setlist.fm.</p>
     </footer>
   );
 };
