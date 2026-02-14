@@ -28,19 +28,19 @@ export default function Legal() {
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-white mb-4 uppercase">3. Données & Spotify</h2>
+            <h2 className="text-xl font-bold text-white mb-4 uppercase">3. Données</h2>
             <p className="mb-2">
-              <strong>Connexion Spotify :</strong> Setlive utilise l'API officielle de Spotify. Nous ne stockons JAMAIS votre mot de passe. Nous conservons uniquement un "token" d'accès temporaire pour créer les playlists sur votre compte à votre demande.
+              <strong>Connexion :</strong> Setlive utilise l'API officielle de iTunes. Nous ne stockons JAMAIS votre mot de passe.
             </p>
             <p>
-              <strong>Données collectées :</strong> Nous stockons votre email et l'historique des setlists générées pour vous fournir le service "Historique". Vous pouvez demander la suppression intégrale de vos données à tout moment via vindz1@gmail.com.
+              <strong>Données collectées :</strong> Nous stockons votre email et l'historique des setlists générées pour vous fournir le service "Historique". Vous pouvez demander la suppression intégrale de vos données à tout moment via setlive@proton.me.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-white mb-4 uppercase">4. Propriété Intellectuelle</h2>
             <p>
-              Setlive est un outil indépendant et n'est pas affilié à Setlist.fm, Spotify, ou aux organisateurs des festivals cités (Hellfest, etc.). Les noms d'artistes et de festivals sont la propriété de leurs détenteurs respectifs.
+              Setlive est un outil indépendant et n'est pas affilié à Setlist.fm, iTunes, TuneMyMusic.com, ou aux organisateurs des festivals cités (Hellfest, etc.). Les noms d'artistes et de festivals sont la propriété de leurs détenteurs respectifs.
             </p>
           </section>
 
