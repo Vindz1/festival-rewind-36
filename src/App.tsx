@@ -23,6 +23,7 @@ import Subscription from './pages/Subscription';
 import Legal from './pages/Legal';
 import Profile from './pages/Profile';
 import Search from './pages/Search';
+import History from './pages/History ;
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/legal" element={<Legal />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/history" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
