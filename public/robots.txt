@@ -1,3 +1,18 @@
+# robots.txt pour Setlive.fr
+
+User-agent: *
+Allow: /
+
+# Pages à ne pas indexer (backend, auth)
+Disallow: /api/
+Disallow: /auth/
+Disallow: /spotify-callback/
+Disallow: /success/
+Disallow: /profile/
+
+# Sitemap
+Sitemap: https://setlive.fr/sitemap.xml
+
 User-agent: Googlebot
 Allow: /
 
@@ -8,7 +23,4 @@ User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
-Allow: /
-
-User-agent: *
 Allow: /
