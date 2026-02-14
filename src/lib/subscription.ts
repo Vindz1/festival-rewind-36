@@ -6,54 +6,19 @@ export interface UserSubscription {
   end_date?: string;
 }
 
-export async function checkExportQuota(userId: string): Promise<{ 
-  canExport: boolean; 
+export interface ExportQuota {
+  canExport: boolean;
   remaining: number;
   isPremium: boolean;
-  renewalDate?: string;
-}> {
-  const sub = await getUserSubscription(userId);
-  
-  if (sub.subscription_type === 'premium') {
-    return { 
-      canExport: true, 
-      remaining: -1, // Illimité
-      isPremium: true,
-      renewalDate: sub.end_date 
-    };
-  }
-  
-  // Gratuit : vérifier les exports de l'année
-  const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
-  
-  const { count, error } = await supabase
-    .from('playlist_exports')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', startOfYear);
-  
-  const used = count || 0;
-  const remaining = Math.max(0, 2 - used);
-  
-  return { 
-    canExport: remaining > 0, 
-    remaining,
-    isPremium: false,
-    renewalDate: `${new Date().getFullYear() + 1}-01-01`
-  };
+  renewalDate: string;
+  used: number;
 }
 
-export async function trackExport(userId: string, playlistId: string) {
-  await supabase.from('playlist_exports').insert({
-    user_id: userId,
-    playlist_id: playlistId,
-    created_at: new Date().toISOString()
-  });
-}
-
+/**
+ * Récupère le statut d'abonnement de l'utilisateur
+ */
 export async function getUserSubscription(userId: string): Promise<UserSubscription> {
   try {
-    // On va lire la colonne 'subscription_status' dans la table 'profiles'
     const { data, error } = await supabase
       .from('profiles')
       .select('subscription_status, subscription_end_date')
@@ -66,14 +31,131 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     }
 
     const isPremium = data.subscription_status === 'premium';
-
+    
     return {
       subscription_type: isPremium ? 'premium' : 'free',
-      can_export: isPremium, // Si Premium, export autorisé
+      can_export: isPremium,
       end_date: data.subscription_end_date
     };
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'abonnement:', error);
     return { subscription_type: 'free', can_export: false };
   }
+}
+
+/**
+ * Vérifie le quota d'exports annuel de l'utilisateur
+ * - Premium : illimité
+ * - Gratuit : 2 exports par an
+ */
+export async function checkExportQuota(userId: string): Promise<ExportQuota> {
+  try {
+    // 1. Vérifier si Premium
+    const sub = await getUserSubscription(userId);
+    
+    if (sub.subscription_type === 'premium') {
+      return {
+        canExport: true,
+        remaining: -1, // -1 = illimité
+        isPremium: true,
+        renewalDate: sub.end_date || '',
+        used: 0
+      };
+    }
+
+    // 2. Gratuit : compter les exports de l'année en cours
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1).toISOString();
+    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59).toISOString();
+
+    const { count, error } = await supabase
+      .from('playlist_exports')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', startOfYear)
+      .lte('created_at', endOfYear);
+
+    if (error) {
+      console.error('Erreur lors du comptage des exports:', error);
+      // En cas d'erreur, on autorise quand même (meilleure UX)
+      return {
+        canExport: true,
+        remaining: 2,
+        isPremium: false,
+        renewalDate: `${currentYear + 1}-01-01`,
+        used: 0
+      };
+    }
+
+    const used = count || 0;
+    const remaining = Math.max(0, 2 - used);
+
+    return {
+      canExport: remaining > 0,
+      remaining,
+      isPremium: false,
+      renewalDate: `${currentYear + 1}-01-01`,
+      used
+    };
+  } catch (error) {
+    console.error('Erreur checkExportQuota:', error);
+    return {
+      canExport: false,
+      remaining: 0,
+      isPremium: false,
+      renewalDate: '',
+      used: 0
+    };
+  }
+}
+
+/**
+ * Enregistre un export (décrémente le quota)
+ */
+export async function trackExport(userId: string, playlistName: string, trackCount: number): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('playlist_exports')
+      .insert({
+        user_id: userId,
+        playlist_name: playlistName,
+        track_count: trackCount,
+        created_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Erreur lors de l\'enregistrement de l\'export:', error);
+      return false;
+    }
+
+    console.log('✅ Export tracké avec succès');
+    return true;
+  } catch (error) {
+    console.error('Erreur critique trackExport:', error);
+    return false;
+  }
+}
+
+/**
+ * Récupère l'historique des exports de l'utilisateur
+ */
+export async function getExportHistory(userId: string, year?: number) {
+  const targetYear = year || new Date().getFullYear();
+  const startOfYear = new Date(targetYear, 0, 1).toISOString();
+  const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59).toISOString();
+
+  const { data, error } = await supabase
+    .from('playlist_exports')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', startOfYear)
+    .lte('created_at', endOfYear)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Erreur récupération historique exports:', error);
+    return [];
+  }
+
+  return data || [];
 }
