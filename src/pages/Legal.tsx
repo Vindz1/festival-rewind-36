@@ -22,7 +22,7 @@ export default function Legal() {
           <section>
             <h2 className="text-xl font-bold text-white mb-4 uppercase">2. Conditions Générales de Vente (CGV) - Premium</h2>
             <p className="mb-2"><strong>Service :</strong> L'abonnement "Premium" permet l'accès à des fonctionnalités avancées (exports illimités, historique, etc.) pour une durée d'un an.</p>
-            <p className="mb-2"><strong>Prix :</strong> 9,99€ TTC / an.</p>
+            <p className="mb-2"><strong>Prix :</strong> 5€ TTC / an.</p>
             <p className="mb-2"><strong>Paiement :</strong> Les paiements sont sécurisés et gérés exclusivement par notre partenaire Stripe. Setlive.fr ne conserve aucune coordonnée bancaire.</p>
             <p><strong>Rétractation :</strong> Conformément à l'article L221-18 du Code de la consommation, vous disposez d'un délai de 14 jours pour vous rétracter. Cependant, en utilisant le service (génération de playlist Premium) avant la fin de ce délai, vous renoncez expressément à ce droit.</p>
           </section>
