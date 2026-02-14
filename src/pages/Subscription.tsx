@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2, Crown, Calendar, Sparkles } from 'lucide-react';
+import { Check, Loader2, Crown, Calendar, Sparkles, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
 import { toast } from 'sonner';
@@ -11,12 +11,14 @@ export default function Subscription() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<'free' | 'premium' | null>(null);
+  const [renewalDate, setRenewalDate] = useState<string>('');
 
   // Vérifier le statut au chargement
   useEffect(() => {
     if (user) {
       getUserSubscription(user.id).then(sub => {
         setCurrentPlan(sub.subscription_type);
+        setRenewalDate(sub.end_date || '');
       });
     }
   }, [user]);
@@ -40,6 +42,16 @@ export default function Subscription() {
       toast.error("Erreur paiement. Vérifiez votre connexion.");
       setLoading(false);
     }
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'Non définie';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
   };
 
   // --- CAS 1 : L'UTILISATEUR EST DÉJÀ PREMIUM ---
@@ -66,18 +78,38 @@ export default function Subscription() {
                     </div>
                     <div className="p-4 bg-[#252525] rounded-xl border border-[#333]">
                         <p className="text-xs text-[#a0a0a0] uppercase font-bold tracking-widest mb-1">Renouvellement</p>
-                        <p className="text-white font-bold flex items-center gap-2"><Calendar className="w-4 h-4"/> Dans 1 an</p>
+                        <p className="text-white font-bold flex items-center gap-2">
+                          <Calendar className="w-4 h-4"/> 
+                          {formatDate(renewalDate)}
+                        </p>
                     </div>
                 </div>
 
                 <div className="bg-yellow-500/10 p-4 rounded-xl border border-yellow-500/20 text-yellow-200 text-sm">
                     <Sparkles className="w-4 h-4 inline mr-2"/>
-                    Vous bénéficiez des exports illimités et de l'historique complet.
+                    Exports illimités • Aucune publicité • Historique complet
                 </div>
 
-                {/* Bouton vers le portail client Stripe (Optionnel pour plus tard) */}
-                <Button variant="outline" className="w-full border-[#404040] hover:bg-[#333] text-[#a0a0a0]">
-                    Gérer mon abonnement (via Stripe)
+                {/* Bouton vers le portail client Stripe */}
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/create-portal-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user?.id })
+                      });
+                      const data = await res.json();
+                      if (data.url) window.location.href = data.url;
+                    } catch (err) {
+                      toast.error("Erreur de connexion à Stripe");
+                    }
+                  }}
+                  variant="outline" 
+                  className="w-full border-[#404040] hover:bg-[#333] text-[#a0a0a0] flex items-center justify-center gap-2"
+                >
+                  Gérer mon abonnement (via Stripe)
+                  <ExternalLink className="w-4 h-4" />
                 </Button>
             </div>
         </div>
@@ -89,21 +121,31 @@ export default function Subscription() {
   // --- CAS 2 : L'UTILISATEUR EST FREE (Affichage des offres) ---
   const plans = [
     {
-      name: "Standard",
+      name: "Gratuit",
       price: "0€",
       period: "à vie",
       desc: "Pour les festivaliers occasionnels",
-      features: ["2 exports Spotify par an", "Accès aux Lineups Festivals", "Prévisualisation des titres"],
+      features: [
+        "2 exports par an",
+        "Accès aux festivals",
+        "Prévisualisation des titres"
+      ],
       button: "Plan Actuel",
       premium: false
     },
     {
       name: "Premium",
-      price: "9.99€",
+      price: "5€",
       period: "par an",
-      desc: "L'expérience ultime pour les passionnés",
-      features: ["Exports Spotify ILLIMITÉS", "Historique complet des setlists", "Pas de publicités", "Support prioritaire"],
-      button: "Devenir PREMIUM", // Changement de texte ici
+      desc: "L'expérience ultime",
+      features: [
+        "Exports ILLIMITÉS",
+        "Zéro publicité",
+        "Historique complet",
+        "Badge supporter",
+        "Support prioritaire"
+      ],
+      button: "Devenir Premium",
       premium: true
     }
   ];
