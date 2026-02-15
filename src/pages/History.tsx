@@ -374,7 +374,7 @@ export default function History() {
                 </Button>
 
                 <p className="text-xs sm:text-sm text-gray-500 mt-6">
-                  Dès 4,99€/mois • Sans engagement • Annulation à tout moment
+                  Dès 5€/mois • Sans engagement • Annulation à tout moment
                 </p>
               </div>
             </div>
