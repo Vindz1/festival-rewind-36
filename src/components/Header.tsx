@@ -39,19 +39,14 @@ export const Header = () => {
     checkStatus();
   }, [user]);
 
-// Fonction de déconnexion "Nucléaire"
+  // Fonction de déconnexion "Nucléaire"
   const handleSignOut = async () => {
-    // 1. On nettoie tout ce qu'on a en local immédiatement
     localStorage.clear();
-    
-    // 2. On tente de prévenir Supabase (fire and forget)
     try {
       await signOut();
     } catch (error) {
       console.error("Erreur déconnexion silencieuse", error);
     }
-
-    // 3. Quoi qu'il arrive, on recharge la page vers l'accueil
     window.location.href = '/';
   };
   
@@ -98,11 +93,11 @@ export const Header = () => {
             {/* SearchBar */}
             <SearchBar />
 
-            {!isPremium && (
-                <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
+            {!isPremium && user && (
+              <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 fill-yellow-500" />
                 PREMIUM
-                </Link>
+              </Link>
             )}
           </nav>
 
@@ -115,6 +110,7 @@ export const Header = () => {
             </div>
 
             {user ? (
+              // CONNECTÉ : Un seul menu avec tout dedans
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative h-10 w-10 rounded-full border transition-colors ${
@@ -134,29 +130,44 @@ export const Header = () => {
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
                   {/* LIEN 1 : MON PROFIL */}
-                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                  <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <User className="mr-2 h-4 w-4" /> Mon Profil
                   </DropdownMenuItem>
 
                   {/* LIEN 2 : MES SETLISTS */}
-                  <DropdownMenuItem onClick={() => navigate('/my-concerts')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                  <DropdownMenuItem onClick={() => { navigate('/my-concerts'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <Music className="mr-2 h-4 w-4" /> Mes Setlists
                   </DropdownMenuItem>
 
-                  {/* NOUVEAU : LIEN 3 : HISTORIQUE */}
-                  <DropdownMenuItem onClick={() => navigate('/history')} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                  {/* LIEN 3 : HISTORIQUE */}
+                  <DropdownMenuItem onClick={() => { navigate('/history'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <History className="mr-2 h-4 w-4" /> Historique
                   </DropdownMenuItem>
 
-                  {/* LIEN 4 : ABONNEMENT */}
-                  <DropdownMenuItem onClick={() => navigate('/subscription')} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
+                  <DropdownMenuSeparator className="bg-[#333]" />
+
+                  {/* LIEN 4 : HELLFEST (mobile uniquement) */}
+                  <DropdownMenuItem onClick={() => { navigate('/hellfest-2026'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#00ff00] focus:text-black">
+                    <Zap className="mr-2 h-4 w-4" /> Hellfest 2026
+                  </DropdownMenuItem>
+
+                  {/* LIEN 5 : SHOP (mobile uniquement) */}
+                  <DropdownMenuItem onClick={() => { navigate('/shop'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                    <ShoppingBag className="mr-2 h-4 w-4" /> Shop
+                  </DropdownMenuItem>
+
+                  {/* Separator mobile */}
+                  <DropdownMenuSeparator className="md:hidden bg-[#333]" />
+
+                  {/* LIEN 6 : ABONNEMENT */}
+                  <DropdownMenuItem onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
                     <Crown className="mr-2 h-4 w-4" />
                     {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 5 : DÉCONNEXION */}
+                  {/* LIEN 7 : DÉCONNEXION */}
                   <DropdownMenuItem 
                     onSelect={handleSignOut}
                     className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white"
@@ -166,57 +177,29 @@ export const Header = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-          ) : (
-              <div className="flex items-center gap-2">
-                  <Button 
-                    onClick={() => navigate('/auth')}
-                    variant="ghost"
-                    className="text-[#a0a0a0] hover:text-white hover:bg-transparent font-bold uppercase text-[10px] tracking-widest"
-                  >
-                    Espace Membre
-                  </Button>
-                  <Button 
-                    onClick={() => navigate('/')}
-                    className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-full uppercase text-xs tracking-widest h-9 px-6 shadow-lg shadow-blue-500/20"
-                  >
-                    Commencer
-                  </Button>
-              </div>
+            ) : (
+              // NON CONNECTÉ : Un seul bouton simple
+              <>
+                {/* Desktop */}
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  className="hidden md:flex bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-full uppercase text-xs tracking-widest h-9 px-6 shadow-lg shadow-blue-500/20"
+                >
+                  Connexion
+                </Button>
+                
+                {/* Mobile */}
+                <Button 
+                  onClick={() => navigate('/auth')}
+                  className="md:hidden bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-black rounded-full text-sm h-9 w-9 p-0 shadow-lg shadow-blue-500/20"
+                >
+                  <User className="w-4 h-4" />
+                </Button>
+              </>
             )}
-
-            {/* MOBILE TOGGLE */}
-            <button className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
           </div>
         </div>
       </div>
-
-      {/* MOBILE MENU */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="md:hidden bg-[#1a1a1a] border-b border-[#333] overflow-hidden"
-          >
-            <div className="flex flex-col items-center py-8 space-y-6">
-              <Link to="/profile" className="text-xl font-bold text-white" onClick={() => setIsMenuOpen(false)}>Mon Profil</Link>
-              <Link to="/my-concerts" className="text-xl font-black uppercase italic text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Mes Concerts</Link>
-              {/* NOUVEAU : Historique dans menu mobile */}
-              <Link to="/history" className="text-xl font-bold text-white flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
-                <History className="w-5 h-5" />
-                Historique
-              </Link>
-              <Link to="/hellfest-2026" className="text-2xl font-black italic text-[#00ff00] uppercase tracking-tighter" onClick={() => setIsMenuOpen(false)}>Hellfest 2026</Link>
-              <Link to="/shop" className="text-xl font-bold text-[#a0a0a0]" onClick={() => setIsMenuOpen(false)}>Shop</Link>
-              <Link to="/subscription" className="text-xl font-bold text-yellow-500" onClick={() => setIsMenuOpen(false)}>PREMIUM</Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   );
 };
