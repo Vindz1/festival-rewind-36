@@ -46,7 +46,7 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
 /**
  * Vérifie le quota d'exports annuel de l'utilisateur
  * - Premium : illimité
- * - Gratuit : 2 exports par an
+ * - Gratuit : 2 exports par an (année GLISSANTE depuis le premier export)
  */
 export async function checkExportQuota(userId: string): Promise<ExportQuota> {
   try {
@@ -63,26 +63,92 @@ export async function checkExportQuota(userId: string): Promise<ExportQuota> {
       };
     }
 
-    // 2. Gratuit : compter les exports de l'année en cours
-    const currentYear = new Date().getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1).toISOString();
-    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59).toISOString();
-
-    const { count, error } = await supabase
+    // 2. Gratuit : année glissante depuis le premier export
+    
+    // Récupérer le PREMIER export de l'utilisateur
+    const { data: firstExport, error: firstError } = await supabase
       .from('playlist_exports')
-      .select('*', { count: 'exact', head: true })
+      .select('created_at')
       .eq('user_id', userId)
-      .gte('created_at', startOfYear)
-      .lte('created_at', endOfYear);
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .single();
 
-    if (error) {
-      console.error('Erreur lors du comptage des exports:', error);
-      // En cas d'erreur, on autorise quand même (meilleure UX)
+    let startDate: Date;
+    let renewalDate: Date;
+
+    if (firstError || !firstExport) {
+      // Aucun export encore : la période commence maintenant
+      startDate = new Date();
+      renewalDate = new Date();
+      renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+      
       return {
         canExport: true,
         remaining: 2,
         isPremium: false,
-        renewalDate: `${currentYear + 1}-01-01`,
+        renewalDate: renewalDate.toISOString().split('T')[0],
+        used: 0
+      };
+    }
+
+    // Il y a des exports : calculer la période glissante
+    const firstExportDate = new Date(firstExport.created_at);
+    renewalDate = new Date(firstExportDate);
+    renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+    
+    const now = new Date();
+    
+    // Si on a dépassé 1 an depuis le premier export, la période recommence
+    if (now >= renewalDate) {
+      // Nouvelle période : on compte depuis les exports après la date de renouvellement
+      const newStartDate = renewalDate;
+      const newRenewalDate = new Date(newStartDate);
+      newRenewalDate.setFullYear(newRenewalDate.getFullYear() + 1);
+      
+      const { count, error } = await supabase
+        .from('playlist_exports')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', newStartDate.toISOString());
+
+      if (error) {
+        console.error('Erreur lors du comptage des exports:', error);
+        return {
+          canExport: true,
+          remaining: 2,
+          isPremium: false,
+          renewalDate: newRenewalDate.toISOString().split('T')[0],
+          used: 0
+        };
+      }
+
+      const used = count || 0;
+      const remaining = Math.max(0, 2 - used);
+
+      return {
+        canExport: remaining > 0,
+        remaining,
+        isPremium: false,
+        renewalDate: newRenewalDate.toISOString().split('T')[0],
+        used
+      };
+    }
+
+    // On est encore dans la période glissante actuelle
+    const { count, error } = await supabase
+      .from('playlist_exports')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', firstExportDate.toISOString());
+
+    if (error) {
+      console.error('Erreur lors du comptage des exports:', error);
+      return {
+        canExport: true,
+        remaining: 2,
+        isPremium: false,
+        renewalDate: renewalDate.toISOString().split('T')[0],
         used: 0
       };
     }
@@ -94,7 +160,7 @@ export async function checkExportQuota(userId: string): Promise<ExportQuota> {
       canExport: remaining > 0,
       remaining,
       isPremium: false,
-      renewalDate: `${currentYear + 1}-01-01`,
+      renewalDate: renewalDate.toISOString().split('T')[0],
       used
     };
   } catch (error) {
