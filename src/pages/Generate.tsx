@@ -56,9 +56,12 @@ export default function Generate() {
   useEffect(() => {
     if (user) {
       getUserSubscription(user.id).then(sub => {
-        setIsPremium(sub.subscription_type === 'premium');
+        const premium = sub.subscription_type === 'premium';
+        setIsPremium(premium);
+        console.log('📊 Premium status:', premium);
       }).catch(err => {
         console.error('Erreur récupération subscription:', err);
+        setIsPremium(false);
       });
       
       // Charger le quota
@@ -68,6 +71,8 @@ export default function Generate() {
       }).catch(err => {
         console.error('Erreur récupération quota:', err);
       });
+    } else {
+      setIsPremium(false);
     }
   }, [user]);
 
@@ -553,8 +558,8 @@ export default function Generate() {
               </p>
             </div>
 
-            {/* BADGE QUOTA */}
-            {user && (
+            {/* BADGE QUOTA - Affiche toujours un badge */}
+            {user ? (
               <div className="mb-8 text-center">
                 {quota.isPremium ? (
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/30">
@@ -593,6 +598,20 @@ export default function Generate() {
                     )}
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="mb-8 text-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30">
+                  <Lock className="w-4 h-4 text-orange-400" />
+                  <span className="text-orange-400 font-bold">Non connecté</span>
+                  <span className="text-gray-400">•</span>
+                  <button 
+                    onClick={() => navigate('/auth')}
+                    className="text-blue-400 hover:text-blue-300 font-semibold underline"
+                  >
+                    Connectez-vous pour exporter
+                  </button>
+                </div>
               </div>
             )}
 
@@ -698,6 +717,7 @@ export default function Generate() {
               </Button>
             </div>
 
+            {/* PUBS : Affichées pour TOUS sauf Premium */}
             {!isPremium && mainArtist && (
               <div className="mt-20 pt-10 border-t border-[#333]">
                 <SmartAd artistName={mainArtist} index={0} />
