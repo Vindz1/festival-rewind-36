@@ -95,7 +95,7 @@ export default function Share() {
           </h1>
           
           <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-            Aidez vos amis métalleux à transformer leurs concerts en playlists ! 
+            Aidez vos amis à transformer leurs concerts en playlists ! 
             Plus on est nombreux, plus la base de données s'enrichit.
           </p>
         </div>
