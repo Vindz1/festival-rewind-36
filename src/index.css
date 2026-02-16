@@ -175,6 +175,24 @@
 /* ========================================
    GOOGLE TRANSLATE - CUSTOMISATION
    ======================================== */
+/* Forcer à masquer le texte du gadget */
+.goog-te-gadget-simple {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value {
+  color: white !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value span {
+  color: white !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value span:first-child {
+  display: none !important;
+}
 
 /* Masquer le logo "Powered by Google" */
 .goog-logo-link {
