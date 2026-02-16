@@ -3,32 +3,52 @@ import { Globe } from 'lucide-react';
 
 export function GoogleTranslate() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Ajoute le script Google Translate
+    // Vérifie si le script est déjà chargé
+    if ((window as any).google?.translate) {
+      initTranslate();
+      return;
+    }
+
+    // Fonction d'initialisation
+    const initTranslate = () => {
+      try {
+        new (window as any).google.translate.TranslateElement(
+          {
+            pageLanguage: 'fr',
+            includedLanguages: 'en,es,de,it,pt,nl,sv,no',
+            layout: (window as any).google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          },
+          'google_translate_element'
+        );
+        setIsLoaded(true);
+      } catch (error) {
+        console.error('Erreur initialisation Google Translate:', error);
+      }
+    };
+
+    // Définit la fonction globale
+    (window as any).googleTranslateElementInit = initTranslate;
+
+    // Ajoute le script
     const script = document.createElement('script');
     script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
     script.async = true;
+    script.onerror = () => {
+      console.error('Erreur chargement script Google Translate');
+    };
     document.body.appendChild(script);
 
-    // Initialise le widget
-    (window as any).googleTranslateElementInit = () => {
-      new (window as any).google.translate.TranslateElement(
-        {
-          pageLanguage: 'fr',
-          includedLanguages: 'en,es,de,it,pt,nl,sv,no',
-          layout: (window as any).google.translate.TranslateElement.InlineLayout.SIMPLE,
-          autoDisplay: false
-        },
-        'google_translate_element'
-      );
-    };
-
     return () => {
+      // Cleanup
       const existingScript = document.querySelector('script[src*="translate.google.com"]');
       if (existingScript) {
         existingScript.remove();
       }
+      delete (window as any).googleTranslateElementInit;
     };
   }, []);
 
@@ -53,8 +73,11 @@ export function GoogleTranslate() {
           />
           
           {/* Menu déroulant */}
-          <div className="absolute right-0 top-full mt-2 bg-[#252525] border border-[#333] rounded-lg shadow-lg z-50 p-3 min-w-[180px]">
+          <div className="absolute right-0 top-full mt-2 bg-[#252525] border border-[#333] rounded-lg shadow-lg z-50 p-3 min-w-[200px]">
             <p className="text-xs text-gray-400 uppercase font-bold mb-2">Langue</p>
+            {!isLoaded && (
+              <p className="text-xs text-gray-500">Chargement...</p>
+            )}
             <div id="google_translate_element"></div>
           </div>
         </>
