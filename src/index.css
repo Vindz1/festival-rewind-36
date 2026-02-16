@@ -186,6 +186,15 @@
   font-size: 0 !important;
 }
 
+/* IMPORTANT : Ne PAS masquer le span, juste le texte */
+.goog-te-gadget span {
+  display: none !important;
+}
+
+.goog-te-gadget span:first-child {
+  display: none !important;
+}
+
 /* Style du sélecteur de langue */
 .goog-te-combo {
   background-color: #252525 !important;
@@ -198,6 +207,8 @@
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   outline: none !important;
+  width: 100% !important;
+  display: block !important; /* FORCE l'affichage */
 }
 
 .goog-te-combo:hover {
@@ -227,9 +238,11 @@ body {
   top: 0 !important;
 }
 
-/* Masquer le span vide du gadget */
-.goog-te-gadget span {
-  display: none !important;
+/* S'assurer que le widget est visible */
+#google_translate_element {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Style responsive pour mobile */
@@ -238,12 +251,4 @@ body {
     font-size: 13px !important;
     padding: 6px 10px !important;
   }
-}
-/* Ne pas traduire les noms de groupes, chansons, lieux */
-.artist-name,
-.song-title,
-.venue-name,
-.band-name,
-.concert-artist {
-  translate: no !important;
 }
