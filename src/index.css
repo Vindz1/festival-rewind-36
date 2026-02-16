@@ -172,3 +172,70 @@
     z-index: 1;
   }
 }
+/* ========================================
+   GOOGLE TRANSLATE - CUSTOMISATION
+   ======================================== */
+
+/* Masquer le logo "Powered by Google" */
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+/* Style du sélecteur de langue */
+.goog-te-combo {
+  background-color: #252525 !important;
+  color: white !important;
+  border: 1px solid #333 !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.goog-te-combo:hover {
+  border-color: #4d94ff !important;
+  background-color: #2d2d2d !important;
+}
+
+.goog-te-combo:focus {
+  border-color: #4d94ff !important;
+  box-shadow: 0 0 0 2px rgba(77, 148, 255, 0.1) !important;
+}
+
+/* Options du dropdown */
+.goog-te-combo option {
+  background-color: #252525 !important;
+  color: white !important;
+  padding: 8px !important;
+}
+
+/* Masquer la barre du haut "View Original" */
+.goog-te-banner-frame {
+  display: none !important;
+}
+
+/* Fix le décalage causé par Google Translate */
+body {
+  top: 0 !important;
+}
+
+/* Masquer le span vide du gadget */
+.goog-te-gadget span {
+  display: none !important;
+}
+
+/* Style responsive pour mobile */
+@media (max-width: 768px) {
+  .goog-te-combo {
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+  }
+}
