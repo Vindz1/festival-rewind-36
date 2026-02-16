@@ -58,6 +58,20 @@ const App = () => (
             <Route path="/history" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          import { ShareFloatingButton } from '@/components/ShareFloatingButton';
+
+function App() {
+  return (
+    <>
+      <Routes>
+        {/* ... tes routes ... */}
+      </Routes>
+      
+      {/* Bouton flottant sur toutes les pages */}
+      <ShareFloatingButton />
+    </>
+  );
+}
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
