@@ -239,3 +239,11 @@ body {
     padding: 6px 10px !important;
   }
 }
+/* Ne pas traduire les noms de groupes, chansons, lieux */
+.artist-name,
+.song-title,
+.venue-name,
+.band-name,
+.concert-artist {
+  translate: no !important;
+}
