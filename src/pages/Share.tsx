@@ -195,7 +195,7 @@ export default function Share() {
             <p className="text-sm text-gray-400">Gratuit</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-purple-500 mb-2">3</p>
+            <p className="text-3xl font-black text-purple-500 mb-2">Toutes</p>
             <p className="text-sm text-gray-400">Plateformes</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
