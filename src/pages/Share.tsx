@@ -22,7 +22,7 @@ export default function Share() {
   const [copied, setCopied] = useState(false);
 
   const siteUrl = 'https://setlive.fr';
-  const shareText = '🎸 Transformez vos concerts en playlists universelles ! Hellfest 2026, Download Festival et tous vos souvenirs de concerts → ';
+  const shareText = '🎸 Transformez vos concerts en playlists universelles ! Hellfest 2026, et tous vos souvenirs de concerts → ';
   const hashtags = 'Setlive,Concerts,Playlists,Hellfest2026';
 
   const socialLinks = [
