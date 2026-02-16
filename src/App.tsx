@@ -6,10 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Success from './pages/Success';
 import Share from '@/pages/Share';
 import { ShareFloatingButton } from '@/components/ShareFloatingButton';
-
-// IMPORT CRITIQUE : Utilise le chemin relatif direct
 import { AuthProvider } from "./AuthContext";
-
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Concerts from "./pages/Concerts";
@@ -25,7 +22,7 @@ import Subscription from './pages/Subscription';
 import Legal from './pages/Legal';
 import Profile from './pages/Profile';
 import Search from './pages/Search';
-import History from './pages/History' ;
+import History from './pages/History';
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,7 +49,6 @@ const App = () => (
             <Route path="/tickets" element={<Shop />} />
             <Route path="/merch" element={<Shop />} />
             <Route path="/shop" element={<Shop />} />
-            <Route path="/subscription" element={<Subscription />} />
             <Route path="/success" element={<Success />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/profile" element={<Profile />} />
@@ -61,20 +57,9 @@ const App = () => (
             <Route path="/partage" element={<Share />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-<ShareFloatingButton />
-
-function App() {
-  return (
-    <>
-      <Routes>
-        {/* ... tes routes ... */}
-      </Routes>
-      
-      {/* Bouton flottant sur toutes les pages */}
-      <ShareFloatingButton />
-    </>
-  );
-}
+          
+          {/* Bouton flottant sur toutes les pages */}
+          <ShareFloatingButton />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
