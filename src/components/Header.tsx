@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
 import { SearchBar } from '@/components/SearchBar';
+import { GoogleTranslate } from '@/components/GoogleTranslate';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +94,9 @@ export const Header = () => {
             {/* SearchBar */}
             <SearchBar />
 
+            {/* Google Translate - Desktop uniquement */}
+            <GoogleTranslate />
+
             {!isPremium && user && (
               <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 fill-yellow-500" />
@@ -156,8 +160,14 @@ export const Header = () => {
                     <ShoppingBag className="mr-2 h-4 w-4" /> Shop
                   </DropdownMenuItem>
 
-                  {/* Separator mobile */}
+                  {/* LANGUE (mobile uniquement) */}
                   <DropdownMenuSeparator className="md:hidden bg-[#333]" />
+                  <div className="md:hidden px-2 py-2">
+                    <GoogleTranslate />
+                  </div>
+
+                  {/* Separator mobile */}
+                  <DropdownMenuSeparator className="bg-[#333]" />
 
                   {/* LIEN 6 : ABONNEMENT */}
                   <DropdownMenuItem onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
