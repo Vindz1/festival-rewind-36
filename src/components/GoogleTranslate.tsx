@@ -6,13 +6,7 @@ export function GoogleTranslate() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Vérifie si le script est déjà chargé
-    if ((window as any).google?.translate) {
-      initTranslate();
-      return;
-    }
-
-    // Fonction d'initialisation
+    // Fonction d'initialisation (DOIT être déclarée en premier)
     const initTranslate = () => {
       try {
         new (window as any).google.translate.TranslateElement(
@@ -29,6 +23,12 @@ export function GoogleTranslate() {
         console.error('Erreur initialisation Google Translate:', error);
       }
     };
+
+    // Vérifie si le script est déjà chargé
+    if ((window as any).google?.translate) {
+      initTranslate();
+      return;
+    }
 
     // Définit la fonction globale
     (window as any).googleTranslateElementInit = initTranslate;
