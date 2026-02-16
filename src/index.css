@@ -173,47 +173,55 @@
   }
 }
 /* ========================================
-   GOOGLE TRANSLATE - CUSTOMISATION
+   GOOGLE TRANSLATE - MASQUER LE LOGO
+   VERSION NUCLÉAIRE
    ======================================== */
-/* Forcer à masquer le texte du gadget */
+
+/* Masquer TOUT le texte "Propulsé par" */
 .goog-te-gadget-simple {
-  background-color: transparent !important;
+  background: transparent !important;
   border: none !important;
   padding: 0 !important;
 }
 
-.goog-te-gadget-simple .goog-te-menu-value {
-  color: white !important;
-}
-
-.goog-te-gadget-simple .goog-te-menu-value span {
-  color: white !important;
-}
-
-.goog-te-gadget-simple .goog-te-menu-value span:first-child {
-  display: none !important;
-}
-
-/* Masquer le logo "Powered by Google" */
-.goog-logo-link {
-  display: none !important;
-}
-
-.goog-te-gadget {
-  color: transparent !important;
+.goog-te-gadget-simple * {
   font-size: 0 !important;
+  line-height: 0 !important;
 }
 
-/* IMPORTANT : Ne PAS masquer le span, juste le texte */
-.goog-te-gadget span {
+/* Masquer le premier span (le texte) */
+.goog-te-gadget-simple .goog-te-menu-value span:first-child,
+.goog-te-gadget-simple .goog-te-menu-value span[style] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Garder SEULEMENT le sélecteur visible */
+.goog-te-gadget-simple .goog-te-menu-value span:last-child {
+  font-size: 14px !important;
+  line-height: normal !important;
+  opacity: 1 !important;
+}
+
+/* Masquer le logo image Google */
+.goog-logo-link,
+.goog-te-gadget img,
+.goog-te-gadget-simple img {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Masquer "Propulsé par" */
+.goog-te-gadget .goog-te-gadget-simple a,
+.goog-te-gadget a {
   display: none !important;
 }
 
-.goog-te-gadget span:first-child {
-  display: none !important;
-}
-
-/* Style du sélecteur de langue */
+/* Forcer le sélecteur à être propre */
 .goog-te-combo {
   background-color: #252525 !important;
   color: white !important;
@@ -225,8 +233,7 @@
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   outline: none !important;
-  width: 100% !important;
-  display: block !important; /* FORCE l'affichage */
+  min-width: 120px !important;
 }
 
 .goog-te-combo:hover {
@@ -246,27 +253,28 @@
   padding: 8px !important;
 }
 
-/* Masquer la barre du haut "View Original" */
+/* Masquer la barre du haut */
 .goog-te-banner-frame {
   display: none !important;
 }
 
-/* Fix le décalage causé par Google Translate */
+/* Fix décalage */
 body {
   top: 0 !important;
 }
 
 /* S'assurer que le widget est visible */
 #google_translate_element {
-  display: block !important;
+  display: inline-block !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-/* Style responsive pour mobile */
+/* Mobile */
 @media (max-width: 768px) {
   .goog-te-combo {
     font-size: 13px !important;
     padding: 6px 10px !important;
+    min-width: 100px !important;
   }
 }
