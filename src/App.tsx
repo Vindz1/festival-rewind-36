@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Success from './pages/Success';
+import Share from '@/pages/Share';
+import { ShareFloatingButton } from '@/components/ShareFloatingButton';
 
 // IMPORT CRITIQUE : Utilise le chemin relatif direct
 import { AuthProvider } from "./AuthContext";
@@ -56,9 +58,10 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/search" element={<Search />} />
             <Route path="/history" element={<History />} />
+            <Route path="/partage" element={<Share />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          import { ShareFloatingButton } from '@/components/ShareFloatingButton';
+<ShareFloatingButton />
 
 function App() {
   return (
