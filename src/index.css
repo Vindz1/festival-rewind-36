@@ -226,6 +226,14 @@
   visibility: visible !important;
 }
 
+/* Forcer TOUS les textes en blanc */
+.goog-te-gadget-simple,
+.goog-te-gadget-simple *,
+.goog-te-menu-value,
+.goog-te-menu-value * {
+  color: white !important;
+}
+
 .goog-te-combo:hover {
   border-color: #4d94ff !important;
   background-color: #2d2d2d !important;
