@@ -22,7 +22,7 @@ export default function Share() {
   const [copied, setCopied] = useState(false);
 
   const siteUrl = 'https://setlive.fr';
-  const shareText = '🎸 Transformez vos concerts en playlists universelles ! Hellfest 2026, et tous vos souvenirs de concerts → ';
+  const shareText = 'Transformez vos concerts en playlists universelles ! Hellfest 2026, et tous vos souvenirs de concerts';
   const hashtags = 'Setlive,Concerts,Playlists,Hellfest2026';
 
   const socialLinks = [
@@ -95,7 +95,7 @@ export default function Share() {
           </h1>
           
           <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-            Aidez vos amis à transformer leurs concerts en playlists ! 
+            Aidez vos amis métalleux à transformer leurs concerts en playlists ! 
             Plus on est nombreux, plus la base de données s'enrichit.
           </p>
         </div>
@@ -128,7 +128,6 @@ export default function Share() {
               ) : (
                 <>
                   <Copy className="w-5 h-5 mr-2" />
-                
                 </>
               )}
             </Button>
@@ -195,7 +194,7 @@ export default function Share() {
             <p className="text-sm text-gray-400">Gratuit</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-purple-500 mb-2">Toutes</p>
+            <p className="text-3xl font-black text-purple-500 mb-2">3</p>
             <p className="text-sm text-gray-400">Plateformes</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
