@@ -5,143 +5,129 @@ import { Footer } from '@/components/Footer';
 export default function Shop() {
   const sections = [
     {
-      title: "Merch Rock & Metal"
-      icon: <ShoppingBag className="text-[#00ff00]" />
-      color: "green"
+      title: "Merch Rock & Metal",
+      icon: <ShoppingBag className="text-[#00ff00]" />,
+      color: "green",
       items: [
         { 
           name: "EMP France", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.emp-online.fr/", 
           desc: "50 000 produits - T-shirts, hoodies, accessoires rock et metal"
-        }
+        },
         { 
           name: "Amazon Mode Rock", 
           url: "https://www.amazon.fr/s?k=t+shirt+rock+metal&tag=setlive-21", 
           desc: "T-shirts de groupes, merchandising officiel et accessoires"
-        }
+        },
         { 
           name: "Cultura Fashion", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/", 
           desc: "Vêtements et accessoires culture pop, manga et musique"
         }
       ]
-    }
+    },
     {
-      title: "Vinyles & CD"
-      icon: <Disc className="text-purple-500" />
-      color: "purple"
+      title: "Vinyles & CD",
+      icon: <Disc className="text-purple-500" />,
+      color: "purple",
       items: [
         { 
           name: "Fnac Musique", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.fnac.com/Musique/n23", 
           desc: "Des milliers de vinyles neufs et occasions - Retrait gratuit en magasin"
-          
-        }
+        },
         { 
           name: "Amazon Vinyles", 
           url: "https://www.amazon.fr/Vinyles-CD/b?ie=UTF8&node=541686&tag=setlive-21", 
           desc: "Rééditions collector, vinyles rares et nouveautés - Livraison Prime"
-          
-        }
+        },
         { 
           name: "Cultura Musique", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/musique.html", 
           desc: "Vinyles, CD et coffrets collector - Large choix rock et metal"
-          
         }
       ]
-    }
+    },
     {
-      title: "Platines Vinyles"
-      icon: <Music className="text-yellow-500" />
-      color: "yellow"
+      title: "Platines Vinyles",
+      icon: <Music className="text-yellow-500" />,
+      color: "yellow",
       items: [
         { 
           name: "Audio-Technica AT-LP60X", 
           url: "https://www.amazon.fr/s?k=audio+technica+AT-LP60X&tag=setlive-21", 
           desc: "Platine automatique parfaite pour débuter - Best-seller mondial"
-          
-        }
+        },
         { 
           name: "Audio-Technica AT-LP120", 
           url: "https://www.amazon.fr/s?k=audio+technica+AT-LP120&tag=setlive-21", 
           desc: "Platine semi-pro avec entraînement direct - Qualité DJ"
-          
-        }
+        },
         { 
           name: "Sony PS-LX310BT", 
           url: "https://www.amazon.fr/dp/B07PBLD4QN?tag=setlive-21", 
           desc: "Platine Bluetooth automatique - Connexion sans fil facile"
-          
         }
       ]
-    }
+    },
     {
-      title: "Enceintes & Audio"
-      icon: <Speaker className="text-blue-500" />
-      color: "blue"
+      title: "Enceintes & Audio",
+      icon: <Speaker className="text-blue-500" />,
+      color: "blue",
       items: [
         { 
           name: "Marshall Stanmore", 
           url: "https://www.amazon.fr/s?k=marshall+stanmore&tag=setlive-21", 
           desc: "Design iconique - Le son des amplis légendaires chez vous"
-          
-        }
+        },
         { 
           name: "Darty Audio & Hi-Fi", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.darty.com/nav/extra/extra_son", 
           desc: "Enceintes, amplis, chaînes Hi-Fi - Livraison et installation"
-          
-        }
+        },
         { 
           name: "Boulanger Audio", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.boulanger.com/c/tous-les-produits-son-hifi", 
           desc: "Large choix platines, enceintes et casques - Garantie étendue"
-          
         }
       ]
-    }
+    },
     {
-      title: "Casques Audio"
-      icon: <Headphones className="text-pink-500" />
-      color: "pink"
+      title: "Casques Audio",
+      icon: <Headphones className="text-pink-500" />,
+      color: "pink",
       items: [
         { 
           name: "Sony WH-1000XM5", 
           url: "https://www.amazon.fr/s?k=sony+wh-1000xm5&tag=setlive-21", 
           desc: "Meilleur casque à réduction de bruit - Qualité studio audiophile"
-          
-        }
+        },
         { 
           name: "Audio-Technica ATH-M50X", 
           url: "https://www.amazon.fr/dp/B00HVLUR86?tag=setlive-21", 
           desc: "Casque studio professionnel - Référence des ingénieurs du son"
-          
-        }
+        },
         { 
           name: "Fnac Casques Audio", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.fnac.com/Casques-Audio/Casques/shi412493/w-4", 
           desc: "Tous types de casques - Sans fil, studio, gaming - Retrait 1h"
-          
         }
       ]
-    }
+    },
     {
-      title: "Billetterie Concerts"
-      icon: <Music className="text-red-500" />
-      color: "red"
+      title: "Billetterie Concerts",
+      icon: <Music className="text-red-500" />,
+      color: "red",
       items: [
         { 
           name: "Fnac Spectacles", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://spectacles.fnac.com/", 
           desc: "Tous les concerts et festivals en France - Points de retrait partout"
-          
-        }
+        },
         { 
           name: "Cultura Billetterie", 
           url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/spectacles.html", 
           desc: "Concerts, théâtre, one-man shows - Retrait en magasin gratuit"
-          
         }
       ]
     }
@@ -149,34 +135,28 @@ export default function Shop() {
 
   const colorClasses = {
     blue: {
-      border: "hover:border-[#4d94ff]"
+      border: "hover:border-[#4d94ff]",
       text: "group-hover:text-[#4d94ff]"
-      
-    }
+    },
     green: {
-      border: "hover:border-[#00ff00]"
+      border: "hover:border-[#00ff00]",
       text: "group-hover:text-[#00ff00]"
-      
-    }
+    },
     purple: {
-      border: "hover:border-purple-500"
+      border: "hover:border-purple-500",
       text: "group-hover:text-purple-400"
-      
-    }
+    },
     yellow: {
-      border: "hover:border-yellow-500"
+      border: "hover:border-yellow-500",
       text: "group-hover:text-yellow-400"
-      
-    }
+    },
     pink: {
-      border: "hover:border-pink-500"
+      border: "hover:border-pink-500",
       text: "group-hover:text-pink-400"
-      
-    }
+    },
     red: {
-      border: "hover:border-red-500"
+      border: "hover:border-red-500",
       text: "group-hover:text-red-400"
-      
     }
   };
 
