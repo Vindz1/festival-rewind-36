@@ -59,7 +59,7 @@ export default function Shop() {
       items: [
         { 
           name: "Amazon Musique", 
-          url: "https://www.amazon.fr/music/unlimited?tag=VOTRE_TAG", 
+          url: "https://www.amazon.fr/music/unlimited?tag=setlive-21", 
           desc: "Vinyles, CD, éditions collector",
           badge: "Affiliation"
         },
@@ -82,18 +82,18 @@ export default function Shop() {
       items: [
         { 
           name: "Audio-Technica", 
-          url: "https://www.amazon.fr/s?k=audio+technica+platine&tag=VOTRE_TAG", 
+          url: "https://www.amazon.fr/s?k=audio+technica+platine&tag=setlive-21", 
           desc: "Platines vinyles AT-LP60X, AT-LP120",
           badge: "Top ventes"
         },
         { 
           name: "Enceintes Marshall", 
-          url: "https://www.amazon.fr/s?k=marshall+enceinte&tag=VOTRE_TAG", 
+          url: "https://www.amazon.fr/s?k=marshall+enceinte&tag=setlive-21", 
           desc: "Stanmore, Acton - Design iconique"
         },
         { 
           name: "Casques Audio", 
-          url: "https://www.amazon.fr/s?k=casque+audio+studio&tag=VOTRE_TAG", 
+          url: "https://www.amazon.fr/s?k=casque+audio+studio&tag=setlive-21", 
           desc: "Sony, Bose, Sennheiser - Qualité studio"
         }
       ]
