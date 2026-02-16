@@ -14,7 +14,7 @@ export function GoogleTranslate() {
       new (window as any).google.translate.TranslateElement(
         {
           pageLanguage: 'fr',
-          includedLanguages: 'en,es,de,it,pt,nl,sv,no', // Langues dispo
+          includedLanguages: 'en,es,de,it,pt,nl,sv,no', // Langues disponibles
           layout: (window as any).google.translate.TranslateElement.InlineLayout.SIMPLE,
           autoDisplay: false
         },
