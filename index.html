@@ -1,22 +1,5 @@
 <!doctype html>
 <html lang="fr">
-  <script type="text/javascript">
-  function googleTranslateElementInit() {
-    new google.translate.TranslateElement(
-      {
-        pageLanguage: 'fr',
-        includedLanguages: 'en,es,de,it,pt,nl,sv,no',
-        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-        autoDisplay: false
-      },
-      'google_translate_element'
-    );
-  }
-</script>
-<script
-  type="text/javascript"
-  src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit">
-</script>
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -59,7 +42,7 @@
     <meta name="twitter:description" content="Transformez vos concerts en playlists universelles. Hellfest 2026, Setlist.fm..." />
     <meta name="twitter:image" content="https://setlive.fr/og-image.png" />
     
-    <!-- Google Site Verification (à remplacer après création compte GSC) -->
+    <!-- Google Site Verification -->
     <meta name="google-site-verification" content="nZl_gdNjj_D6Kk4hPwDiHVk1JHfWgRcQOO7H7e8_Yyw" />
     
     <!-- Structured Data JSON-LD -->
@@ -93,18 +76,38 @@
       }
     }
     </script>
-    
-    <!-- Google Analytics (GA4) - Remplacer G-XXXXXXXXXX par ton ID -->
+
+    <!-- Google Analytics (GA4) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FK3VCCFRR7"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX', {
+      gtag('config', 'G-FK3VCCFRR7', {
         'anonymize_ip': true,
         'cookie_flags': 'SameSite=None;Secure'
       });
     </script>
+
+    <!-- Google Translate - Chargé UNE SEULE FOIS ici pour éviter les bugs de timing -->
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement(
+          {
+            pageLanguage: 'fr',
+            includedLanguages: 'en,es,de,it,pt,nl,sv,no',
+            layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+            autoDisplay: false
+          },
+          'google_translate_element'
+        );
+      }
+    </script>
+    <script
+      type="text/javascript"
+      src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit">
+    </script>
+
   </head>
   <body>
     <div id="root"></div>
