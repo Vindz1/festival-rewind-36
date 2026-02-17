@@ -40,7 +40,6 @@ export default function Generate() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
   
-  // Quota state
   const [quota, setQuota] = useState<ExportQuota>({
     canExport: false,
     remaining: 0,
@@ -49,28 +48,14 @@ export default function Generate() {
     used: 0
   });
 
-  useEffect(() => {
-    processGeneration();
-  }, [location.state]);
+  useEffect(() => { processGeneration(); }, [location.state]);
 
   useEffect(() => {
     if (user) {
       getUserSubscription(user.id).then(sub => {
-        const premium = sub.subscription_type === 'premium';
-        setIsPremium(premium);
-        console.log('📊 Premium status:', premium);
-      }).catch(err => {
-        console.error('Erreur récupération subscription:', err);
-        setIsPremium(false);
-      });
-      
-      // Charger le quota
-      checkExportQuota(user.id).then(q => {
-        setQuota(q);
-        console.log('📊 Quota utilisateur:', q);
-      }).catch(err => {
-        console.error('Erreur récupération quota:', err);
-      });
+        setIsPremium(sub.subscription_type === 'premium');
+      }).catch(() => setIsPremium(false));
+      checkExportQuota(user.id).then(q => setQuota(q)).catch(() => {});
     } else {
       setIsPremium(false);
     }
@@ -80,79 +65,39 @@ export default function Generate() {
     try {
       setLoading(true);
       setErrorMsg('');
-      
       const stateData = location.state;
       const mode = searchParams.get('mode');
-      
       let dataToUse: ConcertData[] = [];
       let type: 'festival' | 'past' | 'future' | null = null;
       let pName = "Ma Setlist";
 
-      console.log('🔍 State data:', stateData);
-      console.log('🔍 Mode:', mode);
-
-      // PRIORITÉ 1 : Hellfest/Festival (FUTUR = iTunes uniquement)
       if (stateData?.artists && Array.isArray(stateData.artists)) {
-        console.log('✅ Mode: Hellfest/Festival → iTunes uniquement');
         type = 'festival';
-        dataToUse = stateData.artists.map((artistName: string) => ({
-          artist: artistName,
-          isFuture: true,
-          id: artistName.toLowerCase().replace(/\s+/g, '-')
-        }));
+        dataToUse = stateData.artists.map((artistName: string) => ({ artist: artistName, isFuture: true, id: artistName.toLowerCase().replace(/\s+/g, '-') }));
         pName = stateData.eventName || "Festival Playlist";
-      } 
-      // PRIORITÉ 2 : I'm Going (FUTUR = iTunes uniquement)
-      else if (mode === 'upcoming') {
-        console.log('✅ Mode: I\'m Going → iTunes uniquement');
+      } else if (mode === 'upcoming') {
         type = 'future';
         const futureRaw = localStorage.getItem('selected_upcoming');
         if (futureRaw) {
           const parsed = JSON.parse(futureRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: true
-          }));
-          pName = parsed.length === 1 
-            ? `${dataToUse[0].artist} - Warmup` 
-            : "Ma Sélection Future";
+          dataToUse = parsed.map((c: any) => ({ ...c, artist: c.artist?.name || c.artist, isFuture: true }));
+          pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : "Ma Sélection Future";
         }
-      }
-      // PRIORITÉ 3 : I Was There (PASSÉ = Setlist.fm STRICT)
-      else {
-        console.log('✅ Mode: I Was There → Setlist.fm uniquement');
+      } else {
         type = 'past';
         const pastRaw = localStorage.getItem('selected_concerts');
         if (pastRaw) {
           const parsed = JSON.parse(pastRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: false
-          }));
-          pName = parsed.length === 1 
-            ? `${dataToUse[0].artist} Live` 
-            : "Mes Concerts (Passés)";
+          dataToUse = parsed.map((c: any) => ({ ...c, artist: c.artist?.name || c.artist, isFuture: false }));
+          pName = parsed.length === 1 ? `${dataToUse[0].artist} Live` : "Mes Concerts (Passés)";
         }
       }
 
-      console.log('📊 Data to use:', dataToUse);
-      console.log('📊 Type:', type);
-
-      if (!type || dataToUse.length === 0) {
-        throw new Error("Aucun concert ou artiste sélectionné.");
-      }
-
+      if (!type || dataToUse.length === 0) throw new Error("Aucun concert ou artiste sélectionné.");
       setPlaylistName(pName);
 
-      // === EXTRACTION DES MORCEAUX ===
       const isFutureMode = type === 'festival' || type === 'future';
-      setLoadingMessage(
-        isFutureMode 
-          ? `Récupération du Top 10 pour ${dataToUse.length} artiste(s)...` 
-          : "Extraction des setlists réelles..."
-      );
+      setLoadingMessage(isFutureMode ? `Récupération du Top 10 pour ${dataToUse.length} artiste(s)...` : "Extraction des setlists réelles...");
 
       const finalTracks: Track[] = [];
       let processedCount = 0;
@@ -160,98 +105,46 @@ export default function Generate() {
 
       for (const item of dataToUse) {
         processedCount++;
-        const currentArtist = typeof item.artist === 'string' 
-          ? item.artist 
-          : item.artist?.name || "Artiste Inconnu";
-
-        console.log(`🎵 Processing ${processedCount}/${dataToUse.length}: ${currentArtist}`);
+        const currentArtist = typeof item.artist === 'string' ? item.artist : item.artist?.name || "Artiste Inconnu";
         setLoadingMessage(`${processedCount}/${dataToUse.length} - ${currentArtist}...`);
-        
         try {
           if (item.isFuture) {
-            // ========== MODE FUTUR : ITUNES UNIQUEMENT ==========
-            console.log('  → Mode FUTUR : iTunes');
-            const top = await fetchItunes(currentArtist, 10);
-            console.log(`  ✅ iTunes: ${top.length} tracks`);
-            finalTracks.push(...top);
+            finalTracks.push(...await fetchItunes(currentArtist, 10));
           } else {
-            // ========== MODE PASSÉ : SETLIST.FM STRICT ==========
-            console.log('  → Mode PASSÉ : Setlist.fm strict');
             const tracks = await extractFromSetlist(item, currentArtist);
-            console.log(`  ✅ Setlist: ${tracks.length} tracks`);
-            
-            if (tracks.length > 0) {
-              finalTracks.push(...tracks);
-            } else {
-              // Pas de fallback iTunes ! On note juste le concert sans setlist
-              concertsWithoutSetlist.push(currentArtist);
-              console.warn(`  ⚠️ Aucune setlist pour ${currentArtist}`);
-            }
+            if (tracks.length > 0) finalTracks.push(...tracks);
+            else concertsWithoutSetlist.push(currentArtist);
           }
-        } catch (err) {
-          console.error(`  ❌ Erreur pour ${currentArtist}:`, err);
-        }
+        } catch (err) { console.error(`Erreur pour ${currentArtist}:`, err); }
       }
 
-      console.log('📝 Total tracks before dedup:', finalTracks.length);
-
-      // Déduplication
       const uniqueTracks = deduplicateTracks(finalTracks);
-      console.log('📝 Total tracks after dedup:', uniqueTracks.length);
-
-      // Message d'erreur adapté
       if (uniqueTracks.length === 0) {
-        if (isFutureMode) {
-          throw new Error("Impossible de récupérer les morceaux. Vérifiez les noms d'artistes.");
-        } else {
-          throw new Error(
-            concertsWithoutSetlist.length > 0
-              ? `Aucune setlist renseignée sur Setlist.fm pour : ${concertsWithoutSetlist.join(', ')}`
-              : "Aucune setlist trouvée pour ces concerts."
-          );
-        }
+        throw new Error(isFutureMode
+          ? "Impossible de récupérer les morceaux."
+          : concertsWithoutSetlist.length > 0
+            ? `Aucune setlist sur Setlist.fm pour : ${concertsWithoutSetlist.join(', ')}`
+            : "Aucune setlist trouvée.");
       }
-
-      // Message d'avertissement si certains concerts n'ont pas de setlist
       if (!isFutureMode && concertsWithoutSetlist.length > 0) {
-        toast.warning(
-          `${concertsWithoutSetlist.length} concert(s) sans setlist : ${concertsWithoutSetlist.join(', ')}`,
-          { duration: 5000 }
-        );
+        toast.warning(`${concertsWithoutSetlist.length} concert(s) sans setlist : ${concertsWithoutSetlist.join(', ')}`, { duration: 5000 });
       }
 
       setSongs(uniqueTracks);
       setMainArtist(uniqueTracks[0].artist);
 
-      // Sauvegarde historique
       if (user) {
         try {
-          await saveToHistory({
-            userId: user.id,
-            playlistName: pName,
-            tracks: uniqueTracks.map(t => ({ artist: t.artist })),
-            sourceType: isFutureMode ? 'upcoming' : 'concert',
-            platform: 'csv'
-          });
-        } catch (err) {
-          console.error('Erreur sauvegarde historique:', err);
-        }
+          await saveToHistory({ userId: user.id, playlistName: pName, tracks: uniqueTracks.map(t => ({ artist: t.artist })), sourceType: isFutureMode ? 'upcoming' : 'concert', platform: 'csv' });
+        } catch (err) { console.error('Erreur historique:', err); }
       }
 
-      // Nettoyage localStorage
-      if (type === 'festival') {
-        localStorage.removeItem('selected_concerts');
-        localStorage.removeItem('selected_upcoming');
-      } else if (type === 'past') {
-        localStorage.removeItem('selected_concerts');
-      } else if (type === 'future') {
-        localStorage.removeItem('selected_upcoming');
-      }
+      if (type === 'festival') { localStorage.removeItem('selected_concerts'); localStorage.removeItem('selected_upcoming'); }
+      else if (type === 'past') localStorage.removeItem('selected_concerts');
+      else if (type === 'future') localStorage.removeItem('selected_upcoming');
 
-      toast.success(`${uniqueTracks.length} morceaux prêts ! 🎉`);
-
+      toast.success(`${uniqueTracks.length} morceaux prêts !`);
     } catch (err: any) {
-      console.error('❌ Erreur génération:', err);
       setErrorMsg(err.message || "Une erreur est survenue.");
       toast.error('Erreur de génération');
     } finally {
@@ -259,247 +152,84 @@ export default function Generate() {
     }
   };
 
-  // === EXTRACTION SETLIST.FM ===
   const extractFromSetlist = async (concert: ConcertData, defaultArtist: string): Promise<Track[]> => {
     const result: Track[] = [];
-    
-    console.log('🔍 Extraction setlist pour:', defaultArtist);
-    console.log('🔍 Structure concert:', { 
-      id: concert.id,
-      hasTracksArray: !!concert.tracks,
-      hasSets: !!concert.sets,
-      setsStructure: concert.sets 
-    });
-    
-    // Cas 1 : Tracks déjà formatées
     if (concert.tracks && Array.isArray(concert.tracks)) {
-      console.log('✅ Cas 1: tracks déjà formatées');
-      return concert.tracks.filter(t => 
-        t.name && 
-        t.name.trim() !== '' && 
-        t.name.toLowerCase() !== 'titre inconnu' &&
-        t.name.toLowerCase() !== 'unknown'
-      );
+      return concert.tracks.filter(t => t.name && t.name.trim() !== '' && !['titre inconnu', 'unknown'].includes(t.name.toLowerCase()));
     }
-
-    // Cas 2 : Si on a un ID de concert mais pas de sets, récupérer via API
     if (concert.id && !concert.sets) {
-      console.log('🌐 Récupération setlist via API pour ID:', concert.id);
-      
       try {
         const response = await fetch(`/api/search?action=songs&setlistId=${concert.id}`);
-        
-        if (!response.ok) {
-          console.error(`❌ Erreur API pour ${concert.id}: ${response.status}`);
-          return [];
-        }
-        
+        if (!response.ok) return [];
         const data = await response.json();
-        console.log('📦 Data reçue de l\'API:', data);
-        
-        if (data.sets?.set) {
-          concert.sets = data.sets; // On met à jour la structure
-        } else {
-          console.warn('⚠️ Pas de sets dans la réponse API');
-          return [];
-        }
-      } catch (error) {
-        console.error('❌ Erreur lors de la récupération de la setlist:', error);
-        return [];
-      }
+        if (data.sets?.set) concert.sets = data.sets;
+        else return [];
+      } catch { return []; }
     }
-
-    // Cas 3 : Structure brute Setlist.fm (maintenant que sets est rempli)
     if (concert.sets?.set) {
-      const sets = Array.isArray(concert.sets.set) 
-        ? concert.sets.set 
-        : [concert.sets.set];
-      
-      console.log(`✅ ${sets.length} set(s) trouvé(s)`);
-      
-      sets.forEach((s: any, setIndex: number) => {
-        if (!s.song) {
-          console.log(`  ⚠️ Set ${setIndex} sans songs`);
-          return;
-        }
-        
+      const sets = Array.isArray(concert.sets.set) ? concert.sets.set : [concert.sets.set];
+      sets.forEach((s: any) => {
+        if (!s.song) return;
         const songs = Array.isArray(s.song) ? s.song : [s.song];
-        console.log(`  → Set ${setIndex}: ${songs.length} song(s)`);
-        
         songs.forEach((song: any) => {
-          // Filtrer les tapes, inconnus, etc.
-          if (song.tape) {
-            console.log(`    ⏭️ Skip (tape):`, song.name);
-            return;
-          }
-          if (!song.name || song.name.trim() === '') {
-            console.log(`    ⏭️ Skip (empty name)`);
-            return;
-          }
-          if (song.name.toLowerCase().includes('unknown')) {
-            console.log(`    ⏭️ Skip (unknown):`, song.name);
-            return;
-          }
-          
-          result.push({
-            artist: song.cover?.name || defaultArtist,
-            name: song.name.trim()
-          });
+          if (song.tape || !song.name || song.name.trim() === '' || song.name.toLowerCase().includes('unknown')) return;
+          result.push({ artist: song.cover?.name || defaultArtist, name: song.name.trim() });
         });
       });
     }
-
-    console.log(`✅ Extraction terminée: ${result.length} track(s)`);
     return result;
   };
 
-  // === ITUNES API ===
   const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
     try {
-      const searchLimit = Math.max(limit * 5, 50);
-      
-      const response = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${searchLimit}&country=US`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`iTunes API error: ${response.status}`);
-      }
-      
+      const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${Math.max(limit * 5, 50)}&country=US`);
+      if (!response.ok) return [];
       const data = await response.json();
-      
-      if (!data.results || data.results.length === 0) {
-        console.warn(`Aucun résultat iTunes pour: ${artist}`);
-        return [];
-      }
-      
+      if (!data.results?.length) return [];
       const normalizedSearchArtist = normalizeString(artist);
-      
-      const scoredResults = data.results
+      return data.results
         .map((item: any) => {
-          const normalizedArtistName = normalizeString(item.artistName);
-          let score = 0;
-          
-          if (normalizedArtistName === normalizedSearchArtist) {
-            score += 100;
-          } else if (normalizedArtistName.includes(normalizedSearchArtist)) {
-            score += 50;
-          } else {
-            return { ...item, score: 0 };
-          }
-          
+          const n = normalizeString(item.artistName);
+          const score = n === normalizedSearchArtist ? 100 : n.includes(normalizedSearchArtist) ? 50 : 0;
           return { ...item, score };
         })
         .filter(item => item.score > 20)
         .sort((a, b) => b.score - a.score)
-        .slice(0, limit);
-      
-      console.log(`  📊 iTunes ${artist}: ${data.results.length} bruts → ${scoredResults.length} filtrés`);
-      
-      return scoredResults.map((item: any) => ({
-        artist: item.artistName,
-        name: item.trackName
-      }));
-    } catch (err) {
-      console.error(`Erreur iTunes pour ${artist}:`, err);
-      return [];
-    }
+        .slice(0, limit)
+        .map((item: any) => ({ artist: item.artistName, name: item.trackName }));
+    } catch { return []; }
   };
 
-  const normalizeString = (str: string): string => {
-    return str
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ');
-  };
+  const normalizeString = (str: string) => str.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
 
-  const deduplicateTracks = (tracks: Track[]): Track[] => {
+  const deduplicateTracks = (tracks: Track[]) => {
     const seen = new Set<string>();
-    const unique: Track[] = [];
-
-    tracks.forEach(track => {
-      const normalizedName = normalizeString(track.name);
-      const normalizedArtist = normalizeString(track.artist);
-      const key = `${normalizedArtist}|||${normalizedName}`;
-      
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(track);
-      }
+    return tracks.filter(t => {
+      const key = `${normalizeString(t.artist)}|||${normalizeString(t.name)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
-
-    return unique;
   };
 
-  // === HANDLE COPY AVEC PROTECTION QUOTA ===
   const handleCopy = async () => {
-    // 1. Vérifier connexion
-    if (!user) {
-      toast.error('Connectez-vous pour exporter votre playlist');
-      navigate('/auth');
-      return;
-    }
-
-    // 2. Vérifier quota
+    if (!user) { toast.error('Connectez-vous pour exporter'); navigate('/auth'); return; }
     if (!quota.canExport) {
-      if (quota.isPremium) {
-        toast.error('Erreur lors de la vérification du quota');
-        return;
-      }
-      
-      // Utilisateur gratuit sans quota
-      toast.error(
-        `Quota épuisé ! Vous avez déjà utilisé vos 2 exports de l'année.`,
-        { 
-          duration: 5000,
-          action: {
-            label: 'Passer Premium',
-            onClick: () => navigate('/subscription')
-          }
-        }
-      );
+      toast.error(`Quota épuisé ! 2 exports/an en version gratuite.`, { duration: 5000, action: { label: 'Passer Premium', onClick: () => navigate('/subscription') } });
       return;
     }
-
-    // 3. Copier
     try {
-      const text = songs.map(s => `${s.artist} - ${s.name}`).join('\n');
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(songs.map(s => `${s.artist} - ${s.name}`).join('\n'));
       setCopied(true);
-
-      // 4. Tracker l'export
       const tracked = await trackExport(user.id, playlistName, songs.length);
-      
       if (tracked) {
-        // Mettre à jour le quota localement
-        setQuota(prev => ({
-          ...prev,
-          remaining: Math.max(0, prev.remaining - 1),
-          used: prev.used + 1
-        }));
-
-        // Message de succès avec quota restant
-        if (quota.isPremium) {
-          toast.success('Liste copiée ! (Exports illimités)');
-        } else {
-          const newRemaining = quota.remaining - 1;
-          toast.success(
-            `Liste copiée ! ${newRemaining} export${newRemaining > 1 ? 's' : ''} restant${newRemaining > 1 ? 's' : ''} cette année`,
-            { duration: 4000 }
-          );
-        }
+        setQuota(prev => ({ ...prev, remaining: Math.max(0, prev.remaining - 1), used: prev.used + 1 }));
+        toast.success(quota.isPremium ? 'Liste copiée !' : `Liste copiée ! ${quota.remaining - 1} export(s) restant(s)`, { duration: 4000 });
       } else {
         toast.success('Liste copiée !');
       }
-
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Erreur copie:', err);
-      toast.error('Erreur lors de la copie');
-    }
+    } catch { toast.error('Erreur lors de la copie'); }
   };
 
   const handleDownload = () => {
@@ -520,182 +250,190 @@ export default function Generate() {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center text-white">
         <Loader2 className="animate-spin text-[#4d94ff] w-12 h-12 mb-4" />
-        <p className="text-[#a0a0a0] font-mono uppercase tracking-widest text-xs">
-          {loadingMessage}
-        </p>
+        <p className="text-[#a0a0a0] font-mono uppercase tracking-widest text-xs">{loadingMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#1a1a1a] text-white pt-16 flex flex-col font-sans">
       <Header />
-      <div className="flex-grow max-w-4xl mx-auto w-full px-4 pb-20">
-        
+
+      <div className="flex-grow max-w-4xl mx-auto w-full px-3 sm:px-4 pb-16 sm:pb-20">
         {errorMsg ? (
-          <div className="bg-[#252525] border border-red-500/30 p-12 rounded-3xl text-center shadow-2xl">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black italic uppercase mb-4">Oups !</h2>
-            <p className="text-[#a0a0a0] mb-8 font-medium leading-relaxed">{errorMsg}</p>
-            <Button 
-              onClick={() => navigate(-1)} 
-              className="bg-white text-black hover:bg-[#4d94ff] hover:text-white rounded-none px-8 font-black italic uppercase"
-            >
+          <div className="bg-[#252525] border border-red-500/30 p-8 rounded-3xl text-center shadow-2xl mt-6">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-black italic uppercase mb-4">Oups !</h2>
+            <p className="text-[#a0a0a0] mb-6 text-sm leading-relaxed">{errorMsg}</p>
+            <Button onClick={() => navigate(-1)} className="bg-white text-black hover:bg-[#4d94ff] hover:text-white rounded-none px-6 font-black italic uppercase text-sm">
               <ArrowLeft className="mr-2 w-4 h-4" /> Retour
             </Button>
           </div>
         ) : (
           <div className="animate-in fade-in duration-500">
-            <div className="text-center mb-12">
-              <h1 className="text-5xl md:text-8xl font-black italic uppercase mb-4 tracking-tighter leading-none">
+
+            {/* HEADER - compact mobile */}
+            <div className="text-center pt-4 sm:pt-8 pb-3 sm:pb-6">
+              <h1 className="text-3xl sm:text-5xl md:text-8xl font-black italic uppercase mb-2 tracking-tighter leading-none">
                 C'est prêt !
               </h1>
-              <div className="inline-block bg-[#4d94ff] text-white px-6 py-2 text-xl md:text-2xl font-black italic uppercase skew-x-[-12deg] shadow-[8px_8px_0px_rgba(0,0,0,0.5)]">
+              <div className="inline-block bg-[#4d94ff] text-white px-4 sm:px-6 py-1.5 sm:py-2 text-base sm:text-2xl font-black italic uppercase skew-x-[-12deg] shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
                 {songs.length} MORCEAUX
               </div>
-              <p className="text-[#666] mt-6 font-bold uppercase tracking-widest text-sm">
+              <p className="text-[#666] mt-2 font-bold uppercase tracking-widest text-xs truncate px-4">
                 {playlistName}
               </p>
             </div>
 
-            {/* BADGE QUOTA - Affiche toujours un badge */}
-            {user ? (
-              <div className="mb-8 text-center">
-                {quota.isPremium ? (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/30">
-                    <Crown className="w-4 h-4 text-yellow-500" />
-                    <span className="text-yellow-500 font-bold">Premium</span>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-300">Exports illimités</span>
-                    {quota.renewalDate && (
-                      <>
-                        <span className="text-gray-400">•</span>
-                        <span className="text-gray-400 text-sm">
-                          Renouvellement : {new Date(quota.renewalDate).toLocaleDateString('fr-FR')}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30">
-                    <span className={`font-bold ${quota.remaining === 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                      {quota.remaining}/2 exports restants
-                    </span>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-400 text-sm">
-                      Réinit. : {new Date(quota.renewalDate).toLocaleDateString('fr-FR')}
-                    </span>
-                    {quota.remaining === 0 && (
-                      <>
-                        <span className="text-gray-400">•</span>
-                        <button 
-                          onClick={() => navigate('/subscription')}
-                          className="text-yellow-500 hover:text-yellow-400 font-semibold underline"
-                        >
-                          Passer Premium
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mb-8 text-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30">
-                  <Lock className="w-4 h-4 text-orange-400" />
+            {/* BADGE QUOTA - compact */}
+            <div className="mb-4 text-center">
+              {!user ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-xs">
+                  <Lock className="w-3 h-3 text-orange-400" />
                   <span className="text-orange-400 font-bold">Non connecté</span>
                   <span className="text-gray-400">•</span>
-                  <button 
-                    onClick={() => navigate('/auth')}
-                    className="text-blue-400 hover:text-blue-300 font-semibold underline"
-                  >
-                    Connectez-vous pour exporter
-                  </button>
+                  <button onClick={() => navigate('/auth')} className="text-blue-400 underline font-semibold">Connexion</button>
                 </div>
-              </div>
-            )}
+              ) : quota.isPremium ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-xs">
+                  <Crown className="w-3 h-3 text-yellow-500" />
+                  <span className="text-yellow-500 font-bold">Premium • Exports illimités</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs">
+                  <span className={`font-bold ${quota.remaining === 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                    {quota.remaining}/2 exports restants
+                  </span>
+                  {quota.remaining === 0 && (
+                    <button onClick={() => navigate('/subscription')} className="text-yellow-500 underline font-semibold">→ Premium</button>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <div className="grid md:grid-cols-2 gap-8 mb-16">
-              <div className="bg-[#252525] border border-[#333] rounded-3xl p-10 flex flex-col justify-between shadow-xl group hover:border-[#4d94ff] transition-all">
+            {/* ===== MOBILE : Layout compact ===== */}
+            <div className="flex flex-col sm:hidden gap-3 mb-4">
+              
+              {/* 1. Copier */}
+              <button
+                onClick={handleCopy}
+                disabled={!!user && !quota.canExport}
+                className={`w-full h-14 flex items-center justify-center gap-3 font-black italic uppercase text-base rounded-xl transition-all shadow-md ${
+                  copied ? 'bg-[#00ff00] text-black'
+                  : user && !quota.canExport ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#4d94ff] text-white active:scale-95'
+                }`}
+              >
+                {copied ? <><Check className="w-5 h-5" /> Copié !</>
+                : user && !quota.canExport ? <><Lock className="w-5 h-5" /> Quota épuisé</>
+                : <><Copy className="w-5 h-5" /> 1. Copier la liste</>}
+              </button>
+
+              {/* 2. TuneMyMusic */}
+              <a
+                href="https://www.tunemymusic.com/fr/transfer"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-black italic uppercase text-base rounded-xl active:scale-95 shadow-md"
+              >
+                <ExternalLink className="w-5 h-5" /> 2. Ouvrir TuneMyMusic
+              </a>
+
+              {/* Liste + bouton .txt côte à côte */}
+              <div className="flex gap-2">
+                <details className="flex-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden">
+                  <summary className="cursor-pointer px-4 py-3 font-bold uppercase text-sm flex items-center justify-between">
+                    <span className="flex items-center gap-2"><Music className="w-4 h-4" /> Liste</span>
+                    <span className="text-[#666] text-xs">{songs.length}</span>
+                  </summary>
+                  <div className="p-3 max-h-52 overflow-y-auto space-y-1.5">
+                    {songs.map((song, idx) => (
+                      <div key={idx} className="flex items-start gap-2 p-2 rounded bg-[#1a1a1a]">
+                        <span className="text-[#666] font-mono text-xs min-w-[1.5rem]">{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white truncate text-xs">{song.name}</p>
+                          <p className="text-[10px] text-[#a0a0a0] truncate">{song.artist}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+
+                {/* .txt - Premium only */}
+                {isPremium ? (
+                  <button onClick={handleDownload} className="flex flex-col items-center justify-center gap-1 px-4 py-3 bg-[#252525] border border-yellow-500/40 hover:border-yellow-500 rounded-xl transition-all">
+                    <Download className="w-5 h-5 text-yellow-500" />
+                    <span className="text-[10px] text-yellow-500 font-bold">.txt</span>
+                  </button>
+                ) : (
+                  <button onClick={() => navigate('/subscription')} className="flex flex-col items-center justify-center gap-1 px-4 py-3 bg-[#252525] border border-[#333] hover:border-yellow-500/30 rounded-xl transition-all" title="Premium uniquement">
+                    <Crown className="w-4 h-4 text-yellow-500/40" />
+                    <span className="text-[10px] text-yellow-500/40 font-bold">.txt</span>
+                    <Lock className="w-3 h-3 text-yellow-500/40" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ===== DESKTOP : Grid 2 colonnes ===== */}
+            <div className="hidden sm:grid md:grid-cols-2 gap-8 mb-10">
+              <div className="bg-[#252525] border border-[#333] rounded-3xl p-8 md:p-10 flex flex-col justify-between shadow-xl hover:border-[#4d94ff] transition-all">
                 <div>
-                  <h3 className="text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
-                    <span className="bg-[#00ff00] text-black w-10 h-10 rounded-full flex items-center justify-center text-lg not-italic">
-                      1
-                    </span> 
+                  <h3 className="text-2xl md:text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
+                    <span className="bg-[#00ff00] text-black w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base not-italic">1</span>
                     Copier
                   </h3>
-                  <p className="text-[#a0a0a0] mb-8 text-sm font-bold uppercase tracking-tight leading-relaxed">
+                  <p className="text-[#a0a0a0] mb-6 text-sm font-bold uppercase tracking-tight leading-relaxed">
                     Copiez la liste pour l'importer via TuneMyMusic.
                   </p>
                 </div>
-                <Button 
+                <Button
                   onClick={handleCopy}
-                  disabled={user && !quota.canExport}
-                  className={`w-full h-24 text-2xl font-black italic uppercase transition-all rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.3)] ${
-                    copied 
-                      ? 'bg-[#00ff00] text-black' 
-                      : user && !quota.canExport
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'
+                  disabled={!!user && !quota.canExport}
+                  className={`w-full h-20 md:h-24 text-xl md:text-2xl font-black italic uppercase rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.3)] transition-all ${
+                    copied ? 'bg-[#00ff00] text-black'
+                    : user && !quota.canExport ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'
                   }`}
                 >
-                  {copied ? (
-                    <>
-                      <Check className="mr-2 w-6 h-6" /> Copié !
-                    </>
-                  ) : user && !quota.canExport ? (
-                    <>
-                      <Lock className="mr-2 w-6 h-6" /> Quota épuisé
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 w-6 h-6" /> Copier
-                    </>
-                  )}
+                  {copied ? <><Check className="mr-2 w-6 h-6" /> Copié !</>
+                  : user && !quota.canExport ? <><Lock className="mr-2 w-6 h-6" /> Quota épuisé</>
+                  : <><Copy className="mr-2 w-6 h-6" /> Copier</>}
                 </Button>
               </div>
 
-              <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-10 flex flex-col justify-between shadow-xl group hover:border-white transition-all">
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-3xl p-8 md:p-10 flex flex-col justify-between shadow-xl hover:border-white transition-all">
                 <div>
-                  <h3 className="text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
-                    <span className="bg-[#4d94ff] text-white w-10 h-10 rounded-full flex items-center justify-center text-lg not-italic">
-                      2
-                    </span> 
+                  <h3 className="text-2xl md:text-3xl font-black italic uppercase mb-4 flex items-center gap-3">
+                    <span className="bg-[#4d94ff] text-white w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base not-italic">2</span>
                     Importer
                   </h3>
-                  <p className="text-[#a0a0a0] mb-8 text-sm font-bold uppercase tracking-tight leading-relaxed">
+                  <p className="text-[#a0a0a0] mb-6 text-sm font-bold uppercase tracking-tight leading-relaxed">
                     Sur TuneMyMusic, choisissez "Texte" et collez.
                   </p>
                 </div>
-                <a 
-                  href="https://www.tunemymusic.com/fr/transfer" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="flex items-center justify-center gap-2 w-full py-8 bg-white text-black font-black italic uppercase transition-all hover:bg-[#4d94ff] hover:text-white text-xl shadow-[8px_8px_0px_rgba(77,148,255,0.2)]"
+                <a
+                  href="https://www.tunemymusic.com/fr/transfer"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-7 md:py-8 bg-white text-black font-black italic uppercase hover:bg-[#4d94ff] hover:text-white text-lg md:text-xl transition-all shadow-[8px_8px_0px_rgba(77,148,255,0.2)]"
                 >
-                  TuneMyMusic
-                  <ExternalLink className="w-5 h-5" />
+                  TuneMyMusic <ExternalLink className="w-5 h-5" />
                 </a>
               </div>
             </div>
 
-            <details className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden mb-8">
-              <summary className="cursor-pointer p-6 font-black uppercase text-lg hover:bg-[#2d2d2d] transition-colors flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Music className="w-5 h-5" /> Liste complète
-                </span>
-                <span className="text-[#666] text-sm">{songs.length} titres</span>
-              </summary>
-              <div className="p-6 pt-0 max-h-96 overflow-y-auto">
-                <div className="space-y-2">
+            {/* DESKTOP : Liste + .txt */}
+            <div className="hidden sm:block">
+              <details className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden mb-6">
+                <summary className="cursor-pointer p-6 font-black uppercase text-lg hover:bg-[#2d2d2d] transition-colors flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Music className="w-5 h-5" /> Liste complète</span>
+                  <span className="text-[#666] text-sm">{songs.length} titres</span>
+                </summary>
+                <div className="p-6 pt-0 max-h-96 overflow-y-auto space-y-2">
                   {songs.map((song, idx) => (
-                    <div 
-                      key={idx} 
-                      className="flex items-start gap-3 p-3 rounded bg-[#1a1a1a] hover:bg-[#2d2d2d] transition-colors"
-                    >
-                      <span className="text-[#666] font-mono text-sm min-w-[2rem]">
-                        {String(idx + 1).padStart(2, '0')}
-                      </span>
+                    <div key={idx} className="flex items-start gap-3 p-3 rounded bg-[#1a1a1a] hover:bg-[#2d2d2d] transition-colors">
+                      <span className="text-[#666] font-mono text-sm min-w-[2rem]">{String(idx + 1).padStart(2, '0')}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-white truncate">{song.name}</p>
                         <p className="text-sm text-[#a0a0a0] truncate">{song.artist}</p>
@@ -703,23 +441,23 @@ export default function Generate() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </details>
+              </details>
 
-            <div className="text-center">
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                className="border-[#333] text-white hover:bg-[#2d2d2d]"
-              >
-                <Download className="mr-2 w-4 h-4" />
-                Télécharger (.txt)
-              </Button>
+              <div className="text-center">
+                {isPremium ? (
+                  <Button onClick={handleDownload} variant="outline" className="border-[#333] text-white hover:bg-[#2d2d2d]">
+                    <Download className="mr-2 w-4 h-4" /> Télécharger (.txt)
+                  </Button>
+                ) : (
+                  <Button onClick={() => navigate('/subscription')} variant="outline" className="border-yellow-500/30 text-yellow-500/60 hover:bg-yellow-500/10 hover:text-yellow-500 gap-2">
+                    <Crown className="w-4 h-4" /> Télécharger (.txt) — Premium uniquement
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* PUBS : Affichées pour TOUS sauf Premium */}
             {!isPremium && mainArtist && (
-              <div className="mt-20 pt-10 border-t border-[#333]">
+              <div className="mt-10 sm:mt-20 pt-8 border-t border-[#333]">
                 <SmartAd artistName={mainArtist} index={0} />
               </div>
             )}
