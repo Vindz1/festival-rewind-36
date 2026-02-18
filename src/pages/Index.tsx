@@ -49,7 +49,7 @@ export default function Index() {
           </h1>
           
           <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto">
-            Transformez vos concerts vécus en playlists.<br className="hidden sm:block"/>
+            Transformez vos concerts vécus en playlists. <br className="hidden sm:block"/>
             Setlists exactes. Import en 2 clics.
           </p>
 
@@ -72,7 +72,7 @@ export default function Index() {
             <Input 
               value={query} 
               onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Metallica, Gojira, Hellfest..." 
+              placeholder="Metallica, Gojira, Deftones..." 
               className="h-12 sm:h-14 pl-11 sm:pl-14 pr-20 sm:pr-28 bg-white/5 border-2 border-white/10 text-sm sm:text-base rounded-xl focus:border-[#4d94ff] transition-colors"
             />
             <Button 
@@ -85,7 +85,7 @@ export default function Index() {
 
           <div className="flex flex-wrap justify-center gap-2">
             <span className="text-xs text-gray-500">Populaires :</span>
-            {['Metallica', 'Iron Maiden', 'Hellfest'].map(n => (
+            {['Nine Inch Nails', 'Opeth', 'Bad Bunny'].map(n => (
               <button 
                 key={n} 
                 onClick={() => navigate(`/search?q=${n}`)} 
@@ -251,7 +251,6 @@ export default function Index() {
               <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-1 sm:mb-1 leading-tight">Membre</h3>
               <div className="flex items-baseline gap-1 sm:gap-2 mb-2 sm:mb-3">
                 <span className="text-xl sm:text-3xl md:text-4xl font-black text-[#4d94ff]">0€</span>
-                <span className="text-gray-500 text-[8px] sm:text-xs">/mois</span>
               </div>
               
               <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
