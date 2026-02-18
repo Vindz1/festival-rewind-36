@@ -31,7 +31,8 @@ export default function Index() {
       {/* ===== HERO - Compact ===== */}
       <section className="relative pt-24 sm:pt-32 pb-12 sm:pb-16 px-4">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(77,148,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(77,148,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_85%)]"/>
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] sm:w-[700px] h-[400px] sm:h-[700px] bg-[#4d94ff] rounded-full blur-[150px] opacity-8"/>
+        {/* Rond bleu subtil */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] bg-[#4d94ff] rounded-full blur-[100px] opacity-[0.04]"/>
         
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6 sm:space-y-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm">
@@ -65,7 +66,6 @@ export default function Index() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-6 sm:mb-8">
             <h2 className="text-2xl sm:text-4xl font-black mb-2">Rechercher <span className="text-[#4d94ff]">un concert</span></h2>
-            <p className="text-sm sm:text-base text-gray-400">Par artiste, ville ou festival</p>
           </div>
           
           <form onSubmit={handleSearch} className="relative mb-4">
@@ -162,7 +162,7 @@ export default function Index() {
             <p className="text-sm sm:text-base text-gray-400">De la scène à vos oreilles</p>
           </div>
           
-          <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5">
             {[
               { 
                 num: 1, 
@@ -186,13 +186,13 @@ export default function Index() {
                 icon: Check
               }
             ].map(({ num, color, title, desc, icon: Icon }) => (
-              <div key={num} className="relative bg-gradient-to-br from-[#111] to-black border border-white/10 rounded-xl p-4 sm:p-5 hover:border-white/20 transition-colors">
-                <div className={`w-9 h-9 sm:w-12 sm:h-12 ${color} rounded-lg flex items-center justify-center text-base sm:text-xl font-black mb-3`}>
+              <div key={num} className="relative bg-gradient-to-br from-[#111] to-black border border-white/10 rounded-xl p-3 sm:p-4 md:p-5 hover:border-white/20 transition-colors">
+                <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 ${color} rounded-lg flex items-center justify-center text-sm sm:text-base md:text-xl font-black mb-2 sm:mb-3`}>
                   {num}
                 </div>
-                <h3 className="text-base sm:text-lg font-bold mb-1.5">{title}</h3>
-                <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">{desc}</p>
-                <Icon className="w-3.5 h-3.5 text-gray-600 mt-2"/>
+                <h3 className="text-xs sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 leading-tight">{title}</h3>
+                <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed hidden sm:block">{desc}</p>
+                <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600 mt-1 sm:mt-2 hidden sm:block"/>
               </div>
             ))}
           </div>
@@ -209,109 +209,114 @@ export default function Index() {
             <p className="text-sm sm:text-base text-gray-400">Premium pour enlever les pubs</p>
           </div>
           
-          <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5">
             
             {/* Plan 1 : Non connecté */}
-            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-white/10 rounded-xl p-5 sm:p-6">
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-500/10 border border-gray-500/20 text-gray-400 text-[10px] font-bold mb-3">
-                <Zap className="w-2.5 h-2.5"/>VISITEUR
+            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-white/10 rounded-xl p-3 sm:p-5 md:p-6">
+              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-500/10 border border-gray-500/20 text-gray-400 text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3">
+                <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
+                <span className="hidden sm:inline">VISITEUR</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black mb-3">Non connecté</h3>
+              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-2 sm:mb-3 leading-tight">Non connecté</h3>
               
-              <ul className="space-y-2 mb-5 text-xs sm:text-sm">
-                <li className="flex items-start gap-2 text-gray-400">
-                  <Check className="w-4 h-4 text-gray-600 shrink-0 mt-0.5"/>
-                  Recherche illimitée
+              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
+                <li className="flex items-start gap-1 sm:gap-2 text-gray-400">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="leading-tight">Recherche</span>
                 </li>
-                <li className="flex items-start gap-2 text-gray-400">
-                  <Check className="w-4 h-4 text-gray-600 shrink-0 mt-0.5"/>
-                  Consultation des setlists
+                <li className="flex items-start gap-1 sm:gap-2 text-gray-400">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="leading-tight hidden sm:inline">Consultation</span>
+                  <span className="leading-tight sm:hidden">Setlists</span>
                 </li>
-                <li className="flex items-start gap-2 opacity-50">
-                  <span className="text-xs text-gray-600 italic">Pas d'export possible</span>
+                <li className="flex items-start gap-1 sm:gap-2 opacity-50">
+                  <span className="text-[8px] sm:text-xs text-gray-600 italic leading-tight">Pas d'export</span>
                 </li>
               </ul>
               
               <Button 
                 onClick={() => navigate('/auth')} 
                 variant="outline"
-                className="w-full h-9 sm:h-10 border-white/20 text-white hover:bg-white/5 font-semibold text-sm"
+                className="w-full h-7 sm:h-9 md:h-10 border-white/20 text-white hover:bg-white/5 font-semibold text-[10px] sm:text-sm"
               >
-                Créer un compte
+                Créer
               </Button>
             </div>
 
             {/* Plan 2 : Membre gratuit */}
-            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-[#4d94ff]/30 rounded-xl p-5 sm:p-6">
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/20 text-[#4d94ff] text-[10px] font-bold mb-3">
-                <Zap className="w-2.5 h-2.5"/>GRATUIT
+            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-[#4d94ff]/30 rounded-xl p-3 sm:p-5 md:p-6">
+              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/20 text-[#4d94ff] text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3">
+                <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
+                <span className="hidden sm:inline">GRATUIT</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black mb-1">Membre</h3>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-3xl sm:text-4xl font-black text-[#4d94ff]">0€</span>
-                <span className="text-gray-500 text-xs">/mois</span>
+              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-1 sm:mb-1 leading-tight">Membre</h3>
+              <div className="flex items-baseline gap-1 sm:gap-2 mb-2 sm:mb-3">
+                <span className="text-xl sm:text-3xl md:text-4xl font-black text-[#4d94ff]">0€</span>
+                <span className="text-gray-500 text-[8px] sm:text-xs">/mois</span>
               </div>
               
-              <ul className="space-y-2 mb-5 text-xs sm:text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5"/>
-                  <span className="text-gray-300"><strong className="text-white">2 exports/an</strong></span>
+              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
+                <li className="flex items-start gap-1 sm:gap-2">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-[#4d94ff] shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="text-gray-300 leading-tight"><strong className="text-white">2 exports</strong>/an</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-[#4d94ff] shrink-0 mt-0.5"/>
-                  <span className="text-gray-300">Tous les festivals</span>
+                <li className="flex items-start gap-1 sm:gap-2">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-[#4d94ff] shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="text-gray-300 leading-tight">Festivals</span>
                 </li>
-                <li className="flex items-start gap-2 opacity-50">
-                  <span className="text-xs text-gray-600 italic">Publicités présentes</span>
+                <li className="flex items-start gap-1 sm:gap-2 opacity-50">
+                  <span className="text-[8px] sm:text-xs text-gray-600 italic leading-tight">Avec pubs</span>
                 </li>
               </ul>
               
               <Button 
                 onClick={() => navigate('/auth')} 
-                className="w-full h-9 sm:h-10 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-sm"
+                className="w-full h-7 sm:h-9 md:h-10 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-[10px] sm:text-sm"
               >
-                Créer un compte
+                Créer
               </Button>
             </div>
 
             {/* Plan 3 : Premium */}
-            <div className="relative bg-gradient-to-br from-[#1a1a0a] to-black border-2 border-yellow-500/40 rounded-xl p-5 sm:p-6">
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full">
-                <span className="flex items-center gap-1.5 text-black font-black text-[10px] uppercase">
-                  <Crown className="w-2.5 h-2.5"/>POPULAIRE
+            <div className="relative bg-gradient-to-br from-[#1a1a0a] to-black border-2 border-yellow-500/40 rounded-xl p-3 sm:p-5 md:p-6">
+              <div className="absolute -top-2 sm:-top-2.5 left-1/2 -translate-x-1/2 px-2 sm:px-3 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full">
+                <span className="flex items-center gap-1 sm:gap-1.5 text-black font-black text-[8px] sm:text-[10px] uppercase">
+                  <Crown className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
+                  <span className="hidden sm:inline">TOP</span>
                 </span>
               </div>
               
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-bold mb-3 mt-2">
-                <Crown className="w-2.5 h-2.5"/>PREMIUM
+              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3 mt-1 sm:mt-2">
+                <Crown className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
+                <span className="hidden sm:inline">PREMIUM</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black mb-1">Gold</h3>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-3xl sm:text-4xl font-black text-yellow-500">5€</span>
-                <span className="text-gray-500 text-xs">/an</span>
+              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-1 leading-tight">Gold</h3>
+              <div className="flex items-baseline gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <span className="text-xl sm:text-3xl md:text-4xl font-black text-yellow-500">5€</span>
+                <span className="text-gray-500 text-[8px] sm:text-xs">/an</span>
               </div>
-              <p className="text-[10px] text-gray-500 mb-3">Soit 0.42€/mois</p>
+              <p className="text-[8px] sm:text-[10px] text-gray-500 mb-2 sm:mb-3">0.42€/mois</p>
               
-              <ul className="space-y-2 mb-5 text-xs sm:text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5"/>
-                  <span className="text-white font-semibold">Exports illimités</span>
+              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
+                <li className="flex items-start gap-1 sm:gap-2">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="text-white font-semibold leading-tight">Illimité</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5"/>
-                  <span className="text-white font-semibold">Zéro publicité</span>
+                <li className="flex items-start gap-1 sm:gap-2">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="text-white font-semibold leading-tight">0 pub</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5"/>
-                  <span className="text-gray-300">Historique complet</span>
+                <li className="flex items-start gap-1 sm:gap-2">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
+                  <span className="text-gray-300 leading-tight">Historique</span>
                 </li>
               </ul>
               
               <Button 
                 onClick={() => navigate('/subscription')} 
-                className="w-full h-9 sm:h-10 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-black text-sm"
+                className="w-full h-7 sm:h-9 md:h-10 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-black text-[10px] sm:text-sm"
               >
-                Passer Premium
+                Premium
               </Button>
             </div>
           </div>
