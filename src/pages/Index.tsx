@@ -40,7 +40,7 @@ export default function Index() {
               <span className="animate-ping absolute h-full w-full rounded-full bg-[#00ff00] opacity-75"/>
               <span className="relative rounded-full h-2 w-2 bg-[#00ff00]"/>
             </span>
-            <span>Compatible Spotify, Deezer, Apple Music</span>
+            <span>Compatible Spotify, Deezer, Apple Music, etc...</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-tight">
@@ -54,7 +54,6 @@ export default function Index() {
           </p>
 
           <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500 pt-2">
-            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-400"/>100% Gratuit</div>
             <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-400"/>Sans installation</div>
             <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-400"/>Export instantané</div>
           </div>
@@ -182,7 +181,7 @@ export default function Index() {
                 num: 3, 
                 color: 'bg-gradient-to-r from-green-500 to-emerald-500', 
                 title: 'Exportez', 
-                desc: 'Vers Spotify, Deezer ou Apple Music',
+                desc: 'Vers Spotify, Deezer, Apple Music, etc...',
                 icon: Check
               }
             ].map(({ num, color, title, desc, icon: Icon }) => (
@@ -206,7 +205,7 @@ export default function Index() {
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-2">
               Gratuit pour <span className="text-[#4d94ff]">toujours</span>
             </h2>
-            <p className="text-sm sm:text-base text-gray-400">Premium pour enlever les pubs</p>
+            <p className="text-sm sm:text-base text-gray-400">Premium pour exports illimités et enlever les pubs</p>
           </div>
           
           <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5">
@@ -260,10 +259,6 @@ export default function Index() {
                   <Check className="w-3 h-3 sm:w-4 sm:h-4 text-[#4d94ff] shrink-0 mt-0.5 hidden sm:block"/>
                   <span className="text-gray-300 leading-tight"><strong className="text-white">2 exports</strong>/an</span>
                 </li>
-                <li className="flex items-start gap-1 sm:gap-2">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-[#4d94ff] shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-gray-300 leading-tight">Festivals</span>
-                </li>
                 <li className="flex items-start gap-1 sm:gap-2 opacity-50">
                   <span className="text-[8px] sm:text-xs text-gray-600 italic leading-tight">Avec pubs</span>
                 </li>
@@ -300,7 +295,7 @@ export default function Index() {
               <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
                 <li className="flex items-start gap-1 sm:gap-2">
                   <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-white font-semibold leading-tight">Illimité</span>
+                  <span className="text-white font-semibold leading-tight">Exports Illimités</span>
                 </li>
                 <li className="flex items-start gap-1 sm:gap-2">
                   <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
