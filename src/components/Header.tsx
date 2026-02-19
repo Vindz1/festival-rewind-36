@@ -7,6 +7,7 @@ import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
 import { SearchBar } from '@/components/SearchBar';
 import { GoogleTranslate } from '@/components/GoogleTranslate';
+import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History, Globe as GlobeIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,18 +78,13 @@ export const Header = () => {
             </Link>
             
             <Link 
-              to="/hellfest-2026" 
-              className="group relative flex items-center gap-2 px-4 py-1.5 bg-[#00ff00] text-black text-xs font-black uppercase tracking-tighter transform -skew-x-12 hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+              to="/festivals" 
+              className="group relative flex items-center gap-2 px-4 py-1.5 bg-[#4d94ff] text-white text-xs font-black uppercase tracking-tighter transform -skew-x-12 hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
             >
               <div className="skew-x-12 flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 fill-black" />
-                Hellfest 2026
+                <GlobeIcon className="w-3.5 h-3.5" />
+                Festivals
               </div>
-            </Link>
-
-            <Link to="/shop" className="text-sm font-medium text-[#a0a0a0] hover:text-white flex items-center gap-1.5">
-              <ShoppingBag className="w-4 h-4" />
-              Shop
             </Link>
 
             {/* SearchBar */}
@@ -150,9 +146,9 @@ export const Header = () => {
 
                   <DropdownMenuSeparator className="bg-[#333]" />
 
-                  {/* LIEN 4 : HELLFEST (mobile uniquement) */}
-                  <DropdownMenuItem onClick={() => { navigate('/hellfest-2026'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#00ff00] focus:text-black">
-                    <Zap className="mr-2 h-4 w-4" /> Hellfest 2026
+                  {/* LIEN 4 : Globe festivals (mobile uniquement) */}
+                  <DropdownMenuItem onClick={() => { navigate('/festivals'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
+                    <GlobeIcon className="mr-2 h-4 w-4" /> Festivals
                   </DropdownMenuItem>
 
                   {/* LIEN 5 : SHOP (mobile uniquement) */}
