@@ -18,7 +18,7 @@ import {
 // Mapping : Langue Google Translate -> Code pays FlagCDN
 const FLAGS: Record<string, string> = {
   fr: 'fr',
-  en: 'gb', // gb pour le drapeau britannique
+  en: 'gb',
   es: 'es',
   de: 'de',
   it: 'it'
@@ -29,33 +29,43 @@ export const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
-
-  // État de la langue (Français par défaut)
   const [currentLang, setCurrentLang] = useState('fr');
 
-  // Lire le cookie de Google au chargement pour afficher le bon drapeau
+  // Détecter la langue active continuellement
   useEffect(() => {
-    // Regex plus souple pour s'adapter aux différentes façons dont Google écrit son cookie
-    const match = document.cookie.match(/googtrans=\/[^/]+\/([a-z]{2})/i);
-    if (match && match[1]) {
-      const lang = match[1].toLowerCase();
-      if (FLAGS[lang]) {
-        setCurrentLang(lang);
+    const detectLanguage = () => {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const trimmed = cookie.trim();
+        if (trimmed.startsWith('googtrans=')) {
+          // Format: googtrans=/fr/en ou googtrans=/auto/en
+          const match = trimmed.match(/googtrans=\/[^/]+\/([a-z]{2})/i);
+          if (match && match[1]) {
+            const lang = match[1].toLowerCase();
+            if (FLAGS[lang]) {
+              setCurrentLang(lang);
+              return;
+            }
+          }
+        }
       }
-    }
+      // Si aucun cookie, on est en français
+      setCurrentLang('fr');
+    };
+
+    detectLanguage();
+    // Re-vérifier toutes les 500ms pour capturer les changements
+    const interval = setInterval(detectLanguage, 500);
+    return () => clearInterval(interval);
   }, []);
 
-  // Vérification stricte du statut Premium
+  // Vérification statut Premium
   useEffect(() => {
     const checkStatus = async () => {
       if (user) {
         try {
           const sub = await getUserSubscription(user.id);
-          if (sub && sub.subscription_type === 'premium') {
-            setIsPremium(true);
-          } else {
-            setIsPremium(false);
-          }
+          setIsPremium(sub?.subscription_type === 'premium');
         } catch (e) {
           console.error(e);
         }
@@ -64,44 +74,47 @@ export const Header = () => {
     checkStatus();
   }, [user]);
 
-  // Fonction de déconnexion
   const handleSignOut = async () => {
     localStorage.clear();
     try {
       await signOut();
     } catch (error) {
-      console.error("Erreur déconnexion silencieuse", error);
+      console.error("Erreur déconnexion", error);
     }
     window.location.href = '/';
   };
 
-  // Fonction pour changer la langue avec un nettoyage agressif des cookies
   const handleLanguageChange = (langCode: string) => {
-    if (langCode === currentLang) return;
+    // Supprimer tous les cookies Google Translate
+    const cookiesToDelete = ['googtrans', 'googtrans_temp'];
+    const domains = [
+      '',
+      `; domain=${window.location.hostname}`,
+      `; domain=.${window.location.hostname}`
+    ];
     
-    setCurrentLang(langCode);
-    const domain = window.location.hostname;
-    
-    // 1. Nettoyage nucléaire : on détruit le cookie sur TOUTES les variantes possibles du domaine
-    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`;
-    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`;
+    cookiesToDelete.forEach(cookieName => {
+      domains.forEach(domain => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/${domain}`;
+      });
+    });
 
-    // 2. Si on choisit une autre langue que le français (fr), on recrée les bons cookies
+    // Créer nouveau cookie si pas français
     if (langCode !== 'fr') {
-      document.cookie = `googtrans=/fr/${langCode}; path=/;`;
-      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=${domain};`;
-      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=.${domain};`;
+      const cookieValue = `/fr/${langCode}`;
+      domains.forEach(domain => {
+        document.cookie = `googtrans=${cookieValue}; path=/${domain}; max-age=31536000`;
+      });
     }
     
-    // 3. On recharge la page pour que le script de Google prenne la nouvelle langue
-    window.location.reload();
+    // Recharger pour appliquer
+    setTimeout(() => window.location.reload(), 100);
   };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
       
-      {/* Composant GoogleTranslate caché pour injecter le script silencieusement */}
+      {/* GoogleTranslate caché */}
       <div className="hidden">
         <GoogleTranslate />
       </div>
@@ -109,7 +122,7 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
-          {/* LOGO : OR si Premium, BLEU si Gratuit */}
+          {/* LOGO */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className={`p-1.5 rounded-lg transition-all ${
               isPremium 
@@ -139,7 +152,6 @@ export const Header = () => {
               </div>
             </Link>
 
-            {/* SearchBar */}
             <SearchBar />
 
             {!isPremium && user && (
@@ -150,15 +162,14 @@ export const Header = () => {
             )}
           </nav>
 
-          {/* ACTIONS UTILISATEUR */}
+          {/* ACTIONS */}
           <div className="flex items-center gap-4">
             
-            {/* SearchBar mobile */}
             <div className="md:hidden">
               <SearchBar />
             </div>
 
-            {/* SÉLECTEUR DE LANGUE AVEC IMAGES DE DRAPEAUX */}
+            {/* SÉLECTEUR LANGUE */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-9 w-9 p-0 rounded-full bg-[#2d2d2d] border border-[#404040] hover:bg-[#404040] transition-colors overflow-hidden flex items-center justify-center">
@@ -174,7 +185,9 @@ export const Header = () => {
                   <DropdownMenuItem 
                     key={langCode} 
                     onClick={() => handleLanguageChange(langCode)}
-                    className={`cursor-pointer justify-center py-2 my-0.5 rounded-md transition-colors ${currentLang === langCode ? 'bg-[#333]' : 'hover:bg-[#4d94ff]/20'}`}
+                    className={`cursor-pointer justify-center py-2 my-0.5 rounded-md transition-colors ${
+                      currentLang === langCode ? 'bg-[#4d94ff]' : 'hover:bg-[#333]'
+                    }`}
                   >
                     <img 
                       src={`https://flagcdn.com/${countryCode}.svg`} 
@@ -187,7 +200,6 @@ export const Header = () => {
             </DropdownMenu>
 
             {user ? (
-              // CONNECTÉ : Menu déroulant
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative h-10 w-10 rounded-full border transition-colors ${
@@ -247,7 +259,6 @@ export const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // NON CONNECTÉ
               <>
                 <Button 
                   onClick={() => navigate('/auth')}
