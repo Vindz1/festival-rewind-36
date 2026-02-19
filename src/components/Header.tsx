@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
 import { SearchBar } from '@/components/SearchBar';
-import { GoogleTranslate } from '@/components/GoogleTranslate';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,45 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const FLAGS: Record<string, string> = {
-  fr: 'fr',
-  en: 'gb',
-  es: 'es',
-  de: 'de',
-  it: 'it'
-};
-
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
-  const [currentLang, setCurrentLang] = useState('fr');
-
-  // Détecter langue active
-  useEffect(() => {
-    const detectLanguage = () => {
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        const trimmed = cookie.trim();
-        if (trimmed.startsWith('googtrans=')) {
-          const match = trimmed.match(/googtrans=\/[^/]+\/([a-z]{2})/i);
-          if (match && match[1]) {
-            const lang = match[1].toLowerCase();
-            if (FLAGS[lang]) {
-              setCurrentLang(lang);
-              return;
-            }
-          }
-        }
-      }
-      setCurrentLang('fr');
-    };
-
-    detectLanguage();
-    const interval = setInterval(detectLanguage, 500);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -77,58 +42,13 @@ export const Header = () => {
     }
     window.location.href = '/';
   };
-
-  const handleLanguageChange = (langCode: string) => {
-    // ÉTAPE 1 : Supprimer TOUS les cookies Google sur tous les domaines possibles
-    const allCookieNames = [
-      'googtrans',
-      'googtrans_temp',
-      'googtrans_pending'
-    ];
-    
-    const hostname = window.location.hostname;
-    const domains = ['', hostname, `.${hostname}`];
-    const paths = ['/', '/en', '/es', '/de', '/it'];
-    
-    allCookieNames.forEach(cookieName => {
-      domains.forEach(domain => {
-        paths.forEach(path => {
-          // Variante 1 : sans domain
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}`;
-          // Variante 2 : avec domain
-          if (domain) {
-            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}`;
-          }
-        });
-      });
-    });
-
-    // ÉTAPE 2 : Attendre 50ms que les cookies soient bien supprimés
-    setTimeout(() => {
-      // ÉTAPE 3 : Si la langue n'est PAS français, créer le nouveau cookie
-      if (langCode !== 'fr') {
-        const cookieValue = `/fr/${langCode}`;
-        // Créer sur TOUS les domaines pour être sûr
-        document.cookie = `googtrans=${cookieValue}; path=/; max-age=31536000`;
-        document.cookie = `googtrans=${cookieValue}; path=/; domain=${hostname}; max-age=31536000`;
-        document.cookie = `googtrans=${cookieValue}; path=/; domain=.${hostname}; max-age=31536000`;
-      }
-      
-      // ÉTAPE 4 : Recharger HARD (bypass cache)
-      window.location.href = window.location.pathname + window.location.search;
-    }, 50);
-  };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
-      
-      <div className="hidden">
-        <GoogleTranslate />
-      </div>
-
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
+          {/* LOGO */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className={`p-1.5 rounded-lg transition-all ${
               isPremium 
@@ -142,6 +62,7 @@ export const Header = () => {
             </span>
           </Link>
 
+          {/* NAVIGATION DESKTOP */}
           <nav className="hidden md:flex items-center gap-5">
             <Link to="/my-concerts" className="text-sm font-bold uppercase tracking-widest text-[#a0a0a0] hover:text-white transition-colors">
               Mes Concerts
@@ -167,41 +88,12 @@ export const Header = () => {
             )}
           </nav>
 
+          {/* ACTIONS */}
           <div className="flex items-center gap-4">
             
             <div className="md:hidden">
               <SearchBar />
             </div>
-
-            {/* LANGUE */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 w-9 p-0 rounded-full bg-[#2d2d2d] border border-[#404040] hover:bg-[#404040] transition-colors overflow-hidden flex items-center justify-center">
-                  <img 
-                    src={`https://flagcdn.com/${FLAGS[currentLang]}.svg`} 
-                    alt={currentLang}
-                    className="w-6 h-auto rounded-[2px]" 
-                  />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="min-w-[4rem] w-16 bg-[#1a1a1a] border-[#404040] p-1 shadow-2xl">
-                {Object.entries(FLAGS).map(([langCode, countryCode]) => (
-                  <DropdownMenuItem 
-                    key={langCode} 
-                    onClick={() => handleLanguageChange(langCode)}
-                    className={`cursor-pointer justify-center py-2 my-0.5 rounded-md transition-colors ${
-                      currentLang === langCode ? 'bg-[#4d94ff]' : 'hover:bg-[#333]'
-                    }`}
-                  >
-                    <img 
-                      src={`https://flagcdn.com/${countryCode}.svg`} 
-                      alt={langCode}
-                      className="w-7 h-auto rounded-[2px] shadow-sm" 
-                    />
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             {user ? (
               <DropdownMenu>
