@@ -75,6 +75,7 @@ export default function FestivalsPage() {
               <ComposableMap
                 projection="geoMercator"
                 projectionConfig={{ scale: 147, center: [10, 50] }}
+                style={{ width: "100%", height: "100%" }}
               >
                 <Geographies geography={geoUrl}>
                   {({ geographies }) =>
@@ -94,37 +95,34 @@ export default function FestivalsPage() {
                     ))
                   }
                 </Geographies>
+
+                {/* Markers intégrés DANS la carte pour utiliser le système de coordonnées D3.js */}
+                {FESTIVALS_2026.map(festival => (
+                  <Marker
+                    key={festival.id}
+                    // Format requis par react-simple-maps : [longitude, latitude]
+                    coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                    onMouseEnter={() => setHoveredFestival(festival)}
+                    onMouseLeave={() => setHoveredFestival(null)}
+                    onClick={() => handleFestivalClick(festival)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {/* Pulse pour Hellfest */}
+                    {festival.id === 'hellfest-2026' && (
+                      <circle r={12} fill="#00ff00" opacity={0.3} className="animate-ping" />
+                    )}
+                    {/* Marker (point central) */}
+                    <circle 
+                      r={5} 
+                      fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
+                      stroke="#FFFFFF"
+                      strokeWidth={1.5}
+                      className="transition-opacity hover:opacity-80"
+                    />
+                  </Marker>
+                ))}
               </ComposableMap>
             </div>
-
-            {/* Markers en overlay - positions absolues (ne scale pas) */}
-            {FESTIVALS_2026.map(festival => {
-              // Conversion coordonnées GPS → pixels (approximation)
-              const x = ((festival.coordinates[1] + 180) / 360) * 100;
-              const y = ((90 - festival.coordinates[0]) / 180) * 100;
-              
-              return (
-                <div
-                  key={festival.id}
-                  className="absolute cursor-pointer z-10"
-                  style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
-                  onMouseEnter={() => setHoveredFestival(festival)}
-                  onMouseLeave={() => setHoveredFestival(null)}
-                  onClick={() => handleFestivalClick(festival)}
-                >
-                  {/* Pulse pour Hellfest */}
-                  {festival.id === 'hellfest-2026' && (
-                    <div className="absolute inset-0 -m-2">
-                      <div className="w-6 h-6 rounded-full bg-[#00ff00] opacity-30 animate-ping" />
-                    </div>
-                  )}
-                  {/* Marker */}
-                  <div className={`w-3 h-3 rounded-full border-2 border-white transition-opacity hover:opacity-80 ${
-                    festival.id === 'hellfest-2026' ? 'bg-[#00ff00]' : 'bg-[#4d94ff]'
-                  }`} />
-                </div>
-              );
-            })}
 
             {/* Tooltip hover */}
             {hoveredFestival && (
@@ -155,7 +153,7 @@ export default function FestivalsPage() {
             )}
 
             {/* Légende */}
-            <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs">
+            <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs z-10">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-3 h-3 rounded-full bg-[#00ff00]" />
                 <span>Prog complète</span>
