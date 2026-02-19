@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Map, List, MapPin, Calendar, Globe as GlobeIcon, ExternalLink, Zap } from 'lucide-react';
-import { FESTIVALS_2026, getAllGenres, Festival } from '@/data/festivalsData';
+import { Map, List, MapPin, Calendar, Zap } from 'lucide-react';
+import { FESTIVALS_2026, Festival } from '@/data/festivalsData';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -12,29 +11,12 @@ const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
 
-  const genres = getAllGenres();
-
-  const toggleGenre = (genre: string) => {
-    const newSet = new Set(selectedGenres);
-    if (newSet.has(genre)) newSet.delete(genre);
-    else newSet.add(genre);
-    setSelectedGenres(newSet);
-  };
-
-  const filteredFestivals = selectedGenres.size === 0
-    ? FESTIVALS_2026
-    : FESTIVALS_2026.filter(f => f.genre.some(g => selectedGenres.has(g)));
-
   const handleFestivalClick = (festival: Festival) => {
-    // Si Hellfest, aller vers la page existante
     if (festival.id === 'hellfest-2026') {
       navigate('/hellfest-2026');
     } else {
-      // Pour les autres, créer une page "coming soon" ou rediriger vers une page générique
-      // TODO: À terme, toutes auront leur page dédiée
       navigate(`/festivals/${festival.id}`);
     }
   };
@@ -52,7 +34,7 @@ export default function FestivalsPage() {
                 FESTIVALS <span className="text-[#4d94ff]">2026</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-400">
-                {filteredFestivals.length} festivals • Metal, Rock & plus
+                {FESTIVALS_2026.length} festivals • Metal, Rock & plus
               </p>
             </div>
 
@@ -82,36 +64,14 @@ export default function FestivalsPage() {
               </button>
             </div>
           </div>
-
-          {/* Filtres genres */}
-          <div className="flex flex-wrap gap-2">
-            {genres.map(genre => {
-              const isSelected = selectedGenres.has(genre);
-              return (
-                <button
-                  key={genre}
-                  onClick={() => toggleGenre(genre)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    isSelected
-                      ? 'bg-[#4d94ff] text-white'
-                      : 'bg-[#2d2d2d] text-gray-400 hover:text-white border border-[#404040]'
-                  }`}
-                >
-                  {genre}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* VIEW: CARTE */}
         {viewMode === 'map' && (
-          <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 350px)', minHeight: '500px' }}>
+          <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
             <ComposableMap
               projection="geoMercator"
-              projectionConfig={{
-                scale: 147
-              }}
+              projectionConfig={{ scale: 147 }}
             >
               <ZoomableGroup>
                 <Geographies geography={geoUrl}>
@@ -133,51 +93,47 @@ export default function FestivalsPage() {
                   }
                 </Geographies>
 
-                {/* Markers avec taille fixe au zoom */}
-                {filteredFestivals.map(festival => {
-                  const markerSize = 8; // Taille fixe en pixels
-                  
-                  return (
-                    <Marker
-                      key={festival.id}
-                      coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                {/* Markers avec taille fixe */}
+                {FESTIVALS_2026.map(festival => (
+                  <Marker
+                    key={festival.id}
+                    coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                  >
+                    <g 
+                      className="cursor-pointer"
                       onMouseEnter={() => setHoveredFestival(festival)}
                       onMouseLeave={() => setHoveredFestival(null)}
                       onClick={() => handleFestivalClick(festival)}
                     >
-                      <g className="cursor-pointer" style={{ pointerEvents: 'all' }}>
-                        {/* Cercle principal avec taille fixe */}
-                        <circle
-                          r={markerSize}
-                          fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
-                          stroke="white"
-                          strokeWidth={2}
-                          className="transition-all hover:opacity-80"
-                          style={{ vectorEffect: 'non-scaling-stroke' }}
+                      {/* Animation pulse pour Hellfest */}
+                      {festival.id === 'hellfest-2026' && (
+                        <circle 
+                          r="12" 
+                          fill="#00ff00" 
+                          opacity="0.3" 
+                          className="animate-ping"
                         />
-                        {/* Animation pulse pour festivals avec prog complète */}
-                        {festival.hasDetailedPage && (
-                          <circle 
-                            r={markerSize * 1.5} 
-                            fill="#00ff00" 
-                            opacity={0.3} 
-                            className="animate-ping"
-                            style={{ vectorEffect: 'non-scaling-stroke' }}
-                          />
-                        )}
-                      </g>
-                    </Marker>
-                  );
-                })}
+                      )}
+                      {/* Cercle principal */}
+                      <circle
+                        r="6"
+                        fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
+                        stroke="white"
+                        strokeWidth="2"
+                        className="transition-opacity hover:opacity-80"
+                      />
+                    </g>
+                  </Marker>
+                ))}
               </ZoomableGroup>
             </ComposableMap>
 
             {/* Tooltip hover */}
             {hoveredFestival && (
-              <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs z-10">
+              <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h3 className="text-lg font-bold">{hoveredFestival.name}</h3>
-                  {hoveredFestival.hasDetailedPage && (
+                  {hoveredFestival.id === 'hellfest-2026' && (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
@@ -194,15 +150,8 @@ export default function FestivalsPage() {
                     {hoveredFestival.dates}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {hoveredFestival.genre.map(g => (
-                    <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-[#4d94ff]/20 text-[#4d94ff]">
-                      {g}
-                    </span>
-                  ))}
-                </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  {festival.id === 'hellfest-2026' ? 'Cliquez pour voir la programmation complète' : 'Cliquez pour voir les détails'}
+                  {hoveredFestival.id === 'hellfest-2026' ? 'Programmation complète disponible' : 'Programmation bientôt disponible'}
                 </p>
               </div>
             )}
@@ -211,11 +160,11 @@ export default function FestivalsPage() {
             <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-3 h-3 rounded-full bg-[#00ff00]" />
-                <span>Prog complète disponible</span>
+                <span>Prog complète</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#4d94ff]" />
-                <span>Bientôt disponible</span>
+                <span>Bientôt</span>
               </div>
             </div>
           </div>
@@ -224,7 +173,7 @@ export default function FestivalsPage() {
         {/* VIEW: LISTE */}
         {viewMode === 'list' && (
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredFestivals.map(festival => (
+            {FESTIVALS_2026.map(festival => (
               <div
                 key={festival.id}
                 onClick={() => handleFestivalClick(festival)}
