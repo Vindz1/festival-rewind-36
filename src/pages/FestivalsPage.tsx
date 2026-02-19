@@ -69,11 +69,13 @@ export default function FestivalsPage() {
         {/* VIEW: CARTE */}
         {viewMode === 'map' && (
           <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
-            <ComposableMap
-              projection="geoMercator"
-              projectionConfig={{ scale: 147 }}
-            >
-              <ZoomableGroup>
+            
+            {/* Carte SVG en arrière-plan */}
+            <div className="absolute inset-0">
+              <ComposableMap
+                projection="geoMercator"
+                projectionConfig={{ scale: 147, center: [10, 50] }}
+              >
                 <Geographies geography={geoUrl}>
                   {({ geographies }) =>
                     geographies.map(geo => (
@@ -92,41 +94,37 @@ export default function FestivalsPage() {
                     ))
                   }
                 </Geographies>
+              </ComposableMap>
+            </div>
 
-                {/* Markers avec taille fixe */}
-                {FESTIVALS_2026.map(festival => (
-                  <Marker
-                    key={festival.id}
-                    coordinates={[festival.coordinates[1], festival.coordinates[0]]}
-                  >
-                    <g 
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredFestival(festival)}
-                      onMouseLeave={() => setHoveredFestival(null)}
-                      onClick={() => handleFestivalClick(festival)}
-                    >
-                      {/* Animation pulse pour Hellfest */}
-                      {festival.id === 'hellfest-2026' && (
-                        <circle 
-                          r="12" 
-                          fill="#00ff00" 
-                          opacity="0.3" 
-                          className="animate-ping"
-                        />
-                      )}
-                      {/* Cercle principal */}
-                      <circle
-                        r="6"
-                        fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
-                        stroke="white"
-                        strokeWidth="2"
-                        className="transition-opacity hover:opacity-80"
-                      />
-                    </g>
-                  </Marker>
-                ))}
-              </ZoomableGroup>
-            </ComposableMap>
+            {/* Markers en overlay - positions absolues (ne scale pas) */}
+            {FESTIVALS_2026.map(festival => {
+              // Conversion coordonnées GPS → pixels (approximation)
+              const x = ((festival.coordinates[1] + 180) / 360) * 100;
+              const y = ((90 - festival.coordinates[0]) / 180) * 100;
+              
+              return (
+                <div
+                  key={festival.id}
+                  className="absolute cursor-pointer z-10"
+                  style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
+                  onMouseEnter={() => setHoveredFestival(festival)}
+                  onMouseLeave={() => setHoveredFestival(null)}
+                  onClick={() => handleFestivalClick(festival)}
+                >
+                  {/* Pulse pour Hellfest */}
+                  {festival.id === 'hellfest-2026' && (
+                    <div className="absolute inset-0 -m-2">
+                      <div className="w-6 h-6 rounded-full bg-[#00ff00] opacity-30 animate-ping" />
+                    </div>
+                  )}
+                  {/* Marker */}
+                  <div className={`w-3 h-3 rounded-full border-2 border-white transition-opacity hover:opacity-80 ${
+                    festival.id === 'hellfest-2026' ? 'bg-[#00ff00]' : 'bg-[#4d94ff]'
+                  }`} />
+                </div>
+              );
+            })}
 
             {/* Tooltip hover */}
             {hoveredFestival && (
