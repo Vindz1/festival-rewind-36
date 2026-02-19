@@ -35,9 +35,13 @@ export const Header = () => {
 
   // Lire le cookie de Google au chargement pour afficher le bon drapeau
   useEffect(() => {
-    const match = document.cookie.match(/googtrans=\/fr\/([a-z]{2})/);
-    if (match && match[1] && FLAGS[match[1]]) {
-      setCurrentLang(match[1]);
+    // Regex plus souple pour s'adapter aux différentes façons dont Google écrit son cookie
+    const match = document.cookie.match(/googtrans=\/[^/]+\/([a-z]{2})/i);
+    if (match && match[1]) {
+      const lang = match[1].toLowerCase();
+      if (FLAGS[lang]) {
+        setCurrentLang(lang);
+      }
     }
   }, []);
 
@@ -60,7 +64,7 @@ export const Header = () => {
     checkStatus();
   }, [user]);
 
-  // Fonction de déconnexion "Nucléaire"
+  // Fonction de déconnexion
   const handleSignOut = async () => {
     localStorage.clear();
     try {
@@ -71,30 +75,33 @@ export const Header = () => {
     window.location.href = '/';
   };
 
-  // Fonction pour changer la langue en forçant le cookie de Google Translate
+  // Fonction pour changer la langue avec un nettoyage agressif des cookies
   const handleLanguageChange = (langCode: string) => {
     if (langCode === currentLang) return;
     
     setCurrentLang(langCode);
+    const domain = window.location.hostname;
     
-    // Si on repasse en français, on supprime le cookie de traduction
-    if (langCode === 'fr') {
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-    } else {
-      // Sinon, on force la traduction depuis le français (/fr/) vers la langue choisie
+    // 1. Nettoyage nucléaire : on détruit le cookie sur TOUTES les variantes possibles du domaine
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`;
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`;
+
+    // 2. Si on choisit une autre langue que le français (fr), on recrée les bons cookies
+    if (langCode !== 'fr') {
       document.cookie = `googtrans=/fr/${langCode}; path=/;`;
-      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=${window.location.hostname};`;
+      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=${domain};`;
+      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=.${domain};`;
     }
     
-    // On recharge pour que le script de Google applique la modification
+    // 3. On recharge la page pour que le script de Google prenne la nouvelle langue
     window.location.reload();
   };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
       
-      {/* On garde ton composant GoogleTranslate caché pour qu'il injecte le script si nécessaire */}
+      {/* Composant GoogleTranslate caché pour injecter le script silencieusement */}
       <div className="hidden">
         <GoogleTranslate />
       </div>
@@ -151,7 +158,7 @@ export const Header = () => {
               <SearchBar />
             </div>
 
-            {/* SÉLECTEUR DE LANGUE AVEC IMAGES DE DRAPEAUX (Visible partout) */}
+            {/* SÉLECTEUR DE LANGUE AVEC IMAGES DE DRAPEAUX */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-9 w-9 p-0 rounded-full bg-[#2d2d2d] border border-[#404040] hover:bg-[#404040] transition-colors overflow-hidden flex items-center justify-center">
@@ -180,7 +187,7 @@ export const Header = () => {
             </DropdownMenu>
 
             {user ? (
-              // CONNECTÉ : Un seul menu avec tout dedans
+              // CONNECTÉ : Menu déroulant
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative h-10 w-10 rounded-full border transition-colors ${
@@ -199,37 +206,30 @@ export const Header = () => {
                   </div>
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 1 : MON PROFIL */}
                   <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <User className="mr-2 h-4 w-4" /> Mon Profil
                   </DropdownMenuItem>
 
-                  {/* LIEN 2 : MES SETLISTS */}
                   <DropdownMenuItem onClick={() => { navigate('/my-concerts'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <Music className="mr-2 h-4 w-4" /> Mes Setlists
                   </DropdownMenuItem>
 
-                  {/* LIEN 3 : HISTORIQUE */}
                   <DropdownMenuItem onClick={() => { navigate('/history'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <History className="mr-2 h-4 w-4" /> Historique
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator className="bg-[#333]" />
 
-                  {/* LIEN 4 : Globe festivals (mobile uniquement) */}
                   <DropdownMenuItem onClick={() => { navigate('/festivals'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <GlobeIcon className="mr-2 h-4 w-4" /> Festivals
                   </DropdownMenuItem>
 
-                  {/* LIEN 5 : SHOP (mobile uniquement) */}
                   <DropdownMenuItem onClick={() => { navigate('/shop'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <ShoppingBag className="mr-2 h-4 w-4" /> Shop
                   </DropdownMenuItem>
 
-                  {/* Separator mobile */}
                   <DropdownMenuSeparator className="bg-[#333]" />
 
-                  {/* LIEN 6 : ABONNEMENT */}
                   <DropdownMenuItem onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
                     <Crown className="mr-2 h-4 w-4" />
                     {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
@@ -237,7 +237,6 @@ export const Header = () => {
                   
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 7 : DÉCONNEXION */}
                   <DropdownMenuItem 
                     onSelect={handleSignOut}
                     className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white"
@@ -248,9 +247,8 @@ export const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // NON CONNECTÉ : Un seul bouton simple
+              // NON CONNECTÉ
               <>
-                {/* Desktop */}
                 <Button 
                   onClick={() => navigate('/auth')}
                   className="hidden md:flex bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-full uppercase text-xs tracking-widest h-9 px-6 shadow-lg shadow-blue-500/20"
@@ -258,7 +256,6 @@ export const Header = () => {
                   Connexion
                 </Button>
                 
-                {/* Mobile */}
                 <Button 
                   onClick={() => navigate('/auth')}
                   className="md:hidden bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-black rounded-full text-sm h-9 w-9 p-0 shadow-lg shadow-blue-500/20"
