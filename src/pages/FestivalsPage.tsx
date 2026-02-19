@@ -29,12 +29,13 @@ export default function FestivalsPage() {
     : FESTIVALS_2026.filter(f => f.genre.some(g => selectedGenres.has(g)));
 
   const handleFestivalClick = (festival: Festival) => {
-    if (festival.hasDetailedPage) {
-      navigate(`/festivals/${festival.id}`);
+    // Si Hellfest, aller vers la page existante
+    if (festival.id === 'hellfest-2026') {
+      navigate('/hellfest-2026');
     } else {
-      if (festival.website) {
-        window.open(festival.website, '_blank');
-      }
+      // Pour les autres, créer une page "coming soon" ou rediriger vers une page générique
+      // TODO: À terme, toutes auront leur page dédiée
+      navigate(`/festivals/${festival.id}`);
     }
   };
 
@@ -132,29 +133,42 @@ export default function FestivalsPage() {
                   }
                 </Geographies>
 
-                {/* Markers */}
-                {filteredFestivals.map(festival => (
-                  <Marker
-                    key={festival.id}
-                    coordinates={[festival.coordinates[1], festival.coordinates[0]]}
-                    onMouseEnter={() => setHoveredFestival(festival)}
-                    onMouseLeave={() => setHoveredFestival(null)}
-                    onClick={() => handleFestivalClick(festival)}
-                  >
-                    <g className="cursor-pointer">
-                      <circle
-                        r={6}
-                        fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
-                        stroke="white"
-                        strokeWidth={2}
-                        className="hover:r-8 transition-all"
-                      />
-                      {festival.hasDetailedPage && (
-                        <circle r={10} fill="#00ff00" opacity={0.3} className="animate-ping" />
-                      )}
-                    </g>
-                  </Marker>
-                ))}
+                {/* Markers avec taille fixe au zoom */}
+                {filteredFestivals.map(festival => {
+                  const markerSize = 8; // Taille fixe en pixels
+                  
+                  return (
+                    <Marker
+                      key={festival.id}
+                      coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                      onMouseEnter={() => setHoveredFestival(festival)}
+                      onMouseLeave={() => setHoveredFestival(null)}
+                      onClick={() => handleFestivalClick(festival)}
+                    >
+                      <g className="cursor-pointer" style={{ pointerEvents: 'all' }}>
+                        {/* Cercle principal avec taille fixe */}
+                        <circle
+                          r={markerSize}
+                          fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
+                          stroke="white"
+                          strokeWidth={2}
+                          className="transition-all hover:opacity-80"
+                          style={{ vectorEffect: 'non-scaling-stroke' }}
+                        />
+                        {/* Animation pulse pour festivals avec prog complète */}
+                        {festival.hasDetailedPage && (
+                          <circle 
+                            r={markerSize * 1.5} 
+                            fill="#00ff00" 
+                            opacity={0.3} 
+                            className="animate-ping"
+                            style={{ vectorEffect: 'non-scaling-stroke' }}
+                          />
+                        )}
+                      </g>
+                    </Marker>
+                  );
+                })}
               </ZoomableGroup>
             </ComposableMap>
 
@@ -188,7 +202,7 @@ export default function FestivalsPage() {
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  {hoveredFestival.hasDetailedPage ? 'Cliquez pour voir la programmation' : 'Cliquez pour accéder au site'}
+                  {festival.id === 'hellfest-2026' ? 'Cliquez pour voir la programmation complète' : 'Cliquez pour voir les détails'}
                 </p>
               </div>
             )}
@@ -197,11 +211,11 @@ export default function FestivalsPage() {
             <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-3 h-3 rounded-full bg-[#00ff00]" />
-                <span>Programmation disponible</span>
+                <span>Prog complète disponible</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#4d94ff]" />
-                <span>Site officiel</span>
+                <span>Bientôt disponible</span>
               </div>
             </div>
           </div>
@@ -220,13 +234,15 @@ export default function FestivalsPage() {
                   <h3 className="text-lg sm:text-xl font-bold group-hover:text-[#4d94ff] transition-colors">
                     {festival.name}
                   </h3>
-                  {festival.hasDetailedPage ? (
+                  {festival.id === 'hellfest-2026' ? (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
                     </span>
                   ) : (
-                    <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-[#4d94ff] transition-colors" />
+                    <span className="bg-yellow-500/10 text-yellow-500 text-[10px] px-2 py-0.5 rounded-full font-bold border border-yellow-500/20">
+                      BIENTÔT
+                    </span>
                   )}
                 </div>
 
