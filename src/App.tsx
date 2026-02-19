@@ -58,7 +58,7 @@ const App = () => (
             <Route path="/partage" element={<Share />} />
             <Route path="*" element={<NotFound />} />
             <Route path="/festivals" element={<FestivalsPage />} />
-            <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
+            // <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
