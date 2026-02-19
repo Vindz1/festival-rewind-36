@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Map, List, MapPin, Calendar, Zap } from 'lucide-react';
+import { Map, List, MapPin, Calendar, Zap, Plus, Minus } from 'lucide-react';
 import { FESTIVALS_2026, Festival } from '@/data/festivalsData';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
@@ -13,12 +13,30 @@ export default function FestivalsPage() {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
 
+  // État pour gérer le zoom et le centrage de la carte
+  const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
+
   const handleFestivalClick = (festival: Festival) => {
     if (festival.id === 'hellfest-2026') {
       navigate('/hellfest-2026');
     } else {
       navigate(`/festivals/${festival.id}`);
     }
+  };
+
+  // Fonctions de gestion du zoom
+  const handleZoomIn = () => {
+    if (position.zoom >= 4) return; // Limite de zoom max
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.5 }));
+  };
+
+  const handleZoomOut = () => {
+    if (position.zoom <= 1) return; // Limite de zoom min (retour à la normale)
+    setPosition((pos) => ({ ...pos, zoom: pos.zoom / 1.5 }));
+  };
+
+  const handleMoveEnd = (position: { coordinates: [number, number]; zoom: number }) => {
+    setPosition(position);
   };
 
   return (
@@ -70,58 +88,76 @@ export default function FestivalsPage() {
         {viewMode === 'map' && (
           <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
             
-            {/* Carte SVG en arrière-plan */}
             <div className="absolute inset-0">
               <ComposableMap
                 projection="geoMercator"
                 projectionConfig={{ scale: 147, center: [10, 50] }}
                 style={{ width: "100%", height: "100%" }}
               >
-                <Geographies geography={geoUrl}>
-                  {({ geographies }) =>
-                    geographies.map(geo => (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill="#1a1a1a"
-                        stroke="#333"
-                        strokeWidth={0.5}
-                        style={{
-                          default: { outline: 'none' },
-                          hover: { outline: 'none', fill: '#252525' },
-                          pressed: { outline: 'none' }
-                        }}
-                      />
-                    ))
-                  }
-                </Geographies>
+                {/* On enveloppe la carte dans un ZoomableGroup */}
+                <ZoomableGroup
+                  zoom={position.zoom}
+                  center={position.coordinates}
+                  onMoveEnd={handleMoveEnd}
+                >
+                  <Geographies geography={geoUrl}>
+                    {({ geographies }) =>
+                      geographies.map(geo => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill="#1a1a1a"
+                          stroke="#333"
+                          strokeWidth={0.5 / position.zoom} // Garde une épaisseur de trait constante malgré le zoom
+                          style={{
+                            default: { outline: 'none' },
+                            hover: { outline: 'none', fill: '#252525' },
+                            pressed: { outline: 'none' }
+                          }}
+                        />
+                      ))
+                    }
+                  </Geographies>
 
-                {/* Markers intégrés DANS la carte pour utiliser le système de coordonnées D3.js */}
-                {FESTIVALS_2026.map(festival => (
-                  <Marker
-                    key={festival.id}
-                    // Format requis par react-simple-maps : [longitude, latitude]
-                    coordinates={[festival.coordinates[1], festival.coordinates[0]]}
-                    onMouseEnter={() => setHoveredFestival(festival)}
-                    onMouseLeave={() => setHoveredFestival(null)}
-                    onClick={() => handleFestivalClick(festival)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {/* Pulse pour Hellfest */}
-                    {festival.id === 'hellfest-2026' && (
-                      <circle r={12} fill="#00ff00" opacity={0.3} className="animate-ping" />
-                    )}
-                    {/* Marker (point central) */}
-                    <circle 
-                      r={5} 
-                      fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
-                      stroke="#FFFFFF"
-                      strokeWidth={1.5}
-                      className="transition-opacity hover:opacity-80"
-                    />
-                  </Marker>
-                ))}
+                  {FESTIVALS_2026.map(festival => (
+                    <Marker
+                      key={festival.id}
+                      coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                      onMouseEnter={() => setHoveredFestival(festival)}
+                      onMouseLeave={() => setHoveredFestival(null)}
+                      onClick={() => handleFestivalClick(festival)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {festival.id === 'hellfest-2026' && (
+                        <circle r={12 / position.zoom} fill="#00ff00" opacity={0.3} className="animate-ping" />
+                      )}
+                      <circle 
+                        r={5 / position.zoom} // Les points gardent la même taille visuelle
+                        fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
+                        stroke="#FFFFFF"
+                        strokeWidth={1.5 / position.zoom}
+                        className="transition-opacity hover:opacity-80"
+                      />
+                    </Marker>
+                  ))}
+                </ZoomableGroup>
               </ComposableMap>
+            </div>
+
+            {/* Contrôles de Zoom (Boutons + et -) */}
+            <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
+              <button 
+                onClick={handleZoomIn}
+                className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={handleZoomOut}
+                className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
             </div>
 
             {/* Tooltip hover */}
@@ -169,6 +205,7 @@ export default function FestivalsPage() {
         {/* VIEW: LISTE */}
         {viewMode === 'list' && (
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* ... Le reste de ta vue liste ne change pas ... */}
             {FESTIVALS_2026.map(festival => (
               <div
                 key={festival.id}
