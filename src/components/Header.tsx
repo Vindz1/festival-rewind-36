@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History } from 'lucide-react';
+import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History, Globe as GlobeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
 import { SearchBar } from '@/components/SearchBar';
-import { GoogleTranslate } from '@/components/GoogleTranslate';
-import { Music, Menu, X, Crown, ShoppingBag, User, LogOut, Zap, History, Globe as GlobeIcon } from 'lucide-react';
+// On garde ton composant caché dans le DOM s'il charge le script initial de Google
+import { GoogleTranslate } from '@/components/GoogleTranslate'; 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,32 +16,47 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Dictionnaire des langues et drapeaux (tu peux utiliser des emojis ou des icônes SVG si tu préfères)
+const LANGUAGES = {
+  fr: '🇫🇷',
+  en: '🇬🇧',
+  es: '🇪🇸',
+  de: '🇩🇪',
+  it: '🇮🇹'
+};
+
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
+  
+  // État de la langue (Français par défaut)
+  const [currentLang, setCurrentLang] = useState('fr');
 
-  // Vérification stricte du statut Premium
   useEffect(() => {
-    const checkStatus = async () => {
-      if (user) {
-        try {
-          const sub = await getUserSubscription(user.id);
-          if (sub && sub.subscription_type === 'premium') {
-            setIsPremium(true);
-          } else {
-            setIsPremium(false);
-          }
-        } catch (e) {
-          console.error(e);
-        }
+    // Optionnel : Lire le cookie de Google au chargement pour afficher le bon drapeau si l'utilisateur revient
+    const match = document.cookie.match(/googtrans=\/fr\/([a-z]{2})/);
+    if (match && match[1] && LANGUAGES[match[1] as keyof typeof LANGUAGES]) {
+      setCurrentLang(match[1]);
+    }
+  }, []);
+
+  const checkStatus = async () => {
+    if (user) {
+      try {
+        const sub = await getUserSubscription(user.id);
+        setIsPremium(sub && sub.subscription_type === 'premium');
+      } catch (e) {
+        console.error(e);
       }
-    };
+    }
+  };
+
+  useEffect(() => {
     checkStatus();
   }, [user]);
 
-  // Fonction de déconnexion "Nucléaire"
   const handleSignOut = async () => {
     localStorage.clear();
     try {
@@ -51,13 +66,38 @@ export const Header = () => {
     }
     window.location.href = '/';
   };
+
+  // Fonction pour changer la langue en forçant le cookie de Google Translate
+  const handleLanguageChange = (langCode: string) => {
+    if (langCode === currentLang) return;
+    
+    setCurrentLang(langCode);
+    
+    // Si on repasse en français, on supprime le cookie de traduction
+    if (langCode === 'fr') {
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+    } else {
+      // Sinon, on force la traduction depuis le français (/fr/) vers la langue choisie
+      document.cookie = `googtrans=/fr/${langCode}; path=/;`;
+      document.cookie = `googtrans=/fr/${langCode}; path=/; domain=${window.location.hostname};`;
+    }
+    
+    // On recharge pour que le script de Google applique la modification instantanément
+    window.location.reload();
+  };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#1a1a1a]/90 backdrop-blur-xl border-b border-[#333]">
+      {/* On garde ton composant GoogleTranslate caché quelque part pour qu'il injecte le script si nécessaire */}
+      <div className="hidden">
+        <GoogleTranslate />
+      </div>
+
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
-          {/* LOGO : OR si Premium, BLEU si Gratuit */}
+          {/* LOGO */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className={`p-1.5 rounded-lg transition-all ${
               isPremium 
@@ -87,11 +127,7 @@ export const Header = () => {
               </div>
             </Link>
 
-            {/* SearchBar */}
             <SearchBar />
-
-            {/* Google Translate - Desktop uniquement */}
-            <GoogleTranslate />
 
             {!isPremium && user && (
               <Link to="/subscription" className="text-sm font-bold text-yellow-500 hover:text-yellow-400 flex items-center gap-1.5">
@@ -101,16 +137,36 @@ export const Header = () => {
             )}
           </nav>
 
-          {/* ACTIONS UTILISATEUR */}
-          <div className="flex items-center gap-4">
+          {/* ACTIONS UTILISATEUR & LANGUE */}
+          <div className="flex items-center gap-3">
             
             {/* SearchBar mobile */}
             <div className="md:hidden">
               <SearchBar />
             </div>
 
+            {/* SÉLECTEUR DE LANGUE AVEC DRAPEAUX (Visible partout) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 w-9 p-0 rounded-full bg-[#2d2d2d] border border-[#404040] text-xl hover:bg-[#404040] transition-colors">
+                  {LANGUAGES[currentLang as keyof typeof LANGUAGES] || '🇫🇷'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="min-w-[4rem] w-16 bg-[#1a1a1a] border-[#404040] p-1 shadow-2xl">
+                {Object.entries(LANGUAGES).map(([code, flag]) => (
+                  <DropdownMenuItem 
+                    key={code} 
+                    onClick={() => handleLanguageChange(code)}
+                    className={`cursor-pointer justify-center text-2xl py-2 my-0.5 rounded-md transition-colors ${currentLang === code ? 'bg-[#333]' : 'hover:bg-[#4d94ff]/20'}`}
+                  >
+                    {flag}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {user ? (
-              // CONNECTÉ : Un seul menu avec tout dedans
+              // MENU UTILISATEUR
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={`relative h-10 w-10 rounded-full border transition-colors ${
@@ -129,43 +185,30 @@ export const Header = () => {
                   </div>
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 1 : MON PROFIL */}
                   <DropdownMenuItem onClick={() => { navigate('/profile'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <User className="mr-2 h-4 w-4" /> Mon Profil
                   </DropdownMenuItem>
 
-                  {/* LIEN 2 : MES SETLISTS */}
                   <DropdownMenuItem onClick={() => { navigate('/my-concerts'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <Music className="mr-2 h-4 w-4" /> Mes Setlists
                   </DropdownMenuItem>
 
-                  {/* LIEN 3 : HISTORIQUE */}
                   <DropdownMenuItem onClick={() => { navigate('/history'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <History className="mr-2 h-4 w-4" /> Historique
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator className="bg-[#333]" />
 
-                  {/* LIEN 4 : Globe festivals (mobile uniquement) */}
                   <DropdownMenuItem onClick={() => { navigate('/festivals'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <GlobeIcon className="mr-2 h-4 w-4" /> Festivals
                   </DropdownMenuItem>
 
-                  {/* LIEN 5 : SHOP (mobile uniquement) */}
                   <DropdownMenuItem onClick={() => { navigate('/shop'); setIsMenuOpen(false); }} className="md:hidden cursor-pointer focus:bg-[#4d94ff] focus:text-white">
                     <ShoppingBag className="mr-2 h-4 w-4" /> Shop
                   </DropdownMenuItem>
 
-                  {/* LANGUE (mobile uniquement) */}
-                  <DropdownMenuSeparator className="md:hidden bg-[#333]" />
-                  <div className="md:hidden px-2 py-2">
-                    <GoogleTranslate />
-                  </div>
-
-                  {/* Separator mobile */}
                   <DropdownMenuSeparator className="bg-[#333]" />
 
-                  {/* LIEN 6 : ABONNEMENT */}
                   <DropdownMenuItem onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} className="cursor-pointer focus:bg-yellow-500 focus:text-black font-bold">
                     <Crown className="mr-2 h-4 w-4" />
                     {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
@@ -173,7 +216,6 @@ export const Header = () => {
                   
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
-                  {/* LIEN 7 : DÉCONNEXION */}
                   <DropdownMenuItem 
                     onSelect={handleSignOut}
                     className="cursor-pointer text-red-500 focus:bg-red-500 focus:text-white"
@@ -184,9 +226,8 @@ export const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // NON CONNECTÉ : Un seul bouton simple
+              // NON CONNECTÉ
               <>
-                {/* Desktop */}
                 <Button 
                   onClick={() => navigate('/auth')}
                   className="hidden md:flex bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-full uppercase text-xs tracking-widest h-9 px-6 shadow-lg shadow-blue-500/20"
@@ -194,7 +235,6 @@ export const Header = () => {
                   Connexion
                 </Button>
                 
-                {/* Mobile */}
                 <Button 
                   onClick={() => navigate('/auth')}
                   className="md:hidden bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-black rounded-full text-sm h-9 w-9 p-0 shadow-lg shadow-blue-500/20"
