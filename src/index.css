@@ -261,6 +261,24 @@ body {
   top: 0 !important;
 }
 
+/* --- MASQUER LA BARRE GOOGLE TRANSLATE --- */
+
+/* Cache l'iframe de la barre d'outils Google */
+.skiptranslate > iframe.skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Empêche Google d'ajouter une marge en haut de la page */
+body {
+  top: 0px !important;
+}
+
+/* Optionnel : Cache le petit tooltip (bulle) d'info-bulle au survol du texte traduit */
+#goog-gt-tt {
+  display: none !important;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .goog-te-combo {
