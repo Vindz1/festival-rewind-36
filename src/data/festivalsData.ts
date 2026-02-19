@@ -10,8 +10,8 @@ export interface Festival {
   year: number;
   genre: string[];
   website?: string;
-  lineup?: string[]; // Top headliners
-  hasDetailedPage: boolean; // true si on a créé une page dédiée
+  lineup?: string[]; // Top headliners SI CONFIRMÉS OFFICIELLEMENT
+  hasDetailedPage: boolean;
 }
 
 export const FESTIVALS_2026: Festival[] = [
@@ -26,7 +26,7 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock', 'Punk'],
     website: 'https://www.hellfest.fr',
-    lineup: ['Iron Maiden', 'Bring Me The Horizon', 'Sabaton', 'Megadeth'],
+    lineup: ['Iron Maiden', 'Bring Me The Horizon', 'Sabaton', 'Megadeth', 'Limp Bizkit', 'The Offspring'],
     hasDetailedPage: true
   },
   {
@@ -39,7 +39,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://downloadfestival.co.uk',
-    lineup: ['Metallica', 'Slipknot', 'Avenged Sevenfold'],
     hasDetailedPage: false
   },
   {
@@ -52,7 +51,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Heavy Metal'],
     website: 'https://www.wacken.com',
-    lineup: ['Judas Priest', 'Saxon', 'Helloween'],
     hasDetailedPage: false
   },
   {
@@ -65,7 +63,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock'],
     website: 'https://www.graspop.be',
-    lineup: ['Iron Maiden', 'Slayer', 'Ghost'],
     hasDetailedPage: false
   },
   {
@@ -78,7 +75,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://www.rock-am-ring.com',
-    lineup: ['Green Day', 'Foo Fighters', 'Muse'],
     hasDetailedPage: false
   },
   {
@@ -91,7 +87,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock'],
     website: 'https://www.copenhell.dk',
-    lineup: ['Rammstein', 'Volbeat', 'Mercyful Fate'],
     hasDetailedPage: false
   },
   {
@@ -104,7 +99,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Punk', 'Hardcore'],
     website: 'https://www.resurrectionfest.es',
-    lineup: ['System of a Down', 'Deftones', 'Gojira'],
     hasDetailedPage: false
   },
   {
@@ -117,7 +111,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal'],
     website: 'https://www.tuska-festival.fi',
-    lineup: ['Nightwish', 'Children of Bodom', 'Amorphis'],
     hasDetailedPage: false
   },
 
@@ -132,7 +125,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Pop', 'Electronic', 'Hip-Hop'],
     website: 'https://www.coachella.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -145,7 +137,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Hip-Hop', 'Electronic'],
     website: 'https://www.lollapalooza.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -158,7 +149,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic', 'Hip-Hop'],
     website: 'https://www.bonnaroo.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -171,7 +161,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://aftershockfestival.com',
-    lineup: ['Metallica', 'Tool', 'Pantera'],
     hasDetailedPage: false
   },
   {
@@ -184,7 +173,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://welcometorockville.com',
-    lineup: ['Foo Fighters', 'Slipknot', 'Evanescence'],
     hasDetailedPage: false
   },
 
@@ -199,7 +187,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Pop', 'Metal'],
     website: 'https://www.rockinrio.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -212,7 +199,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic'],
     website: 'https://www.lollapaloozabr.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -225,7 +211,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic'],
     website: 'https://www.lollapaloozaar.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -238,7 +223,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic'],
     website: 'https://www.lollapaloozacl.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
 
@@ -253,7 +237,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Punk'],
     website: 'https://downloadfestival.com.au',
-    lineup: ['Korn', 'Deftones', 'Parkway Drive'],
     hasDetailedPage: false
   },
   {
@@ -266,7 +249,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Punk'],
     website: 'https://downloadfestival.com.au',
-    lineup: ['Korn', 'Deftones', 'Parkway Drive'],
     hasDetailedPage: false
   },
   {
@@ -279,7 +261,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic'],
     website: 'https://www.fujirockfestival.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -292,7 +273,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Pop', 'Electronic'],
     website: 'https://www.summersonic.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
 
@@ -307,7 +287,6 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Pop', 'Electronic', 'World'],
     website: 'https://www.glastonburyfestivals.co.uk',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
   {
@@ -320,29 +299,24 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock'],
     website: 'https://www.bloodstock.uk.com',
-    lineup: ['TBA'],
     hasDetailedPage: false
   },
 ];
 
-// Fonction helper pour filtrer par genre
 export const getFestivalsByGenre = (genre: string): Festival[] => {
   return FESTIVALS_2026.filter(f => f.genre.includes(genre));
 };
 
-// Fonction helper pour filtrer par pays
 export const getFestivalsByCountry = (country: string): Festival[] => {
   return FESTIVALS_2026.filter(f => f.country === country);
 };
 
-// Fonction helper pour obtenir tous les genres uniques
 export const getAllGenres = (): string[] => {
   const genres = new Set<string>();
   FESTIVALS_2026.forEach(f => f.genre.forEach(g => genres.add(g)));
   return Array.from(genres).sort();
 };
 
-// Fonction helper pour obtenir tous les pays uniques
 export const getAllCountries = (): string[] => {
   const countries = new Set(FESTIVALS_2026.map(f => f.country));
   return Array.from(countries).sort();
