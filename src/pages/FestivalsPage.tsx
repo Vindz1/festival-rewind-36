@@ -12,6 +12,7 @@ export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country'>('name');
 
   // État pour gérer le zoom et le centrage de la carte
   const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
@@ -21,6 +22,46 @@ export default function FestivalsPage() {
       navigate('/hellfest-2026');
     } else {
       navigate(`/festivals/${festival.id}`);
+    }
+  };
+
+  // Fonction de tri
+  const getSortedFestivals = (): Festival[] => {
+    const festivals = [...FESTIVALS_2026];
+    
+    switch (sortBy) {
+      case 'name':
+        return festivals.sort((a, b) => a.name.localeCompare(b.name));
+      
+      case 'date':
+        return festivals.sort((a, b) => {
+          const months: Record<string, number> = {
+            'janvier': 0, 'février': 1, 'mars': 2, 'avril': 3, 'mai': 4, 'juin': 5,
+            'juillet': 6, 'août': 7, 'septembre': 8, 'octobre': 9, 'novembre': 10, 'décembre': 11
+          };
+          
+          const parseDate = (dateStr: string) => {
+            const parts = dateStr.toLowerCase().split(' ');
+            const dayStr = parts[0].split('-')[0];
+            const month = parts[1];
+            const year = parts[2];
+            const monthNum = months[month] ?? 0;
+            const day = parseInt(dayStr) || 1;
+            return new Date(parseInt(year), monthNum, day).getTime();
+          };
+          
+          return parseDate(a.dates) - parseDate(b.dates);
+        });
+      
+      case 'country':
+        return festivals.sort((a, b) => {
+          const countryCompare = a.country.localeCompare(b.country);
+          if (countryCompare !== 0) return countryCompare;
+          return a.name.localeCompare(b.name);
+        });
+      
+      default:
+        return festivals;
     }
   };
 
@@ -204,9 +245,44 @@ export default function FestivalsPage() {
 
         {/* VIEW: LISTE */}
         {viewMode === 'list' && (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* ... Le reste de ta vue liste ne change pas ... */}
-            {FESTIVALS_2026.map(festival => (
+          <div>
+            {/* Boutons de tri */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => setSortBy('name')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  sortBy === 'name'
+                    ? 'bg-[#4d94ff] text-white'
+                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
+                }`}
+              >
+                A-Z
+              </button>
+              <button
+                onClick={() => setSortBy('date')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  sortBy === 'date'
+                    ? 'bg-[#4d94ff] text-white'
+                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
+                }`}
+              >
+                Date
+              </button>
+              <button
+                onClick={() => setSortBy('country')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  sortBy === 'country'
+                    ? 'bg-[#4d94ff] text-white'
+                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
+                }`}
+              >
+                Pays
+              </button>
+            </div>
+
+            {/* Grid festivals */}
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {getSortedFestivals().map(festival => (
               <div
                 key={festival.id}
                 onClick={() => handleFestivalClick(festival)}
@@ -257,6 +333,7 @@ export default function FestivalsPage() {
                 )}
               </div>
             ))}
+            </div>
           </div>
         )}
       </main>
