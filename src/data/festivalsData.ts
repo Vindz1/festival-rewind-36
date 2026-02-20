@@ -239,7 +239,8 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Alternative', 'Electronic'],
     website: 'https://www.lollapaloozacl.com',
-    hasDetailedPage: false
+    lineup: ['Sabrina Carpenter', 'Tyler, The Creator', 'Chappell Roan', 'Deftones', 'Skrillex'],
+    hasDetailedPage: true
   },
 
   // ===== ASIE / OCÉANIE =====
