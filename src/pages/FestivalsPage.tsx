@@ -12,7 +12,7 @@ export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status'>('name');
 
   // État pour gérer le zoom et le centrage de la carte
   const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
@@ -35,19 +35,30 @@ export default function FestivalsPage() {
       
       case 'date':
         return festivals.sort((a, b) => {
+          // Mapping mois français → numéro
           const months: Record<string, number> = {
-            'janvier': 0, 'février': 1, 'mars': 2, 'avril': 3, 'mai': 4, 'juin': 5,
-            'juillet': 6, 'août': 7, 'septembre': 8, 'octobre': 9, 'novembre': 10, 'décembre': 11
+            'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
+            'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
           };
           
-          const parseDate = (dateStr: string) => {
-            const parts = dateStr.toLowerCase().split(' ');
-            const dayStr = parts[0].split('-')[0];
-            const month = parts[1];
-            const year = parts[2];
-            const monthNum = months[month] ?? 0;
-            const day = parseInt(dayStr) || 1;
-            return new Date(parseInt(year), monthNum, day).getTime();
+          const parseDate = (dateStr: string): number => {
+            // Format: "18-21 juin 2026" ou "10-19 avril 2026"
+            const parts = dateStr.toLowerCase().trim().split(' ');
+            
+            // Extraire le premier jour
+            const dayPart = parts[0].split('-')[0]; // "18" ou "10"
+            const day = parseInt(dayPart);
+            
+            // Extraire le mois
+            const monthStr = parts[1]; // "juin" ou "avril"
+            const month = months[monthStr] || 1;
+            
+            // Extraire l'année
+            const year = parseInt(parts[2]);
+            
+            // Créer timestamp: année * 10000 + mois * 100 + jour
+            // Ex: 2026 * 10000 + 3 * 100 + 13 = 20260313 (13 mars 2026)
+            return year * 10000 + month * 100 + day;
           };
           
           return parseDate(a.dates) - parseDate(b.dates);
@@ -58,6 +69,26 @@ export default function FestivalsPage() {
           const countryCompare = a.country.localeCompare(b.country);
           if (countryCompare !== 0) return countryCompare;
           return a.name.localeCompare(b.name);
+        });
+      
+      case 'status':
+        return festivals.sort((a, b) => {
+          // D'abord les "Live" (hasDetailedPage: true)
+          if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
+          if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
+          // Ensuite tri par date
+          const months: Record<string, number> = {
+            'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
+            'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
+          };
+          const parseDate = (dateStr: string): number => {
+            const parts = dateStr.toLowerCase().trim().split(' ');
+            const day = parseInt(parts[0].split('-')[0]);
+            const month = months[parts[1]] || 1;
+            const year = parseInt(parts[2]);
+            return year * 10000 + month * 100 + day;
+          };
+          return parseDate(a.dates) - parseDate(b.dates);
         });
       
       default:
@@ -277,6 +308,16 @@ export default function FestivalsPage() {
                 }`}
               >
                 Pays
+              </button>
+              <button
+                onClick={() => setSortBy('status')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  sortBy === 'status'
+                    ? 'bg-[#4d94ff] text-white'
+                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
+                }`}
+              >
+                Live / Bientôt
               </button>
             </div>
 
