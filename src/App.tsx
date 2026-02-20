@@ -26,6 +26,7 @@ import History from './pages/History';
 import NotFound from "./pages/NotFound";
 import FestivalsPage from '@/pages/FestivalsPage';
 import FestivalDetailPage from '@/pages/FestivalDetailPage';
+import DownloadPage from '@/pages/DownloadPage';
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
             <Route path="/festivals" element={<FestivalsPage />} />
             <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
+            <Route path="/download-uk-2026" element={<DownloadPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
