@@ -29,6 +29,7 @@ import FestivalDetailPage from '@/pages/FestivalDetailPage';
 import DownloadPage from '@/pages/DownloadPage';
 import WackenPage from '@/pages/WackenPage';
 import MotocultorPage from '@/pages/MotocultorPage';
+import RockAmRingPage from '@/pages/RockAmRingPage';
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/download-uk-2026" element={<DownloadPage />} />
             <Route path="/wacken-2026" element={<WackenPage />} />
             <Route path="/motocultor-2026" element={<MotocultorPage />} />
+            <Route path="/rock-am-ring-2026" element={<RockAmRingPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
