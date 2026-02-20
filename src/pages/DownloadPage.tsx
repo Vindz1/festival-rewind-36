@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, Check, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 // Assure-toi que le chemin correspond à ton dossier
-import { DOWNLOAD_LINEUP, ArtistData } from '@/data/festivals/downloadData';
+import { DOWNLOAD_LINEUP, ArtistData } from '@/data/downloadData';
 import { Footer } from '@/components/Footer';
 
 const DownloadPage = () => {
