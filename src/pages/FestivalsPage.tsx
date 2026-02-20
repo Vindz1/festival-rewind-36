@@ -18,9 +18,12 @@ export default function FestivalsPage() {
   const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
 
   const handleFestivalClick = (festival: Festival) => {
-    if (festival.id === 'hellfest-2026') {
-      navigate('/hellfest-2026');
+    // Si le festival a une page dédiée, construire l'URL à partir de l'ID
+    if (festival.hasDetailedPage) {
+      // Transformer l'ID en path (ex: "hellfest-2026" → "/hellfest-2026")
+      navigate(`/${festival.id}`);
     } else {
+      // Sinon, page générique "Coming Soon"
       navigate(`/festivals/${festival.id}`);
     }
   };
