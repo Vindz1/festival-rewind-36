@@ -56,6 +56,19 @@ export const FESTIVALS_2026: Festival[] = [
     hasDetailedPage: true
   },
   {
+    id: 'motocultor-2026',
+    name: 'Motocultor Festival',
+    location: 'Carhaix, France',
+    country: 'France',
+    coordinates: [48.2766, -3.5709], // Coordonnées exactes de Carhaix
+    dates: '13-16 août 2026',
+    year: 2026,
+    genre: ['Metal', 'Hardcore', 'Rock'],
+    website: 'https://www.motocultor-festival.com',
+    lineup: ['Judas Priest', 'Within Temptation', 'Godsmack', 'Airbourne', 'Emperor'],
+    hasDetailedPage: true
+  },
+  {
     id: 'graspop-2026',
     name: 'Graspop Metal Meeting',
     location: 'Dessel, Belgique',
