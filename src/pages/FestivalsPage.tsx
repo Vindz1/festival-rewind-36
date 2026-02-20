@@ -29,65 +29,77 @@ export default function FestivalsPage() {
   const getSortedFestivals = (): Festival[] => {
     const festivals = [...FESTIVALS_2026];
     
+    // Mapping mois (avec variations)
+    const getMonthNumber = (monthStr: string): number => {
+      const normalized = monthStr.toLowerCase().trim();
+      const months: Record<string, number> = {
+        'janvier': 1, 'jan': 1,
+        'février': 2, 'fév': 2, 'fev': 2, 'feb': 2,
+        'mars': 3, 'mar': 3,
+        'avril': 4, 'avr': 4, 'apr': 4,
+        'mai': 5, 'may': 5,
+        'juin': 6, 'jun': 6,
+        'juillet': 7, 'juil': 7, 'jul': 7,
+        'août': 8, 'aout': 8, 'aug': 8,
+        'septembre': 9, 'sept': 9, 'sep': 9,
+        'octobre': 10, 'oct': 10,
+        'novembre': 11, 'nov': 11,
+        'décembre': 12, 'déc': 12, 'dec': 12
+      };
+      return months[normalized] || 1;
+    };
+    
+    const parseDate = (dateStr: string): number => {
+      // Format: "18-21 juin 2026" ou "30 juil - 1er août 2026"
+      const cleaned = dateStr.toLowerCase().trim();
+      
+      // Extraire le premier nombre (jour de début)
+      const dayMatch = cleaned.match(/(\d+)/);
+      const day = dayMatch ? parseInt(dayMatch[1]) : 1;
+      
+      // Extraire le mois (premier mot qui ressemble à un mois)
+      const words = cleaned.split(/[\s-]+/);
+      let month = 1;
+      for (const word of words) {
+        const m = getMonthNumber(word);
+        if (m > 1 || word === 'janvier' || word === 'jan') {
+          month = m;
+          break;
+        }
+      }
+      
+      // Extraire l'année
+      const yearMatch = cleaned.match(/(\d{4})/);
+      const year = yearMatch ? parseInt(yearMatch[1]) : 2026;
+      
+      // Retourner timestamp: YYYYMMDD
+      return year * 10000 + month * 100 + day;
+    };
+    
     switch (sortBy) {
       case 'name':
-        return festivals.sort((a, b) => a.name.localeCompare(b.name));
+        // Tri alphabétique simple
+        return festivals.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       
       case 'date':
-        return festivals.sort((a, b) => {
-          // Mapping mois français → numéro
-          const months: Record<string, number> = {
-            'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
-            'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
-          };
-          
-          const parseDate = (dateStr: string): number => {
-            // Format: "18-21 juin 2026" ou "10-19 avril 2026"
-            const parts = dateStr.toLowerCase().trim().split(' ');
-            
-            // Extraire le premier jour
-            const dayPart = parts[0].split('-')[0]; // "18" ou "10"
-            const day = parseInt(dayPart);
-            
-            // Extraire le mois
-            const monthStr = parts[1]; // "juin" ou "avril"
-            const month = months[monthStr] || 1;
-            
-            // Extraire l'année
-            const year = parseInt(parts[2]);
-            
-            // Créer timestamp: année * 10000 + mois * 100 + jour
-            // Ex: 2026 * 10000 + 3 * 100 + 13 = 20260313 (13 mars 2026)
-            return year * 10000 + month * 100 + day;
-          };
-          
-          return parseDate(a.dates) - parseDate(b.dates);
-        });
+        // Tri chronologique
+        return festivals.sort((a, b) => parseDate(a.dates) - parseDate(b.dates));
       
       case 'country':
+        // Tri par pays puis par nom
         return festivals.sort((a, b) => {
-          const countryCompare = a.country.localeCompare(b.country);
+          const countryCompare = a.country.localeCompare(b.country, 'fr');
           if (countryCompare !== 0) return countryCompare;
-          return a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name, 'fr');
         });
       
       case 'status':
+        // D'abord Live (hasDetailedPage: true), puis par date
         return festivals.sort((a, b) => {
-          // D'abord les "Live" (hasDetailedPage: true)
+          // Priorité aux pages complètes
           if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
           if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
-          // Ensuite tri par date
-          const months: Record<string, number> = {
-            'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
-            'juillet': 7, 'août': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12
-          };
-          const parseDate = (dateStr: string): number => {
-            const parts = dateStr.toLowerCase().trim().split(' ');
-            const day = parseInt(parts[0].split('-')[0]);
-            const month = months[parts[1]] || 1;
-            const year = parseInt(parts[2]);
-            return year * 10000 + month * 100 + day;
-          };
+          // Si même statut, trier par date
           return parseDate(a.dates) - parseDate(b.dates);
         });
       
