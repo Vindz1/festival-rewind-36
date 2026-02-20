@@ -1,342 +1,371 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Check, Crown, User, ShieldCheck, Zap, Music2, Sparkles, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { SearchBar } from '@/components/SearchBar';
+import { Clock, Calendar, Music2, Smartphone, Share2, Zap, Globe } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Index() {
-  const [query, setQuery] = useState('');
-  const [username, setUsername] = useState('');
   const navigate = useNavigate();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query.trim())}`);
-  };
-
-  const handleProfileConnect = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username.trim()) {
-      localStorage.setItem('setlistfm_username', username.trim());
-      navigate('/my-concerts');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-[#4d94ff] selection:text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
 
-      {/* ===== HERO - Compact ===== */}
-      <section className="relative pt-24 sm:pt-32 pb-12 sm:pb-16 px-4">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(77,148,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(77,148,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_85%)]"/>
-        {/* Rond bleu subtil */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] bg-[#4d94ff] rounded-full blur-[100px] opacity-[0.04]"/>
-        
-        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-6 sm:space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute h-full w-full rounded-full bg-[#00ff00] opacity-75"/>
-              <span className="relative rounded-full h-2 w-2 bg-[#00ff00]"/>
-            </span>
-            <span>Compatible Spotify, Deezer, Apple Music, etc...</span>
+      {/* HERO avec image de fond */}
+      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
+        {/* Image de fond avec overlay */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ 
+            backgroundImage: 'url(/og-image.jpg)',
+            backgroundPosition: 'center 40%'
+          }}
+        >
+          {/* Overlay gradient pour lisibilité */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-[#0a0a0a]" />
+        </div>
+
+        {/* Contenu hero */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center pt-20">
+          
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/30 backdrop-blur-sm mb-6">
+            <Zap className="w-4 h-4 text-[#4d94ff]" />
+            <span className="text-sm font-bold text-[#4d94ff]">100% Gratuit • 0 Pub • Export Instantané</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-tight">
-            <span className="block text-white">VOS CONCERTS</span>
-            <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-[#4d94ff] via-[#8b5cf6] to-[#ec4899] animate-gradient">EN PLAYLIST</span>
+          {/* Titre principal */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black italic uppercase mb-6 leading-tight tracking-tighter">
+            VOS CONCERTS<br />
+            <span className="text-[#4d94ff]">EN PLAYLISTS</span>
           </h1>
-          
-          <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto">
-            Transformez vos concerts vécus en playlists. <br className="hidden sm:block"/>
-            Setlists exactes. Import en 2 clics.
+
+          {/* Sous-titre */}
+          <p className="text-lg sm:text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto font-medium">
+            Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
           </p>
 
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500 pt-2">
-            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-400"/>Sans installation</div>
-            <div className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-400"/>Export instantané</div>
+          {/* Search bar */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <SearchBar />
           </div>
-        </div>
-      </section>
 
-      {/* ===== RECHERCHE MANUELLE ===== */}
-      <section className="py-8 sm:py-12 px-4 bg-gradient-to-b from-black to-[#0a0a0a]">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-6 sm:mb-8">
-            <h2 className="text-2xl sm:text-4xl font-black mb-2">Rechercher <span className="text-[#4d94ff]">un concert</span></h2>
-          </div>
-          
-          <form onSubmit={handleSearch} className="relative mb-4">
-            <Search className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 sm:w-5 sm:h-5 z-10"/>
-            <Input 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              placeholder="Metallica, Gojira, Deftones..." 
-              className="h-12 sm:h-14 pl-11 sm:pl-14 pr-20 sm:pr-28 bg-white/5 border-2 border-white/10 text-sm sm:text-base rounded-xl focus:border-[#4d94ff] transition-colors"
-            />
-            <Button 
-              type="submit" 
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 sm:px-6 h-9 sm:h-10 rounded-lg bg-[#4d94ff] hover:bg-[#6ba6ff] font-bold text-sm"
+          {/* 2 CTA principaux */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <Button
+              onClick={() => navigate('/my-concerts')}
+              size="lg"
+              className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30"
             >
-              GO
+              <Clock className="w-5 h-5 mr-2" />
+              Mes Concerts Passés
             </Button>
-          </form>
-
-          <div className="flex flex-wrap justify-center gap-2">
-            <span className="text-xs text-gray-500">Populaires :</span>
-            {['Nine Inch Nails', 'Opeth', 'Bad Bunny'].map(n => (
-              <button 
-                key={n} 
-                onClick={() => navigate(`/search?q=${n}`)} 
-                className="px-3 py-1 rounded-full border border-white/10 hover:border-[#4d94ff] hover:text-[#4d94ff] text-white text-xs font-semibold transition-colors"
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== CONNEXION SETLIST.FM ===== */}
-      <section className="py-8 sm:py-12 px-4 bg-[#0a0a0a]">
-        <div className="max-w-3xl mx-auto">
-          <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] to-[#1e293b]">
-            <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-[#4d94ff] rounded-full blur-[100px] opacity-20"/>
             
-            <div className="relative z-10 p-5 sm:p-8 grid md:grid-cols-5 gap-5 sm:gap-6 items-center">
-              
-              {/* Gauche : Explication */}
-              <div className="md:col-span-2 space-y-2 sm:space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/20 text-[#4d94ff] text-xs font-bold">
-                  <Sparkles className="w-3 h-3"/>Import Ultra-Rapide
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-black leading-tight">
-                  Déjà sur<br/>
-                  <span className="text-[#88c446]">Setlist.fm</span> ?
-                </h2>
-                <p className="text-sm sm:text-base text-gray-300">
-                  Importez automatiquement vos concerts passés et à venir.
-                </p>
-              </div>
+            <Button
+              onClick={() => navigate('/festivals')}
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full"
+            >
+              <Globe className="w-5 h-5 mr-2" />
+              Festivals 2026
+            </Button>
+          </div>
 
-              {/* Droite : Formulaire */}
-              <div className="md:col-span-3 bg-black/40 backdrop-blur border border-white/10 rounded-lg p-4 sm:p-5">
-                <form onSubmit={handleProfileConnect} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold mb-1.5 text-gray-300">Nom d'utilisateur Setlist.fm</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4"/>
-                      <Input 
-                        value={username} 
-                        onChange={(e) => setUsername(e.target.value)} 
-                        placeholder="votre-pseudo" 
-                        className="h-10 sm:h-11 pl-10 bg-white/5 border-white/10 rounded-lg text-sm"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-10 sm:h-11 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-sm rounded-lg"
-                  >
-                    <ArrowRight className="mr-2 w-4 h-4"/>
-                    Importer mes concerts
-                  </Button>
-                </form>
-                <p className="text-center text-xs text-gray-500 mt-3">
-                  Pas de compte ? <a href="https://www.setlist.fm/signup" target="_blank" rel="noopener noreferrer" className="text-[#88c446] hover:underline font-semibold">S'inscrire</a>
-                </p>
-              </div>
+          {/* Stats */}
+          <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-gray-400">Millions de setlists disponibles</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
+              <span className="text-gray-400">Principaux festivals 2026</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span className="text-gray-400">Multi-plateformes</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===== COMMENT ÇA MARCHE - Condensé ===== */}
-      <section className="py-8 sm:py-12 px-4 bg-gradient-to-b from-[#0a0a0a] to-black border-y border-white/5">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-6 sm:mb-10">
-            <h2 className="text-2xl sm:text-4xl font-black mb-2">Simple comme <span className="text-[#4d94ff]">1-2-3</span></h2>
-            <p className="text-sm sm:text-base text-gray-400">De la scène à vos oreilles</p>
-          </div>
+      {/* SECTION: Comment ça marche */}
+      <section className="py-20 bg-[#0a0a0a] relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5">
-            {[
-              { 
-                num: 1, 
-                color: 'bg-[#4d94ff]', 
-                title: 'Recherchez ou connectez', 
-                desc: 'Via Setlist.fm ou recherche manuelle',
-                icon: Search
-              },
-              { 
-                num: 2, 
-                color: 'bg-gradient-to-r from-[#8b5cf6] to-[#ec4899]', 
-                title: 'Sélectionnez', 
-                desc: 'Un ou plusieurs concerts',
-                icon: Music2
-              },
-              { 
-                num: 3, 
-                color: 'bg-gradient-to-r from-green-500 to-emerald-500', 
-                title: 'Exportez', 
-                desc: 'Vers Spotify, Deezer, Apple Music, etc...',
-                icon: Check
-              }
-            ].map(({ num, color, title, desc, icon: Icon }) => (
-              <div key={num} className="relative bg-gradient-to-br from-[#111] to-black border border-white/10 rounded-xl p-3 sm:p-4 md:p-5 hover:border-white/20 transition-colors">
-                <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 ${color} rounded-lg flex items-center justify-center text-sm sm:text-base md:text-xl font-black mb-2 sm:mb-3`}>
-                  {num}
-                </div>
-                <h3 className="text-xs sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 leading-tight">{title}</h3>
-                <p className="text-[10px] sm:text-xs md:text-sm text-gray-400 leading-relaxed hidden sm:block">{desc}</p>
-                <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-600 mt-1 sm:mt-2 hidden sm:block"/>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== PRICING - Plus compact ===== */}
-      <section className="py-10 sm:py-16 px-4 bg-black">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-2">
-              Gratuit pour <span className="text-[#4d94ff]">toujours</span>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
+              SIMPLE & <span className="text-[#4d94ff]">RAPIDE</span>
             </h2>
-            <p className="text-sm sm:text-base text-gray-400">Premium pour exports illimités et enlever les pubs</p>
+            <p className="text-gray-400 text-lg">
+              3 étapes pour revivre vos concerts
+            </p>
           </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Étape 1 */}
+            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <span className="text-3xl font-black text-white">1</span>
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">Recherchez</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Artiste, festival ou ville. Choisissez parmi 1 million de concerts référencés.
+              </p>
+            </div>
+
+            {/* Étape 2 */}
+            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <span className="text-3xl font-black text-white">2</span>
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">Sélectionnez</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Un concert, un festival entier, ou plusieurs événements. Vous choisissez.
+              </p>
+            </div>
+
+            {/* Étape 3 */}
+            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <span className="text-3xl font-black text-white">3</span>
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">Exportez</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Spotify, Deezer, Apple Music ou fichier .txt. En 2 clics, c'est fait.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION: Concerts passés vs Festivals à venir */}
+      <section className="py-20 bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+          <div className="grid md:grid-cols-2 gap-8">
             
-            {/* Plan 1 : Non connecté */}
-            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-white/10 rounded-xl p-3 sm:p-5 md:p-6">
-              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-500/10 border border-gray-500/20 text-gray-400 text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3">
-                <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
-                <span className="hidden sm:inline">VISITEUR</span>
+            {/* Concerts passés */}
+            <div 
+              onClick={() => navigate('/my-concerts')}
+              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-[#4d94ff] transition-all cursor-pointer overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#4d94ff]/5 rounded-full blur-3xl" />
+              
+              <div className="relative">
+                <Clock className="w-12 h-12 text-[#4d94ff] mb-6 group-hover:scale-110 transition-transform" />
+                
+                <h3 className="text-3xl font-black italic uppercase mb-4">
+                  CONCERTS<br />
+                  <span className="text-[#4d94ff]">PASSÉS</span>
+                </h3>
+                
+                <p className="text-gray-400 mb-6 leading-relaxed">
+                  Retrouvez vos concerts vécus grâce à notre immense base de setlists. 
+                  Revivez l'ambiance, titre par titre.
+                </p>
+
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
+                    Recherche par artiste, ville ou date
+                  </li>
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
+                    Setlists exactes jouées en concert
+                  </li>
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
+                    Export multi-plateformes
+                  </li>
+                </ul>
+
+                <div className="flex items-center gap-2 text-[#4d94ff] font-bold group-hover:gap-4 transition-all">
+                  <span>Voir mes concerts</span>
+                  <span>→</span>
+                </div>
               </div>
-              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-2 sm:mb-3 leading-tight">Non connecté</h3>
-              
-              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
-                <li className="flex items-start gap-1 sm:gap-2 text-gray-400">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="leading-tight">Recherche</span>
-                </li>
-                <li className="flex items-start gap-1 sm:gap-2 text-gray-400">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="leading-tight hidden sm:inline">Consultation</span>
-                  <span className="leading-tight sm:hidden">Setlists</span>
-                </li>
-                <li className="flex items-start gap-1 sm:gap-2 opacity-50">
-                  <span className="text-[8px] sm:text-xs text-gray-600 italic leading-tight">Pas d'export</span>
-                </li>
-              </ul>
-              
-              <Button 
-                onClick={() => navigate('/auth')} 
-                variant="outline"
-                className="w-full h-7 sm:h-9 md:h-10 border-white/20 text-white hover:bg-white/5 font-semibold text-[10px] sm:text-sm"
-              >
-                Créer
-              </Button>
             </div>
 
-            {/* Plan 2 : Membre gratuit */}
-            <div className="relative bg-gradient-to-br from-[#0a0a0a] to-black border border-[#4d94ff]/30 rounded-xl p-3 sm:p-5 md:p-6">
-              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/20 text-[#4d94ff] text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3">
-                <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
-                <span className="hidden sm:inline">GRATUIT</span>
-              </div>
-              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-1 sm:mb-1 leading-tight">Membre</h3>
-              <div className="flex items-baseline gap-1 sm:gap-2 mb-2 sm:mb-3">
-                <span className="text-xl sm:text-3xl md:text-4xl font-black text-[#4d94ff]">0€</span>
-              </div>
+            {/* Festivals 2026 */}
+            <div 
+              onClick={() => navigate('/festivals')}
+              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-green-500 transition-all cursor-pointer overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl" />
               
-              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
-                <li className="flex items-start gap-1 sm:gap-2">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-[#4d94ff] shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-gray-300 leading-tight"><strong className="text-white">2 exports</strong>/an</span>
-                </li>
-                <li className="flex items-start gap-1 sm:gap-2 opacity-50">
-                  <span className="text-[8px] sm:text-xs text-gray-600 italic leading-tight">Avec pubs</span>
-                </li>
-              </ul>
-              
-              <Button 
-                onClick={() => navigate('/auth')} 
-                className="w-full h-7 sm:h-9 md:h-10 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-[10px] sm:text-sm"
-              >
-                Créer
-              </Button>
-            </div>
+              <div className="relative">
+                <Calendar className="w-12 h-12 text-green-500 mb-6 group-hover:scale-110 transition-transform" />
+                
+                <h3 className="text-3xl font-black italic uppercase mb-4">
+                  FESTIVALS<br />
+                  <span className="text-green-500">2026</span>
+                </h3>
+                
+                <p className="text-gray-400 mb-6 leading-relaxed">
+                  Préparez vos festivals à venir ! Programmations complètes des plus grands festivals metal et rock.
+                </p>
 
-            {/* Plan 3 : Premium */}
-            <div className="relative bg-gradient-to-br from-[#1a1a0a] to-black border-2 border-yellow-500/40 rounded-xl p-3 sm:p-5 md:p-6">
-              <div className="absolute -top-2 sm:-top-2.5 left-1/2 -translate-x-1/2 px-2 sm:px-3 py-0.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full">
-                <span className="flex items-center gap-1 sm:gap-1.5 text-black font-black text-[8px] sm:text-[10px] uppercase">
-                  <Crown className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
-                  <span className="hidden sm:inline">TOP</span>
-                </span>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Hellfest, Download UK, Wacken...
+                  </li>
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Carte interactive mondiale
+                  </li>
+                  <li className="flex items-center gap-3 text-sm text-gray-300">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    Nouvelles programmations ajoutées régulièrement
+                  </li>
+                </ul>
+
+                <div className="flex items-center gap-2 text-green-500 font-bold group-hover:gap-4 transition-all">
+                  <span>Découvrir les festivals</span>
+                  <span>→</span>
+                </div>
               </div>
-              
-              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[8px] sm:text-[10px] font-bold mb-2 sm:mb-3 mt-1 sm:mt-2">
-                <Crown className="w-2 h-2 sm:w-2.5 sm:h-2.5"/>
-                <span className="hidden sm:inline">PREMIUM</span>
-              </div>
-              <h3 className="text-sm sm:text-xl md:text-2xl font-black mb-1 leading-tight">Gold</h3>
-              <div className="flex items-baseline gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <span className="text-xl sm:text-3xl md:text-4xl font-black text-yellow-500">5€</span>
-                <span className="text-gray-500 text-[8px] sm:text-xs">/an</span>
-              </div>
-              <p className="text-[8px] sm:text-[10px] text-gray-500 mb-2 sm:mb-3">0.42€/mois</p>
-              
-              <ul className="space-y-1 sm:space-y-2 mb-3 sm:mb-5 text-[9px] sm:text-xs md:text-sm">
-                <li className="flex items-start gap-1 sm:gap-2">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-white font-semibold leading-tight">Exports Illimités</span>
-                </li>
-                <li className="flex items-start gap-1 sm:gap-2">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-white font-semibold leading-tight">0 pub</span>
-                </li>
-                <li className="flex items-start gap-1 sm:gap-2">
-                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 shrink-0 mt-0.5 hidden sm:block"/>
-                  <span className="text-gray-300 leading-tight">Historique</span>
-                </li>
-              </ul>
-              
-              <Button 
-                onClick={() => navigate('/subscription')} 
-                className="w-full h-7 sm:h-9 md:h-10 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-black text-[10px] sm:text-sm"
-              >
-                Premium
-              </Button>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Badge sécurité */}
-          <div className="mt-6 sm:mt-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5">
-              <ShieldCheck className="w-3.5 h-3.5 text-green-400"/>
-              <span className="text-xs text-gray-300">Paiement sécurisé</span>
+      {/* SECTION: Features */}
+      <section className="py-20 bg-[#0a0a0a]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            
+            {/* Texte */}
+            <div>
+              <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-6">
+                POURQUOI<br />
+                <span className="text-[#4d94ff]">SETLIVE ?</span>
+              </h2>
+
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-[#4d94ff]/10 flex items-center justify-center">
+                    <Music2 className="w-6 h-6 text-[#4d94ff]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-2">Setlists exactes</h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Données issues de Setlist.fm, la plus grande base mondiale de setlists de concerts.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-[#4d94ff]/10 flex items-center justify-center">
+                    <Smartphone className="w-6 h-6 text-[#4d94ff]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-2">Multi-plateformes</h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Compatible Spotify, Deezer, Apple Music. Ou téléchargez en .txt pour autres services.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-green-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-2">100% Gratuit</h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Aucun abonnement. Aucune publicité. Export illimité. Toujours gratuit.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                    <Share2 className="w-6 h-6 text-purple-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-2">Partage facile</h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Partagez vos playlists de concerts avec vos amis en un clic.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Image placeholder ou stats */}
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
+                  <div className="text-4xl font-black text-[#4d94ff] mb-2">✓</div>
+                  <div className="text-sm text-gray-400">Millions de setlists</div>
+                </div>
+                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
+                  <div className="text-4xl font-black text-green-500 mb-2">🌍</div>
+                  <div className="text-sm text-gray-400">Festivals monde</div>
+                </div>
+                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
+                  <div className="text-4xl font-black text-purple-500 mb-2">🎵</div>
+                  <div className="text-sm text-gray-400">Multi-plateformes</div>
+                </div>
+                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
+                  <div className="text-4xl font-black text-yellow-500 mb-2">∞</div>
+                  <div className="text-sm text-gray-400">Gratuit à vie</div>
+                </div>
+              </div>
+
+              <div className="mt-8 text-center">
+                <Button
+                  onClick={() => navigate('/partage')}
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Partager Setlive
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Final */}
+      <section className="py-20 bg-gradient-to-b from-[#0a0a0a] to-black">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-6">
+            PRÊT À REVIVRE<br />
+            <span className="text-[#4d94ff]">VOS CONCERTS ?</span>
+          </h2>
+          
+          <p className="text-gray-400 text-lg mb-10 max-w-2xl mx-auto">
+            Rejoignez des milliers de fans qui transforment leurs souvenirs de concerts en playlists mémorables.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={() => navigate('/my-concerts')}
+              size="lg"
+              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-10 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30"
+            >
+              Commencer maintenant
+            </Button>
+            
+            <Button
+              onClick={() => navigate('/festivals')}
+              size="lg"
+              variant="outline"
+              className="bg-transparent hover:bg-white/10 text-white border-white/30 font-bold px-10 h-14 text-lg rounded-full"
+            >
+              Explorer les festivals
+            </Button>
           </div>
         </div>
       </section>
 
       <Footer />
-
-      <style>{`
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 3s ease infinite;
-        }
-      `}</style>
     </div>
   );
 }
