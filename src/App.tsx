@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import FestivalsPage from '@/pages/FestivalsPage';
 import FestivalDetailPage from '@/pages/FestivalDetailPage';
 import DownloadPage from '@/pages/DownloadPage';
+import WackenPage from '@/pages/WackenPage';
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/festivals" element={<FestivalsPage />} />
             <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
             <Route path="/download-uk-2026" element={<DownloadPage />} />
+            <Route path="/wacken-2026" element={<WackenPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
