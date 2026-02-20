@@ -87,14 +87,13 @@ export const ROCK_AM_RING_LINEUP: ArtistData[] = [
   // TÊTES D'AFFICHE & AUTRES (JOURS À CONFIRMER)
   // (Ordre alphabétique strict)
   // ==========================================
-  { id: 'rar-tbc-1', name: 'Bad Omens', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-2', name: 'Electric Callboy', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-3', name: 'Iron Maiden', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-4', name: 'Limp Bizkit', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-5', name: 'Linkin Park', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-6', name: 'Papa Roach', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-7', name: 'Sabaton', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-8', name: 'Slipknot', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-9', name: 'The Offspring', stage: 'À confirmer', day: 'À confirmer' },
-  { id: 'rar-tbc-10', name: 'Volbeat', stage: 'À confirmer', day: 'À confirmer' }
+  { id: 'rar-tbc-1', name: 'Bad Omens', stage: 'À confirmer', day: 'Samedi 6 Juin' },
+  { id: 'rar-tbc-2', name: 'Electric Callboy', stage: 'À confirmer', day: 'Samedi 6 Juin' },
+  { id: 'rar-tbc-3', name: 'Iron Maiden', stage: 'À confirmer', day: 'Dimanche 7 Juin' },
+  { id: 'rar-tbc-4', name: 'Limp Bizkit', stage: 'À confirmer', day: 'Vendredi 5 Juin' },
+  { id: 'rar-tbc-5', name: 'Linkin Park', stage: 'À confirmer', day: 'Vendredi 5 Juin' },
+  { id: 'rar-tbc-6', name: 'Papa Roach', stage: 'À confirmer', day: 'Vendredi 5 Juin' },
+  { id: 'rar-tbc-7', name: 'Sabaton', stage: 'À confirmer', day: 'Dimanche 7 Juin' },
+  { id: 'rar-tbc-9', name: 'The Offspring', stage: 'À confirmer', day: 'Dimanche 7 Juin' },
+  { id: 'rar-tbc-10', name: 'Volbeat', stage: 'À confirmer', day: 'Samedi 6 Juin' }
 ];
