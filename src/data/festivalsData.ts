@@ -39,6 +39,7 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://downloadfestival.co.uk',
+    lineup: ["Limp Bizkit", "Guns N' Roses", "Linkin Park"],
     hasDetailedPage: true
   },
   {
