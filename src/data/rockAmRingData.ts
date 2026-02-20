@@ -6,7 +6,8 @@ export interface ArtistData {
 }
 
 export const ROCK_AM_RING_LINEUP: ArtistData[] = [
-   // ==========================================
+  
+  // ==========================================
   // TÊTES D'AFFICHE
   // ==========================================
   { id: 'rar-tbc-1', name: 'Bad Omens', stage: 'À confirmer', day: 'Samedi 6 Juin' },
