@@ -22,8 +22,9 @@ export default function Share() {
   const [copied, setCopied] = useState(false);
 
   const siteUrl = 'https://setlive.fr';
-  const shareText = 'Transformez vos concerts en playlists universelles ! Hellfest 2026, et tous vos souvenirs de concerts';
-  const hashtags = 'Setlive,Concerts,Playlists,Hellfest2026';
+  const shareText = 'Transformez vos concerts passés et festivals 2026 en playlists universelles ! Hellfest, Download UK, et tous vos souvenirs de concerts 🎸';
+  const shareImage = 'https://setlive.fr/og-image.jpg';
+  const hashtags = 'Setlive,Concerts,Playlists,Hellfest2026,Festivals';
 
   const socialLinks = [
     {
@@ -98,6 +99,27 @@ export default function Share() {
             Aidez vos amis à transformer leurs concerts en playlists ! 
             Plus on est nombreux, plus la base de données s'enrichit.
           </p>
+        </div>
+
+        {/* Preview de l'image de partage */}
+        <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl">
+          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
+            Aperçu du partage
+          </label>
+          <div className="bg-[#1a1a1a] border border-[#404040] rounded-xl overflow-hidden">
+            <img 
+              src="/og-image.jpg" 
+              alt="Preview Setlive"
+              className="w-full h-auto"
+            />
+            <div className="p-4">
+              <h3 className="font-bold text-white mb-1">Setlive - Vos Concerts en Playlists</h3>
+              <p className="text-sm text-gray-400">
+                Transformez vos concerts passés et festivals 2026 en playlists Spotify, Deezer ou Apple Music.
+              </p>
+              <p className="text-xs text-gray-500 mt-2">setlive.fr</p>
+            </div>
+          </div>
         </div>
 
         {/* Copier le lien */}
@@ -186,20 +208,20 @@ export default function Share() {
         {/* Statistiques d'impact */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-[#4d94ff] mb-2">1M+</p>
-            <p className="text-sm text-gray-400">Setlists disponibles</p>
+            <p className="text-3xl font-black text-[#4d94ff] mb-2">✓</p>
+            <p className="text-sm text-gray-400">Millions de setlists</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-green-500 mb-2">100%</p>
-            <p className="text-sm text-gray-400">Gratuit</p>
+            <p className="text-3xl font-black text-green-500 mb-2">🌍</p>
+            <p className="text-sm text-gray-400">Festivals monde</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-purple-500 mb-2">3</p>
-            <p className="text-sm text-gray-400">Plateformes</p>
+            <p className="text-3xl font-black text-purple-500 mb-2">🎵</p>
+            <p className="text-sm text-gray-400">Multi-plateformes</p>
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-yellow-500 mb-2">2 clics</p>
-            <p className="text-sm text-gray-400">Pour exporter</p>
+            <p className="text-3xl font-black text-yellow-500 mb-2">∞</p>
+            <p className="text-sm text-gray-400">Gratuit à vie</p>
           </div>
         </div>
 
