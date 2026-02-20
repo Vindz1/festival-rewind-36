@@ -90,7 +90,8 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://www.rock-am-ring.com',
-    hasDetailedPage: false
+    lineup: ['Linkin Park', 'Iron Maiden', 'Volbeat', 'Slipknot', 'The Offspring'],
+    hasDetailedPage: true
   },
   {
     id: 'copenhell-2026',
