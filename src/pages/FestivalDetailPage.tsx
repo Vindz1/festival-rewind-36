@@ -15,9 +15,9 @@ export default function FestivalDetailPage() {
     return <Navigate to="/festivals" replace />;
   }
 
-  // Si c'est Hellfest, rediriger vers la page existante
-  if (festivalId === 'hellfest-2026') {
-    return <Navigate to="/hellfest-2026" replace />;
+  // Si le festival a une page dédiée (hasDetailedPage: true), rediriger vers sa page
+  if (festival.hasDetailedPage) {
+    return <Navigate to={`/${festival.id}`} replace />;
   }
 
   return (
