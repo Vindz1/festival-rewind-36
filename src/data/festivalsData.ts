@@ -39,7 +39,7 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Rock', 'Metal', 'Alternative'],
     website: 'https://downloadfestival.co.uk',
-    hasDetailedPage: false
+    hasDetailedPage: true
   },
   {
     id: 'wacken-2026',
