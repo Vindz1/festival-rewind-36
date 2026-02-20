@@ -1,22 +1,19 @@
 import React from "react";
-import ReactDOM from "react-dom"; // Import classique pour le bouclier global
-import { createRoot } from "react-dom/client"; // Import moderne pour React 18
-import { BrowserRouter } from "react-router-dom";
+import ReactDOM from "react-dom"; 
+import { createRoot } from "react-dom/client"; 
 import App from "./App.tsx";
 import "./index.css";
 import { preventMusicTranslation } from './utils/preventTranslation';
 
-// 🛡️ LE BOUCLIER : On expose ReactDOM globalement pour les librairies tierces
+// 🛡️ LE BOUCLIER
 (window as any).ReactDOM = ReactDOM;
 
-// Active la protection de traduction
+// Active la protection
 preventMusicTranslation();
 
-// Un seul rendu propre de l'application
+// Rendu SANS le BrowserRouter ici
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <App />
   </React.StrictMode>
 );
