@@ -86,10 +86,11 @@ export default function FestivalsPage() {
         return festivals.sort((a, b) => parseDate(a.dates) - parseDate(b.dates));
       
       case 'country':
-        // Tri par pays puis par nom
+        // Tri alphabétique par pays (en français maintenant)
         return festivals.sort((a, b) => {
           const countryCompare = a.country.localeCompare(b.country, 'fr');
           if (countryCompare !== 0) return countryCompare;
+          // Si même pays, trier par nom
           return a.name.localeCompare(b.name, 'fr');
         });
       
