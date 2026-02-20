@@ -1,0 +1,133 @@
+export interface ArtistData {
+  id: string;
+  name: string;
+  stage: string;
+  day: string;
+}
+
+export const MOTOCULTOR_LINEUP: ArtistData[] = [
+  // ==========================================
+  // JEUDI 13 AOÛT 2026
+  // ==========================================
+  { id: 'mot-j-1', name: '200 Stab Wounds', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-2', name: 'Amenra', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-3', name: 'Battlesnake', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-4', name: 'Bloodbath', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-5', name: 'Brieg Guerveno', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-6', name: 'Celkilt x Bagad Ar Meilhoù Glaz', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-7', name: 'Death Angel', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-8', name: 'Denez', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-9', name: 'Fauxx', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-10', name: 'Gaerea', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-11', name: 'Godsmack', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-12', name: 'Kittie', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-13', name: 'Komodrag & The Mounodor', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-14', name: 'Municipal Waste', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-15', name: 'Oomph!', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-16', name: 'Pilori', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-17', name: 'Primus', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-18', name: 'Sanguisugabogg', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+  { id: 'mot-j-19', name: 'Unearth', stage: 'À confirmer', day: 'Jeudi 13 Août' },
+
+  // ==========================================
+  // VENDREDI 14 AOÛT 2026
+  // ==========================================
+  { id: 'mot-v-1', name: 'Alcest', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-2', name: 'Bölzer', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-3', name: 'Cage Fight', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-4', name: 'Chelsea Grin', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-5', name: 'Coroner', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-6', name: 'Darkened Nocturn Slaughtercult', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-7', name: 'Eihwar', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-8', name: 'Emperor', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-9', name: 'Filth', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-10', name: 'Gravity', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-11', name: 'Guineapig', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-12', name: 'Hellripper', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-13', name: 'Hrafngrimr', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-14', name: 'Ice Sealed Eyes', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-15', name: 'Iotunn', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-16', name: 'Lord Of The Lost', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-17', name: 'Mass Hysteria', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-18', name: 'Master Boot Record', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-19', name: 'Miracle Of Sound', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-20', name: 'Nawather', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-21', name: 'Paradise Lost', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-22', name: 'Skaphos', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-23', name: 'Slaughter To Prevail', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-24', name: 'Soen', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-25', name: 'Stille Volk', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-26', name: 'Textures', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-27', name: 'Unleashed', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-28', name: 'Urne', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-29', name: 'Vansind', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+  { id: 'mot-v-30', name: 'Visions Of Atlantis', stage: 'À confirmer', day: 'Vendredi 14 Août' },
+
+  // ==========================================
+  // SAMEDI 15 AOÛT 2026
+  // ==========================================
+  { id: 'mot-s-1', name: 'Anaal Nathrakh', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-2', name: 'Aorlhac', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-3', name: 'Ashen', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-4', name: 'Basaalt', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-5', name: 'Bruit ≤', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-6', name: 'Cancer', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-7', name: 'Eisbrecher', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-8', name: 'Frog Leap', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-9', name: 'Grave', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-10', name: 'Hollow Jan', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-11', name: 'Ill Nino', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-12', name: 'Jetsex', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-13', name: 'Leprous', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-14', name: 'Les 3 Fromages', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-15', name: 'Monde De Merde', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-16', name: 'Múr', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-17', name: 'Nanowar Of Steel', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-18', name: 'Necrowretch', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-19', name: 'Nevermore', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-20', name: 'Omnium Gatherum', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-21', name: 'Orden Ogan', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-22', name: 'Perturbator', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-23', name: 'Rectal Smegma', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-24', name: 'Shady Fat Kats', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-25', name: 'Sierra Veins', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-26', name: 'Slift', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-27', name: 'Steve \'n\' Seagulls', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-28', name: 'Svinkels Family & Friends', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-29', name: 'The Casualties', stage: 'À confirmer', day: 'Samedi 15 Août' },
+  { id: 'mot-s-30', name: 'Within Temptation', stage: 'À confirmer', day: 'Samedi 15 Août' },
+
+  // ==========================================
+  // DIMANCHE 16 AOÛT 2026
+  // ==========================================
+  { id: 'mot-d-1', name: 'Airbourne', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-2', name: 'Arch Enemy', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-3', name: 'Castle Rat', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-4', name: 'Coltaine', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-5', name: 'Cryptopsy', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-6', name: 'Deafheaven', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-7', name: 'Eyes', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-8', name: 'Fit For An Autopsy', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-9', name: 'Heavy // Hitter', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-10', name: 'Heretoir', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-11', name: 'Holy Mother', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-12', name: 'Internal Bleeding', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-13', name: 'John Cxnnor', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-14', name: 'Jools', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-15', name: 'Judas Priest', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-16', name: 'Killers', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-17', name: 'Kim Dracula', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-18', name: 'Les Hommes Crabes', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-19', name: 'Modder', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-20', name: 'Monkeys On Mars', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-21', name: 'Pain Magazine', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-22', name: 'Red Sun Atacama', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-23', name: 'Sacred Reich', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-24', name: 'Shaârghot', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-25', name: 'Signs Of The Swarm', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-26', name: 'Vader', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-27', name: 'Voivod', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-28', name: 'Warning', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-29', name: 'Witch Club Satan', stage: 'À confirmer', day: 'Dimanche 16 Août' },
+  { id: 'mot-d-30', name: 'Wormsand', stage: 'À confirmer', day: 'Dimanche 16 Août' }
+];
