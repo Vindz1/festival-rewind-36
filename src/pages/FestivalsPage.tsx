@@ -216,12 +216,13 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {festival.id === 'hellfest-2026' && (
+                      {/* L'animation "ping" dépend maintenant de hasDetailedPage */}
+                      {festival.hasDetailedPage && (
                         <circle r={12 / position.zoom} fill="#00ff00" opacity={0.3} className="animate-ping" />
                       )}
                       <circle 
                         r={5 / position.zoom} // Les points gardent la même taille visuelle
-                        fill={festival.id === 'hellfest-2026' ? '#00ff00' : '#4d94ff'}
+                        fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
                         stroke="#FFFFFF"
                         strokeWidth={1.5 / position.zoom}
                         className="transition-opacity hover:opacity-80"
@@ -253,7 +254,7 @@ export default function FestivalsPage() {
               <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h3 className="text-lg font-bold">{hoveredFestival.name}</h3>
-                  {hoveredFestival.id === 'hellfest-2026' && (
+                  {hoveredFestival.hasDetailedPage && (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
@@ -271,7 +272,7 @@ export default function FestivalsPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  {hoveredFestival.id === 'hellfest-2026' ? 'Programmation complète disponible' : 'Programmation bientôt disponible'}
+                  {hoveredFestival.hasDetailedPage ? 'Programmation complète disponible' : 'Programmation bientôt disponible'}
                 </p>
               </div>
             )}
@@ -349,7 +350,8 @@ export default function FestivalsPage() {
                   <h3 className="text-lg sm:text-xl font-bold group-hover:text-[#4d94ff] transition-colors">
                     {festival.name}
                   </h3>
-                  {festival.id === 'hellfest-2026' ? (
+                  {/* Le badge LIVE/BIENTÔT dépend maintenant de hasDetailedPage */}
+                  {festival.hasDetailedPage ? (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
