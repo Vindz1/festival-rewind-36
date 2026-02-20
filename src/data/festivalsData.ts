@@ -26,7 +26,7 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock', 'Punk'],
     website: 'https://www.hellfest.fr',
-    lineup: ['Iron Maiden', 'Bring Me The Horizon', 'Sabaton', 'Megadeth', 'Limp Bizkit', 'The Offspring'],
+    lineup: ['Iron Maiden', 'Bring Me The Horizon', 'Limp Bizkit', 'The Offspring'],
     hasDetailedPage: true
   },
   {
@@ -52,7 +52,8 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Heavy Metal'],
     website: 'https://www.wacken.com',
-    hasDetailedPage: false
+    lineup: ['Judas Priest', 'Def Leppard', 'Powerwolf', 'In Flames', 'Arch Enemy'],
+    hasDetailedPage: true
   },
   {
     id: 'graspop-2026',
