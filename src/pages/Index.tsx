@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SearchBar } from '@/components/SearchBar';
-import { Clock, Calendar, Music2, Smartphone, Share2, Zap, Globe, Crown } from 'lucide-react';
+import { Clock, Calendar, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Index() {
@@ -12,37 +12,28 @@ export default function Index() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
 
-      {/* HERO avec image de fond FIXE */}
-      <section className="relative">
-        {/* Image de fond FIXE (ne bouge pas au scroll) */}
-        <div 
-          className="fixed top-0 left-0 w-full h-screen bg-cover bg-center z-0"
-          style={{ 
-            backgroundImage: 'url(/og-image.jpg)',
-            backgroundPosition: 'center center',
-            backgroundSize: 'cover',
-            // Mobile : forcer la largeur complète
-            backgroundAttachment: 'fixed'
-          }}
-        >
-          {/* Overlay sombre pour lisibilité */}
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
+      {/* HERO - Image avec contenu par-dessus */}
+      <section 
+        className="relative min-h-screen flex items-end pb-20 bg-cover bg-center"
+        style={{ 
+          backgroundImage: 'url(/og-image.jpg)',
+          backgroundPosition: 'center center',
+          backgroundSize: 'cover'
+        }}
+      >
+        {/* Overlay gradient du bas */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
 
-        {/* Spacer pour que le contenu soit SOUS l'image */}
-        <div className="relative z-10 h-[65vh] sm:h-[70vh] min-h-[450px]" />
-
-        {/* Contenu principal - commence SOUS l'image */}
-        <div className="relative z-10 bg-gradient-to-b from-black/60 via-[#0a0a0a] to-[#0a0a0a]">
-          
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center pt-8 sm:pt-12 pb-16 sm:pb-20">
+        {/* Contenu en bas de l'image */}
+        <div className="relative z-10 w-full">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
             
-            {/* Sous-titre sous l'image */}
-            <p className="text-lg sm:text-2xl text-gray-300 mb-8 font-medium max-w-3xl mx-auto">
+            {/* Sous-titre */}
+            <p className="text-lg sm:text-2xl text-white mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
               Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
             </p>
 
-            {/* Search bar VISIBLE */}
+            {/* Search bar */}
             <div className="max-w-2xl mx-auto mb-8">
               <SearchBar />
             </div>
@@ -64,7 +55,7 @@ export default function Index() {
                 variant="outline"
                 className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full"
               >
-                <Globe className="w-5 h-5 mr-2" />
+                <Calendar className="w-5 h-5 mr-2" />
                 Festivals 2026
               </Button>
             </div>
@@ -73,15 +64,15 @@ export default function Index() {
             <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-gray-400">Millions de setlists disponibles</span>
+                <span className="text-white drop-shadow-md">Millions de setlists</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
-                <span className="text-gray-400">Principaux festivals 2026</span>
+                <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <span className="text-gray-400">Multi-plateformes</span>
+                <span className="text-white drop-shadow-md">Multi-plateformes</span>
               </div>
             </div>
           </div>
