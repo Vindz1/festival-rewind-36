@@ -13,18 +13,23 @@ import {
   Check,
   Copy,
   QrCode,
-  Download
+  Download,
+  Code,
+  Music,
+  Megaphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export default function Share() {
   const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const siteUrl = 'https://setlive.fr';
   const shareText = 'Transformez vos concerts passés et festivals 2026 en playlists universelles ! Hellfest, Download UK, et tous vos souvenirs de concerts 🎸';
-  const shareImage = 'https://setlive.fr/og-image.jpg';
-  const hashtags = 'Setlive,Concerts,Playlists,Hellfest2026,Festivals';
+  const hashtags = 'Setlive,Concerts,Playlists,Festivals';
+
+  const widgetCode = `<a href="https://setlive.fr" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:10px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:sans-serif;font-weight:bold;border:1px solid #4d94ff;"><span style="font-size:20px;">🎧</span> Générez votre playlist du festival avec Setlive !</a>`;
 
   const socialLinks = [
     {
@@ -75,6 +80,17 @@ export default function Share() {
     }
   };
 
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(widgetCode);
+      setCopiedCode(true);
+      toast.success('Code HTML copié !');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (error) {
+      toast.error('Erreur lors de la copie du code');
+    }
+  };
+
   const handleShare = (url: string) => {
     window.open(url, '_blank', 'width=600,height=400');
   };
@@ -87,7 +103,7 @@ export default function Share() {
         
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#4d94ff] to-purple-500 mb-6 animate-pulse-slow">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#4d94ff] to-purple-500 mb-6 animate-pulse-slow shadow-lg shadow-blue-500/20">
             <Share2 className="w-10 h-10 text-white" />
           </div>
           
@@ -101,33 +117,16 @@ export default function Share() {
           </p>
         </div>
 
-        {/* Preview de l'image de partage */}
-        <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl">
-          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
-            Aperçu du partage
-          </label>
-          <div className="bg-[#1a1a1a] border border-[#404040] rounded-xl overflow-hidden">
-            <img 
-              src="/og-image.jpg" 
-              alt="Preview Setlive"
-              className="w-full h-auto"
-            />
-            <div className="p-4">
-              <h3 className="font-bold text-white mb-1">Setlive - Vos Concerts en Playlists</h3>
-              <p className="text-sm text-gray-400">
-                Transformez vos concerts passés et festivals 2026 en playlists Spotify, Deezer ou Apple Music.
-              </p>
-              <p className="text-xs text-gray-500 mt-2">setlive.fr</p>
-            </div>
-          </div>
-        </div>
+        {/* ========================================================= */}
+        {/* SECTION 1 : POUR LES FANS (Partage classique) */}
+        {/* ========================================================= */}
 
         {/* Copier le lien */}
-        <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl">
+        <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl shadow-md">
           <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">
             Lien direct
           </label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={siteUrl}
@@ -136,28 +135,23 @@ export default function Share() {
             />
             <Button
               onClick={handleCopyLink}
-              className={`px-6 transition-all ${
+              className={`px-6 py-6 sm:py-3 transition-all ${
                 copied 
                   ? 'bg-green-500 hover:bg-green-600' 
                   : 'bg-[#4d94ff] hover:bg-[#6ba6ff]'
               }`}
             >
               {copied ? (
-                <>
-                  <Check className="w-5 h-5 mr-2" />
-                  Copié !
-                </>
+                <><Check className="w-5 h-5 mr-2" /> Copié !</>
               ) : (
-                <>
-                  <Copy className="w-5 h-5 mr-2" />
-                </>
+                <><Copy className="w-5 h-5 mr-2" /> Copier le lien</>
               )}
             </Button>
           </div>
         </div>
 
         {/* Réseaux sociaux */}
-        <div className="mb-12">
+        <div className="mb-16">
           <h2 className="text-2xl font-black italic uppercase mb-6 text-center">
             Partager sur les réseaux
           </h2>
@@ -167,79 +161,128 @@ export default function Share() {
               <button
                 key={index}
                 onClick={() => handleShare(social.url)}
-                className={`group relative p-6 rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all ${social.color} bg-opacity-10 hover:bg-opacity-20`}
+                className={`group relative p-6 rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all bg-[#252525] hover:bg-[#2a2a2a]`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-lg ${social.color}`}>
+                  <div className={`p-3 rounded-lg ${social.color} transition-colors`}>
                     <social.icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="text-left flex-1">
-                    <h3 className="font-bold text-white mb-1">{social.name}</h3>
+                    <h3 className="font-bold text-white mb-1 group-hover:text-[#4d94ff] transition-colors">{social.name}</h3>
                     <p className="text-xs text-gray-400">{social.description}</p>
                   </div>
-                  <Share2 className="w-5 h-5 text-gray-400 group-hover:text-[#4d94ff] transition-colors" />
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* QR Code (optionnel - à générer) */}
-        <div className="mb-12 p-8 bg-gradient-to-br from-[#252525] to-[#1a1a1a] border border-[#333] rounded-2xl text-center">
-          <QrCode className="w-16 h-16 mx-auto mb-4 text-[#4d94ff]" />
+        {/* QR Code (Fans) */}
+        <div className="mb-20 p-8 bg-gradient-to-br from-[#252525] to-[#1a1a1a] border border-[#333] rounded-2xl text-center shadow-lg">
+          <QrCode className="w-12 h-12 mx-auto mb-4 text-[#4d94ff]" />
           <h2 className="text-2xl font-black italic uppercase mb-3">
-            QR CODE
+            QR CODE RAPIDE
           </h2>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Scannez ce QR code pour accéder instantanément au site depuis votre smartphone
+            Scannez ce QR code pour accéder instantanément au site. Parfait pour partager dans la file d'attente d'un concert !
           </p>
-          <div className="inline-block p-6 bg-white rounded-xl">
+          <div className="inline-block p-4 bg-white rounded-xl shadow-inner">
             <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(siteUrl)}`}
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(siteUrl)}`}
               alt="QR Code Setlive"
-              className="w-48 h-48"
+              className="w-32 h-32"
             />
           </div>
-          <p className="text-xs text-gray-500 mt-4">
-            Parfait pour partager en concert ou festival !
-          </p>
         </div>
 
-        {/* Statistiques d'impact */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-          <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-[#4d94ff] mb-2">✓</p>
-            <p className="text-sm text-gray-400">Millions de setlists</p>
-          </div>
-          <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-green-500 mb-2">🌍</p>
-            <p className="text-sm text-gray-400">Festivals monde</p>
-          </div>
-          <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-purple-500 mb-2">🎵</p>
-            <p className="text-sm text-gray-400">Multi-plateformes</p>
-          </div>
-          <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
-            <p className="text-3xl font-black text-yellow-500 mb-2">∞</p>
-            <p className="text-sm text-gray-400">Exports illimités en Premium</p>
+
+        {/* ========================================================= */}
+        {/* SECTION 2 : POUR LES FESTIVALS / B2B */}
+        {/* ========================================================= */}
+        
+        <div className="relative p-1 rounded-3xl bg-gradient-to-br from-[#4d94ff] via-purple-500 to-[#1a1a1a] mb-12">
+          <div className="bg-[#1a1a1a] rounded-[22px] p-8 sm:p-10">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Megaphone className="w-6 h-6 text-[#4d94ff]" />
+                  <h2 className="text-2xl font-black italic uppercase tracking-wider">Espace Partenaires & Festivals</h2>
+                </div>
+                <p className="text-gray-400 text-sm">Vous organisez un festival ? Prolongez l'expérience de vos festivaliers en intégrant Setlive à votre communication.</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              
+              {/* Option 1 : Le bouton HTML */}
+              <div className="bg-[#252525] p-6 rounded-xl border border-[#333]">
+                <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                  <Code className="w-4 h-4 text-[#4d94ff]" /> 1. Le Bouton Web
+                </h3>
+                <p className="text-xs text-gray-400 mb-4">Intégrez ce code HTML sur la page programmation de votre site web.</p>
+                
+                {/* Preview visuelle du bouton */}
+                <div className="mb-4 p-4 bg-[#1a1a1a] rounded-lg border border-[#404040] flex justify-center">
+                  <div dangerouslySetInnerHTML={{ __html: widgetCode }} />
+                </div>
+
+                {/* Code à copier */}
+                <div className="relative group">
+                  <textarea 
+                    readOnly 
+                    value={widgetCode}
+                    className="w-full h-24 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs font-mono text-gray-300 resize-none focus:outline-none"
+                  />
+                  <Button 
+                    onClick={handleCopyCode}
+                    size="sm"
+                    className="absolute top-2 right-2 bg-[#333] hover:bg-[#4d94ff] text-white text-xs h-7"
+                  >
+                    {copiedCode ? <Check className="w-3 h-3" /> : 'Copier'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Option 2 : Le Kit et Contact */}
+              <div className="flex flex-col gap-4">
+                <div className="bg-[#252525] p-6 rounded-xl border border-[#333] flex-1">
+                  <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                    <Download className="w-4 h-4 text-[#4d94ff]" /> 2. Kit Médias & Réseaux
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-4">Téléchargez nos logos, encarts pour vos newsletters et visuels pour stories Instagram.</p>
+                  <Button variant="outline" className="w-full border-[#404040] hover:bg-[#333] text-gray-300" onClick={() => toast.info('Kit Média en préparation !')}>
+                    Télécharger le Kit Média (.zip)
+                  </Button>
+                </div>
+
+                <div className="bg-[#252525] p-6 rounded-xl border border-[#333] flex-1">
+                  <h3 className="font-bold text-white mb-2 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-[#4d94ff]" /> 3. Contact Direct
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-4">Vous souhaitez référencer votre festival sur notre carte interactive ? Écrivez-nous !</p>
+                  <Button className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold" onClick={() => window.location.href = "mailto:contact@setlive.fr?subject=Partenariat Festival"}>
+                    contact@setlive.fr
+                  </Button>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        {/* Call to action */}
+        {/* Call to action final */}
         <div className="text-center p-8 bg-gradient-to-r from-[#4d94ff]/10 to-purple-500/10 border border-[#4d94ff]/30 rounded-2xl">
           <h2 className="text-2xl font-black italic uppercase mb-3">
-            Merci de faire connaître Setlive ! 🤘
+            Merci de faire grandir la communauté ! 🤘
           </h2>
-          <p className="text-gray-400 mb-6">
-            Chaque partage aide à maintenir le service gratuit et à développer de nouvelles fonctionnalités.
+          <p className="text-gray-400 mb-6 max-w-lg mx-auto">
+            Chaque partage nous aide à développer la plateforme, ajouter de nouveaux festivals et améliorer la qualité des setlists.
           </p>
-          <Button
-            onClick={() => handleShare(socialLinks[0].url)}
-            className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 py-3 rounded-full shadow-lg shadow-blue-500/20"
-          >
-            <Twitter className="w-5 h-5 mr-2" />
-            Partager maintenant
-          </Button>
+          <div className="flex justify-center gap-4">
+            <span className="text-2xl">🎸</span>
+            <span className="text-2xl">🔥</span>
+            <span className="text-2xl">🎫</span>
+          </div>
         </div>
 
       </div>
