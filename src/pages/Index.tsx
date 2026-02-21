@@ -9,17 +9,21 @@ export default function Index() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen text-white">
+      {/* LE FOND FIXE UNIVERSEL (Astuce anti-bug iOS) :
+        Ceci remplace le "bg-fixed" classique. Cette div reste figée en arrière-plan, 
+        elle s'adapte en largeur sur mobile (bg-contain) et couvre tout l'écran sur PC (md:bg-cover).
+      */}
+      <div 
+        className="fixed inset-0 -z-10 bg-no-repeat bg-contain md:bg-cover bg-top md:bg-center pointer-events-none"
+        style={{ backgroundImage: 'url(/og-image.jpg)' }}
+      />
+
       <Header />
 
-      {/* HERO - Image avec contenu par-dessus */}
-      <section 
-        className="relative min-h-[100svh] flex items-end pb-20 bg-no-repeat bg-contain md:bg-cover bg-top md:bg-center bg-scroll md:bg-fixed"
-        style={{ 
-          backgroundImage: 'url(/og-image.jpg)'
-        }}
-      >
-        {/* Overlay gradient optimisé pour fusionner l'image courte sur mobile avec le fond noir */}
+      {/* HERO */}
+      <section className="relative min-h-[100svh] flex items-end pb-20">
+        {/* Overlay gradient qui fait la transition vers le noir */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#0a0a0a]/80 to-[#0a0a0a]" />
 
         {/* Contenu en bas de l'image */}
@@ -78,7 +82,7 @@ export default function Index() {
       </section>
 
       {/* SECTION: 1-2-3 condensé */}
-      <section className="py-16 bg-[#0a0a0a]">
+      <section className="relative z-10 py-16 bg-[#0a0a0a]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#333] rounded-2xl p-8 sm:p-10">
             <h2 className="text-2xl sm:text-3xl font-black italic uppercase mb-8 text-center">
@@ -118,7 +122,7 @@ export default function Index() {
       </section>
 
       {/* SECTION: Concerts passés vs Festivals à venir */}
-      <section className="py-20 bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a]">
+      <section className="relative z-10 py-20 bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
           <div className="grid md:grid-cols-2 gap-8">
@@ -210,7 +214,7 @@ export default function Index() {
       </section>
 
       {/* SECTION: Offres (Non connecté / Gratuit / Premium) */}
-      <section className="py-20 bg-[#0a0a0a]">
+      <section className="relative z-10 py-20 bg-[#0a0a0a]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
           <div className="text-center mb-16">
@@ -344,7 +348,7 @@ export default function Index() {
       </section>
 
       {/* CTA Final */}
-      <section className="py-20 bg-gradient-to-b from-[#1a1a1a] to-black">
+      <section className="relative z-10 py-20 bg-gradient-to-b from-[#1a1a1a] to-black">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-6">
             PRÊT À REVIVRE<br />
