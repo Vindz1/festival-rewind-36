@@ -260,7 +260,7 @@ export default function Share() {
                     <Mail className="w-4 h-4 text-[#4d94ff]" /> 3. Contact Direct
                   </h3>
                   <p className="text-xs text-gray-400 mb-4">Vous souhaitez référencer votre festival sur notre carte interactive ? Écrivez-nous !</p>
-                  <Button className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold" onClick={() => window.location.href = "mailto:contact@setlive.fr?subject=Partenariat Festival"}>
+                  <Button className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold" onClick={() => window.location.href = "mailto:setlive@proton.me?subject=Partenariat Festival"}>
                     contact@setlive.fr
                   </Button>
                 </div>
