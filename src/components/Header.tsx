@@ -48,16 +48,31 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           
-          {/* LOGO */}
+          {/* LOGO AVEC BADGE PREMIUM */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className={`p-1.5 rounded-lg transition-all ${
-              isPremium 
-                ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_15px_rgba(234,179,8,0.6)]' 
-                : 'bg-[#4d94ff] group-hover:shadow-[0_0_15px_rgba(77,148,255,0.4)]'
-            }`}>
-              {isPremium ? <Crown className="w-6 h-6 text-black fill-black/20" /> : <Music className="w-6 h-6 text-white" />}
+            <div className="relative">
+              {/* Conteneur de l'image avec zoom (w-[120%]) pour cacher les bords blancs */}
+              <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shrink-0 transition-all ${
+                isPremium 
+                  ? 'ring-2 ring-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)]' 
+                  : 'ring-1 ring-[#4d94ff] group-hover:shadow-[0_0_15px_rgba(77,148,255,0.4)]'
+              }`}>
+                <img 
+                  src="/favicon.png" 
+                  alt="Setlive Logo" 
+                  className="w-[120%] h-[120%] max-w-none object-cover" 
+                />
+              </div>
+
+              {/* Le badge Premium positionné en haut à droite */}
+              {isPremium && (
+                <div className="absolute -top-2 -right-2 bg-[#1a1a1a] rounded-full p-0.5 border border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)] rotate-12 z-10 animate-in zoom-in duration-300">
+                  <Crown className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                </div>
+              )}
             </div>
-            <span className="text-xl font-black tracking-tighter text-white uppercase italic">
+            
+            <span className="text-xl font-black tracking-tighter text-white uppercase italic ml-1">
               SETLIVE<span className={isPremium ? "text-yellow-500 drop-shadow-md" : "text-[#4d94ff]"}>.FR</span>
             </span>
           </Link>
