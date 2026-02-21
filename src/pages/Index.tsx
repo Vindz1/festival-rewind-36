@@ -42,22 +42,9 @@ export default function Index() {
               Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
             </p>
 
-            {/* Search bar VISIBLE (pas juste une loupe) */}
+            {/* Search bar VISIBLE */}
             <div className="max-w-2xl mx-auto mb-8">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher un artiste, festival ou ville..."
-                  onClick={() => navigate('/my-concerts')}
-                  className="w-full h-14 sm:h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-full px-6 sm:px-8 text-base sm:text-lg text-white placeholder-gray-400 focus:outline-none focus:border-[#4d94ff] transition-all cursor-pointer"
-                  readOnly
-                />
-                <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 text-gray-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
+              <SearchBar />
             </div>
 
             {/* 2 CTA principaux */}
@@ -95,6 +82,46 @@ export default function Index() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
                 <span className="text-gray-400">Multi-plateformes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION: 1-2-3 condensé */}
+      <section className="py-16 bg-[#0a0a0a]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#333] rounded-2xl p-8 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-black italic uppercase mb-8 text-center">
+              SIMPLE & <span className="text-[#4d94ff]">RAPIDE</span>
+            </h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              {/* 1 */}
+              <div className="text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl font-black text-white">1</span>
+                </div>
+                <h3 className="text-lg font-bold mb-2">Recherchez</h3>
+                <p className="text-sm text-gray-400">Un artiste parmi des millions de concerts</p>
+              </div>
+
+              {/* 2 */}
+              <div className="text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl font-black text-white">2</span>
+                </div>
+                <h3 className="text-lg font-bold mb-2">Sélectionnez</h3>
+                <p className="text-sm text-gray-400">Les concerts qui vous intéressent</p>
+              </div>
+
+              {/* 3 */}
+              <div className="text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl font-black text-white">3</span>
+                </div>
+                <h3 className="text-lg font-bold mb-2">Exportez</h3>
+                <p className="text-sm text-gray-400">Vers Spotify, Deezer ou Apple Music</p>
               </div>
             </div>
           </div>
@@ -207,7 +234,7 @@ export default function Index() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Non connecté */}
             <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8">
