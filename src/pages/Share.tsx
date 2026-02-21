@@ -221,7 +221,7 @@ export default function Share() {
           </div>
           <div className="p-6 bg-[#252525] border border-[#333] rounded-xl text-center">
             <p className="text-3xl font-black text-yellow-500 mb-2">∞</p>
-            <p className="text-sm text-gray-400">Gratuit à vie</p>
+            <p className="text-sm text-gray-400">Exports illimités en Premium</p>
           </div>
         </div>
 
