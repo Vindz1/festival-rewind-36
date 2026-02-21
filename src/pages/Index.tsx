@@ -20,29 +20,44 @@ export default function Index() {
           style={{ 
             backgroundImage: 'url(/og-image.jpg)',
             backgroundPosition: 'center center',
-            backgroundSize: 'cover'
+            backgroundSize: 'cover',
+            // Mobile : forcer la largeur complète
+            backgroundAttachment: 'fixed'
           }}
         >
           {/* Overlay sombre pour lisibilité */}
           <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        {/* Spacer pour que le contenu soit SOUS l'image (environ 70vh) */}
-        <div className="relative z-10 h-[70vh] min-h-[500px]" />
+        {/* Spacer pour que le contenu soit SOUS l'image */}
+        <div className="relative z-10 h-[65vh] sm:h-[70vh] min-h-[450px]" />
 
         {/* Contenu principal - commence SOUS l'image */}
         <div className="relative z-10 bg-gradient-to-b from-black/60 via-[#0a0a0a] to-[#0a0a0a]">
           
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center pt-12 pb-20">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center pt-8 sm:pt-12 pb-16 sm:pb-20">
             
             {/* Sous-titre sous l'image */}
-            <p className="text-xl sm:text-2xl text-gray-300 mb-8 font-medium max-w-3xl mx-auto">
+            <p className="text-lg sm:text-2xl text-gray-300 mb-8 font-medium max-w-3xl mx-auto">
               Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
             </p>
 
-            {/* Search bar */}
+            {/* Search bar VISIBLE (pas juste une loupe) */}
             <div className="max-w-2xl mx-auto mb-8">
-              <SearchBar />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Rechercher un artiste, festival ou ville..."
+                  onClick={() => navigate('/my-concerts')}
+                  className="w-full h-14 sm:h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-full px-6 sm:px-8 text-base sm:text-lg text-white placeholder-gray-400 focus:outline-none focus:border-[#4d94ff] transition-all cursor-pointer"
+                  readOnly
+                />
+                <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             {/* 2 CTA principaux */}
@@ -81,56 +96,6 @@ export default function Index() {
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
                 <span className="text-gray-400">Multi-plateformes</span>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION: Comment ça marche */}
-      <section className="py-20 bg-[#0a0a0a] relative">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
-              SIMPLE & <span className="text-[#4d94ff]">RAPIDE</span>
-            </h2>
-            <p className="text-gray-400 text-lg">
-              3 étapes pour revivre vos concerts
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Étape 1 */}
-            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <span className="text-3xl font-black text-white">1</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">Recherchez</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Artiste, festival ou ville. Choisissez parmi des millions de concerts référencés.
-              </p>
-            </div>
-
-            {/* Étape 2 */}
-            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <span className="text-3xl font-black text-white">2</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">Sélectionnez</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Un concert, un festival entier, ou plusieurs événements. Vous choisissez.
-              </p>
-            </div>
-
-            {/* Étape 3 */}
-            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#333] rounded-2xl p-8 hover:border-[#4d94ff] transition-all group">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <span className="text-3xl font-black text-white">3</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-3 text-white">Exportez</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Spotify, Deezer, Apple Music ou fichier .txt. En 2 clics, c'est fait.
-              </p>
             </div>
           </div>
         </div>
@@ -228,9 +193,9 @@ export default function Index() {
         </div>
       </section>
 
-      {/* SECTION: Offres (Gratuit vs Premium) */}
+      {/* SECTION: Offres (Non connecté / Gratuit / Premium) */}
       <section className="py-20 bg-[#0a0a0a]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
@@ -238,61 +203,97 @@ export default function Index() {
               <span className="text-[#4d94ff]">FORMULE</span>
             </h2>
             <p className="text-gray-400 text-lg">
-              Commencez gratuitement, passez Premium pour plus
+              De la découverte à l'expérience illimitée
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             
-            {/* Plan Gratuit */}
-            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8">
-              <h3 className="text-2xl font-bold mb-2">Gratuit</h3>
+            {/* Non connecté */}
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8">
+              <h3 className="text-xl font-bold mb-2">Découverte</h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-black">0€</span>
+                <span className="text-3xl font-black">Lecture</span>
+              </div>
+              <p className="text-sm text-gray-400 mb-6">Pour explorer le site</p>
+              
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <span>Consulter les festivals</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <span>Voir les programmations</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-gray-500">
+                  <div className="w-5 h-5 shrink-0">✗</div>
+                  <span>Pas d'export possible</span>
+                </li>
+              </ul>
+
+              <Button
+                variant="outline"
+                className="w-full h-11 border-[#404040] text-gray-400 cursor-default"
+                disabled
+              >
+                Mode actuel
+              </Button>
+            </div>
+
+            {/* Gratuit connecté */}
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8">
+              <h3 className="text-xl font-bold mb-2">Gratuit</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-3xl font-black">0€</span>
                 <span className="text-gray-400 text-sm">/à vie</span>
               </div>
-              <p className="text-sm text-gray-400 mb-8">Pour les festivaliers occasionnels</p>
+              <p className="text-sm text-gray-400 mb-6">Pour les festivaliers occasionnels</p>
               
-              <ul className="space-y-4 mb-10">
+              <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3 text-sm">
                   <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
-                  <span>2 exports par an</span>
+                  <span><strong>2 exports par an</strong></span>
                 </li>
                 <li className="flex items-start gap-3 text-sm">
                   <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
-                  <span>Accès aux festivals</span>
+                  <span>Accès festivals</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm">
                   <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
-                  <span>Prévisualisation des titres</span>
+                  <span>Prévisualisation</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-gray-500">
+                  <div className="w-5 h-5 shrink-0">⚠</div>
+                  <span>Avec publicités</span>
                 </li>
               </ul>
 
               <Button
                 onClick={() => navigate('/auth')}
-                className="w-full h-12 bg-[#333] hover:bg-[#444] text-white font-bold"
+                className="w-full h-11 bg-[#333] hover:bg-[#444] text-white font-bold"
               >
-                Créer un compte gratuit
+                Créer un compte
               </Button>
             </div>
 
-            {/* Plan Premium */}
-            <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-8 shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)]">
-              <div className="absolute top-4 right-6 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
+            {/* Premium */}
+            <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-6 sm:p-8 shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)]">
+              <div className="absolute top-4 right-4 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
                 Recommandé
               </div>
               
-              <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+              <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                 Premium
-                <Crown className="w-6 h-6 text-yellow-500" />
+                <Crown className="w-5 h-5 text-yellow-500" />
               </h3>
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-black text-[#4d94ff]">5€</span>
+                <span className="text-3xl font-black text-[#4d94ff]">5€</span>
                 <span className="text-gray-400 text-sm">/an</span>
               </div>
-              <p className="text-sm text-gray-400 mb-8">L'expérience ultime</p>
+              <p className="text-sm text-gray-400 mb-6">L'expérience ultime</p>
               
-              <ul className="space-y-4 mb-10">
+              <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3 text-sm">
                   <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
                   <span><strong className="text-[#4d94ff]">Exports ILLIMITÉS</strong></span>
@@ -317,7 +318,7 @@ export default function Index() {
 
               <Button
                 onClick={() => navigate('/subscription')}
-                className="w-full h-12 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
+                className="w-full h-11 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
               >
                 Devenir Premium
               </Button>
