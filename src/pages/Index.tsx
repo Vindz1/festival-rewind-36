@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SearchBar } from '@/components/SearchBar';
-import { Clock, Calendar, Music2, Smartphone, Share2, Zap, Globe } from 'lucide-react';
+import { Clock, Calendar, Music2, Smartphone, Share2, Zap, Globe, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Index() {
@@ -12,80 +12,75 @@ export default function Index() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
 
-      {/* HERO avec image de fond */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
-        {/* Image de fond avec overlay */}
+      {/* HERO avec image de fond FIXE */}
+      <section className="relative">
+        {/* Image de fond FIXE (ne bouge pas au scroll) */}
         <div 
-          className="absolute inset-0 bg-cover bg-center"
+          className="fixed top-0 left-0 w-full h-screen bg-cover bg-center z-0"
           style={{ 
             backgroundImage: 'url(/og-image.jpg)',
-            backgroundPosition: 'center 40%'
+            backgroundPosition: 'center center',
+            backgroundSize: 'cover'
           }}
         >
-          {/* Overlay gradient pour lisibilité */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-[#0a0a0a]" />
+          {/* Overlay sombre pour lisibilité */}
+          <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        {/* Contenu hero */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center pt-20">
+        {/* Spacer pour que le contenu soit SOUS l'image (environ 70vh) */}
+        <div className="relative z-10 h-[70vh] min-h-[500px]" />
+
+        {/* Contenu principal - commence SOUS l'image */}
+        <div className="relative z-10 bg-gradient-to-b from-black/60 via-[#0a0a0a] to-[#0a0a0a]">
           
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#4d94ff]/10 border border-[#4d94ff]/30 backdrop-blur-sm mb-6">
-            <Zap className="w-4 h-4 text-[#4d94ff]" />
-            <span className="text-sm font-bold text-[#4d94ff]">100% Gratuit • 0 Pub • Export Instantané</span>
-          </div>
-
-          {/* Titre principal */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black italic uppercase mb-6 leading-tight tracking-tighter">
-            VOS CONCERTS<br />
-            <span className="text-[#4d94ff]">EN PLAYLISTS</span>
-          </h1>
-
-          {/* Sous-titre */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto font-medium">
-            Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
-          </p>
-
-          {/* Search bar */}
-          <div className="max-w-2xl mx-auto mb-8">
-            <SearchBar />
-          </div>
-
-          {/* 2 CTA principaux */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button
-              onClick={() => navigate('/my-concerts')}
-              size="lg"
-              className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30"
-            >
-              <Clock className="w-5 h-5 mr-2" />
-              Mes Concerts Passés
-            </Button>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center pt-12 pb-20">
             
-            <Button
-              onClick={() => navigate('/festivals')}
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full"
-            >
-              <Globe className="w-5 h-5 mr-2" />
-              Festivals 2026
-            </Button>
-          </div>
+            {/* Sous-titre sous l'image */}
+            <p className="text-xl sm:text-2xl text-gray-300 mb-8 font-medium max-w-3xl mx-auto">
+              Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
+            </p>
 
-          {/* Stats */}
-          <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-gray-400">Millions de setlists disponibles</span>
+            {/* Search bar */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <SearchBar />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
-              <span className="text-gray-400">Principaux festivals 2026</span>
+
+            {/* 2 CTA principaux */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+              <Button
+                onClick={() => navigate('/my-concerts')}
+                size="lg"
+                className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30"
+              >
+                <Clock className="w-5 h-5 mr-2" />
+                Mes Concerts Passés
+              </Button>
+              
+              <Button
+                onClick={() => navigate('/festivals')}
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full"
+              >
+                <Globe className="w-5 h-5 mr-2" />
+                Festivals 2026
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-purple-500" />
-              <span className="text-gray-400">Multi-plateformes</span>
+
+            {/* Stats */}
+            <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-gray-400">Millions de setlists disponibles</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
+                <span className="text-gray-400">Principaux festivals 2026</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <span className="text-gray-400">Multi-plateformes</span>
+              </div>
             </div>
           </div>
         </div>
@@ -112,7 +107,7 @@ export default function Index() {
               </div>
               <h3 className="text-2xl font-bold mb-3 text-white">Recherchez</h3>
               <p className="text-gray-400 leading-relaxed">
-                Artiste, festival ou ville. Choisissez parmi 1 million de concerts référencés.
+                Artiste, festival ou ville. Choisissez parmi des millions de concerts référencés.
               </p>
             </div>
 
@@ -178,7 +173,7 @@ export default function Index() {
                   </li>
                   <li className="flex items-center gap-3 text-sm text-gray-300">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
-                    Export multi-plateformes
+                    2 exports gratuits par an
                   </li>
                 </ul>
 
@@ -233,107 +228,106 @@ export default function Index() {
         </div>
       </section>
 
-      {/* SECTION: Features */}
+      {/* SECTION: Offres (Gratuit vs Premium) */}
       <section className="py-20 bg-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-4">
+              CHOISISSEZ VOTRE<br />
+              <span className="text-[#4d94ff]">FORMULE</span>
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Commencez gratuitement, passez Premium pour plus
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
             
-            {/* Texte */}
-            <div>
-              <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-6">
-                POURQUOI<br />
-                <span className="text-[#4d94ff]">SETLIVE ?</span>
-              </h2>
-
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-xl bg-[#4d94ff]/10 flex items-center justify-center">
-                    <Music2 className="w-6 h-6 text-[#4d94ff]" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg mb-2">Setlists exactes</h4>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      Données issues de Setlist.fm, la plus grande base mondiale de setlists de concerts.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-xl bg-[#4d94ff]/10 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 text-[#4d94ff]" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg mb-2">Multi-plateformes</h4>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      Compatible Spotify, Deezer, Apple Music. Ou téléchargez en .txt pour autres services.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <Zap className="w-6 h-6 text-green-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg mb-2">100% Gratuit</h4>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      Aucun abonnement. Aucune publicité. Export illimité. Toujours gratuit.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                    <Share2 className="w-6 h-6 text-purple-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-lg mb-2">Partage facile</h4>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      Partagez vos playlists de concerts avec vos amis en un clic.
-                    </p>
-                  </div>
-                </div>
+            {/* Plan Gratuit */}
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8">
+              <h3 className="text-2xl font-bold mb-2">Gratuit</h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-black">0€</span>
+                <span className="text-gray-400 text-sm">/à vie</span>
               </div>
+              <p className="text-sm text-gray-400 mb-8">Pour les festivaliers occasionnels</p>
+              
+              <ul className="space-y-4 mb-10">
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <span>2 exports par an</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <span>Accès aux festivals</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <span>Prévisualisation des titres</span>
+                </li>
+              </ul>
+
+              <Button
+                onClick={() => navigate('/auth')}
+                className="w-full h-12 bg-[#333] hover:bg-[#444] text-white font-bold"
+              >
+                Créer un compte gratuit
+              </Button>
             </div>
 
-            {/* Image placeholder ou stats */}
-            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
-                  <div className="text-4xl font-black text-[#4d94ff] mb-2">✓</div>
-                  <div className="text-sm text-gray-400">Millions de setlists</div>
-                </div>
-                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
-                  <div className="text-4xl font-black text-green-500 mb-2">🌍</div>
-                  <div className="text-sm text-gray-400">Festivals monde</div>
-                </div>
-                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
-                  <div className="text-4xl font-black text-purple-500 mb-2">🎵</div>
-                  <div className="text-sm text-gray-400">Multi-plateformes</div>
-                </div>
-                <div className="text-center p-6 bg-[#1a1a1a] rounded-xl border border-[#333]">
-                  <div className="text-4xl font-black text-yellow-500 mb-2">∞</div>
-                  <div className="text-sm text-gray-400">Gratuit à vie</div>
-                </div>
+            {/* Plan Premium */}
+            <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-8 shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)]">
+              <div className="absolute top-4 right-6 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
+                Recommandé
               </div>
+              
+              <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                Premium
+                <Crown className="w-6 h-6 text-yellow-500" />
+              </h3>
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="text-4xl font-black text-[#4d94ff]">5€</span>
+                <span className="text-gray-400 text-sm">/an</span>
+              </div>
+              <p className="text-sm text-gray-400 mb-8">L'expérience ultime</p>
+              
+              <ul className="space-y-4 mb-10">
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
+                  <span><strong className="text-[#4d94ff]">Exports ILLIMITÉS</strong></span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
+                  <span>Zéro publicité</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
+                  <span>Historique complet</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
+                  <span>Badge supporter</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm">
+                  <div className="w-5 h-5 shrink-0 text-[#4d94ff]">✓</div>
+                  <span>Support prioritaire</span>
+                </li>
+              </ul>
 
-              <div className="mt-8 text-center">
-                <Button
-                  onClick={() => navigate('/partage')}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Partager Setlive
-                </Button>
-              </div>
+              <Button
+                onClick={() => navigate('/subscription')}
+                className="w-full h-12 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
+              >
+                Devenir Premium
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA Final */}
-      <section className="py-20 bg-gradient-to-b from-[#0a0a0a] to-black">
+      <section className="py-20 bg-gradient-to-b from-[#1a1a1a] to-black">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-5xl font-black italic uppercase mb-6">
             PRÊT À REVIVRE<br />
