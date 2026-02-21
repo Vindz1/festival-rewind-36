@@ -14,22 +14,20 @@ export default function Index() {
 
       {/* HERO - Image avec contenu par-dessus */}
       <section 
-        className="relative min-h-screen flex items-end pb-20 bg-cover bg-center"
+        className="relative min-h-[100svh] flex items-end pb-20 bg-cover bg-center bg-no-repeat bg-fixed"
         style={{ 
-          backgroundImage: 'url(/og-image.jpg)',
-          backgroundPosition: 'center center',
-          backgroundSize: 'cover'
+          backgroundImage: 'url(/og-image.jpg)'
         }}
       >
-        {/* Overlay gradient du bas */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
+        {/* Overlay gradient optimisé pour la lisibilité sur mobile et desktop */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-[#0a0a0a]" />
 
         {/* Contenu en bas de l'image */}
         <div className="relative z-10 w-full">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
             
             {/* Sous-titre */}
-            <p className="text-lg sm:text-2xl text-white mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
+            <p className="text-lg sm:text-2xl text-white mb-8 font-medium max-w-3xl mx-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
               Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
             </p>
 
@@ -53,7 +51,7 @@ export default function Index() {
                 onClick={() => navigate('/festivals')}
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full"
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-white/30 font-bold px-8 h-14 text-lg rounded-full shadow-lg"
               >
                 <Calendar className="w-5 h-5 mr-2" />
                 Festivals 2026
@@ -61,18 +59,18 @@ export default function Index() {
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
+            <div className="flex flex-wrap justify-center gap-6 sm:gap-8 text-sm font-medium">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-white drop-shadow-md">Millions de setlists</span>
+                <span className="text-gray-200 drop-shadow-md">Millions de setlists</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
-                <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
+                <span className="text-gray-200 drop-shadow-md">Principaux festivals 2026</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <span className="text-white drop-shadow-md">Multi-plateformes</span>
+                <span className="text-gray-200 drop-shadow-md">Multi-plateformes</span>
               </div>
             </div>
           </div>
@@ -90,7 +88,7 @@ export default function Index() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               {/* 1 */}
               <div className="text-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
                   <span className="text-2xl font-black text-white">1</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2">Recherchez</h3>
@@ -99,7 +97,7 @@ export default function Index() {
 
               {/* 2 */}
               <div className="text-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
                   <span className="text-2xl font-black text-white">2</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2">Sélectionnez</h3>
@@ -108,7 +106,7 @@ export default function Index() {
 
               {/* 3 */}
               <div className="text-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#4d94ff] to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
                   <span className="text-2xl font-black text-white">3</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2">Exportez</h3>
@@ -128,12 +126,12 @@ export default function Index() {
             {/* Concerts passés */}
             <div 
               onClick={() => navigate('/my-concerts')}
-              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-[#4d94ff] transition-all cursor-pointer overflow-hidden"
+              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-[#4d94ff] transition-all cursor-pointer overflow-hidden shadow-xl"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#4d94ff]/5 rounded-full blur-3xl" />
               
               <div className="relative">
-                <Clock className="w-12 h-12 text-[#4d94ff] mb-6 group-hover:scale-110 transition-transform" />
+                <Clock className="w-12 h-12 text-[#4d94ff] mb-6 group-hover:scale-110 transition-transform duration-300" />
                 
                 <h3 className="text-3xl font-black italic uppercase mb-4">
                   CONCERTS<br />
@@ -170,12 +168,12 @@ export default function Index() {
             {/* Festivals 2026 */}
             <div 
               onClick={() => navigate('/festivals')}
-              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-green-500 transition-all cursor-pointer overflow-hidden"
+              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-8 sm:p-10 hover:border-green-500 transition-all cursor-pointer overflow-hidden shadow-xl"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl" />
               
               <div className="relative">
-                <Calendar className="w-12 h-12 text-green-500 mb-6 group-hover:scale-110 transition-transform" />
+                <Calendar className="w-12 h-12 text-green-500 mb-6 group-hover:scale-110 transition-transform duration-300" />
                 
                 <h3 className="text-3xl font-black italic uppercase mb-4">
                   FESTIVALS<br />
@@ -228,7 +226,7 @@ export default function Index() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Non connecté */}
-            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8">
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8 hover:border-gray-500 transition-colors">
               <h3 className="text-xl font-bold mb-2">Découverte</h3>
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-3xl font-black">Lecture</span>
@@ -260,7 +258,7 @@ export default function Index() {
             </div>
 
             {/* Gratuit connecté */}
-            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8">
+            <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-6 sm:p-8 hover:border-white transition-colors">
               <h3 className="text-xl font-bold mb-2">Gratuit</h3>
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-3xl font-black">0€</span>
@@ -270,8 +268,8 @@ export default function Index() {
               
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3 text-sm">
-                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
-                  <span><strong>2 exports par an</strong></span>
+                  <div className="w-5 h-5 shrink-0 text-white">✓</div>
+                  <span className="text-white"><strong>2 exports par an</strong></span>
                 </li>
                 <li className="flex items-start gap-3 text-sm">
                   <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
@@ -289,15 +287,15 @@ export default function Index() {
 
               <Button
                 onClick={() => navigate('/auth')}
-                className="w-full h-11 bg-[#333] hover:bg-[#444] text-white font-bold"
+                className="w-full h-11 bg-[#333] hover:bg-[#444] text-white font-bold transition-colors"
               >
                 Créer un compte
               </Button>
             </div>
 
             {/* Premium */}
-            <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-6 sm:p-8 shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)]">
-              <div className="absolute top-4 right-4 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
+            <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-6 sm:p-8 shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)] hover:shadow-[0_0_40px_-10px_rgba(77,148,255,0.5)] transition-all">
+              <div className="absolute top-4 right-4 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest shadow-md">
                 Recommandé
               </div>
               
@@ -336,7 +334,7 @@ export default function Index() {
 
               <Button
                 onClick={() => navigate('/subscription')}
-                className="w-full h-11 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
+                className="w-full h-11 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold shadow-md hover:shadow-lg transition-all"
               >
                 Devenir Premium
               </Button>
@@ -361,7 +359,7 @@ export default function Index() {
             <Button
               onClick={() => navigate('/my-concerts')}
               size="lg"
-              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-10 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30"
+              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-10 h-14 text-lg rounded-full shadow-lg shadow-blue-500/30 transition-transform active:scale-95"
             >
               Commencer maintenant
             </Button>
@@ -370,7 +368,7 @@ export default function Index() {
               onClick={() => navigate('/festivals')}
               size="lg"
               variant="outline"
-              className="bg-transparent hover:bg-white/10 text-white border-white/30 font-bold px-10 h-14 text-lg rounded-full"
+              className="bg-transparent hover:bg-white/10 text-white border-white/30 font-bold px-10 h-14 text-lg rounded-full transition-transform active:scale-95"
             >
               Explorer les festivals
             </Button>
