@@ -32,7 +32,7 @@ export default function Index() {
             
             {/* Sous-titre */}
             <p className="text-lg sm:text-2xl text-white mb-8 font-medium max-w-3xl mx-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-              Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer, Apple Music, ou tout autre service de streaming
+              Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer, Qobuz, Apple Music ou autres...
             </p>
 
             {/* Search bar */}
@@ -114,7 +114,7 @@ export default function Index() {
                   <span className="text-2xl font-black text-white">3</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2">Exportez</h3>
-                <p className="text-sm text-gray-400">Vers Spotify, Deezer, Apple Music ou autres</p>
+                <p className="text-sm text-gray-400">Vers Spotify, Deezer, Qobuz, Apple Music ou autres</p>
               </div>
             </div>
           </div>
