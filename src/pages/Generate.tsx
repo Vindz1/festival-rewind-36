@@ -180,24 +180,49 @@ export default function Generate() {
     return result;
   };
 
-  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
-    try {
-      const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${Math.max(limit * 5, 50)}&country=US`);
-      if (!response.ok) return [];
-      const data = await response.json();
-      if (!data.results?.length) return [];
-      const normalizedSearchArtist = normalizeString(artist);
-      return data.results
-        .map((item: any) => {
-          const n = normalizeString(item.artistName);
-          const score = n === normalizedSearchArtist ? 100 : n.includes(normalizedSearchArtist) ? 50 : 0;
-          return { ...item, score };
-        })
-        .filter(item => item.score > 20)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
-        .map((item: any) => ({ artist: item.artistName, name: item.trackName }));
-    } catch { return []; }
+const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
+    // La fameuse logique de cascade : US d'abord, puis UK, puis FR
+    const countries = ['US', 'GB', 'FR'];
+    let allTracks: Track[] = [];
+    const normalizedSearchArtist = normalizeString(artist);
+
+    for (const country of countries) {
+      try {
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${Math.max(limit * 5, 50)}&country=${country}`);
+        if (!response.ok) continue; // Si le pays plante, on passe au suivant
+        
+        const data = await response.json();
+        if (!data.results?.length) continue;
+
+        // On filtre et on note les morceaux trouvés
+        const newTracks = data.results
+          .map((item: any) => {
+            const n = normalizeString(item.artistName || ''); // Sécurité anti-crash ajoutée
+            const score = n === normalizedSearchArtist ? 100 : n.includes(normalizedSearchArtist) ? 50 : 0;
+            return { ...item, score };
+          })
+          .filter((item: any) => item.score > 20)
+          .sort((a: any, b: any) => b.score - a.score)
+          .map((item: any) => ({ artist: item.artistName, name: item.trackName }));
+
+        // On ajoute les nouveaux morceaux à notre liste globale
+        allTracks = [...allTracks, ...newTracks];
+        
+        // On déduplique pour voir combien on en a VRAIMENT
+        const uniqueTracks = deduplicateTracks(allTracks);
+
+        // Si on a atteint notre quota de 10 (ou plus), on arrête de chercher !
+        if (uniqueTracks.length >= limit) {
+          return uniqueTracks.slice(0, limit);
+        }
+      } catch (err) {
+        // En cas d'erreur réseau, on ignore et on passe au pays suivant
+        console.error(`Erreur iTunes (${country}) pour ${artist}:`, err);
+      }
+    }
+
+    // Si on a fini de fouiller tous les pays, on renvoie ce qu'on a trouvé (même s'il y en a moins de 10)
+    return deduplicateTracks(allTracks).slice(0, limit);
   };
 
   const normalizeString = (str: string) => str.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
