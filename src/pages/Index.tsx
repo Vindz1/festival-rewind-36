@@ -14,13 +14,13 @@ export default function Index() {
 
       {/* HERO - Image avec contenu par-dessus */}
       <section 
-        className="relative min-h-[100svh] flex items-end pb-20 bg-cover bg-center bg-no-repeat bg-fixed"
+        className="relative min-h-[100svh] flex items-end pb-20 bg-no-repeat bg-contain md:bg-cover bg-top md:bg-center bg-scroll md:bg-fixed"
         style={{ 
           backgroundImage: 'url(/og-image.jpg)'
         }}
       >
-        {/* Overlay gradient optimisé pour la lisibilité sur mobile et desktop */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-[#0a0a0a]" />
+        {/* Overlay gradient optimisé pour fusionner l'image courte sur mobile avec le fond noir */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#0a0a0a]/80 to-[#0a0a0a]" />
 
         {/* Contenu en bas de l'image */}
         <div className="relative z-10 w-full">
