@@ -3,88 +3,126 @@ import { Footer } from '@/components/Footer';
 import { ShoppingCart, Disc, Ticket, ShieldAlert, Shirt, ExternalLink, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// --- DONNÉES DE LA BOUTIQUE (Facile à modifier) ---
+// --- TES TAGS D'AFFILIATION ---
 const AMAZON_TAG = 'setlive-21';
+// Remplace ces liens par tes liens de tracking Effinity
+const EFFINITY_FNAC = 'https://www.fnacspectacles.com'; 
+const EFFINITY_TICKETMASTER = 'https://www.ticketmaster.fr';
+const EFFINITY_EMP = 'https://www.emp-online.fr';
 
 const categories = [
   {
     id: 'tickets',
-    title: 'Billetterie & Festivals',
+    title: 'Billetterie Concerts',
     icon: Ticket,
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
     borderColor: 'border-green-500/30',
-    description: 'Sécurisez vos places pour les prochains concerts.',
+    description: 'Réservez vos places de concerts et festivals officiellement.',
     items: [
-      {
-        name: 'Hellfest 2026 - Pass',
-        price: 'Voir tarifs',
-        desc: 'Revente officielle et billetterie',
-        image: 'https://placehold.co/400x400/1a1a1a/22c55e?text=TICKETS',
-        // Remplacer par ton lien Effinity (ex: Ticketmaster / Fnac)
-        link: 'https://www.ticketmaster.fr', 
-        platform: 'Ticketmaster'
-      },
       {
         name: 'Fnac Spectacles',
-        price: 'Concerts',
-        desc: 'Trouvez les dates de vos artistes favoris',
+        price: 'Billets',
+        desc: 'Trouvez les dates de vos artistes favoris dans toute la France.',
         image: 'https://placehold.co/400x400/1a1a1a/22c55e?text=FNAC',
-        link: 'https://www.fnacspectacles.com', // Lien Effinity
+        link: EFFINITY_FNAC,
         platform: 'Fnac'
-      }
-    ]
-  },
-  {
-    id: 'earplugs',
-    title: 'Protection Auditive',
-    icon: ShieldAlert,
-    color: 'text-[#4d94ff]',
-    bgColor: 'bg-[#4d94ff]/10',
-    borderColor: 'border-[#4d94ff]/30',
-    description: 'Indispensable pour profiter de la musique à vie.',
-    items: [
-      {
-        name: 'Loop Experience Plus',
-        price: '34.95€',
-        desc: 'Réduction de bruit avec filtre acoustique',
-        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=LOOP',
-        link: `https://www.amazon.fr/dp/B0968HWZXZ?tag=${AMAZON_TAG}`,
-        platform: 'Amazon'
       },
       {
-        name: 'Alpine PartyPlug Pro',
-        price: '29.99€',
-        desc: 'Bouchons d\'oreilles naturels pour concerts',
-        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=ALPINE',
-        link: `https://www.amazon.fr/dp/B07S7DML8B?tag=${AMAZON_TAG}`,
-        platform: 'Amazon'
+        name: 'Ticketmaster',
+        price: 'Concerts',
+        desc: 'Billetterie officielle pour les grandes tournées internationales.',
+        image: 'https://placehold.co/400x400/1a1a1a/22c55e?text=TICKETMASTER',
+        link: EFFINITY_TICKETMASTER,
+        platform: 'Ticketmaster'
       }
     ]
   },
   {
     id: 'vinyls',
-    title: 'Vinyles & Audio',
+    title: 'Vinyles & Musique',
     icon: Disc,
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
     borderColor: 'border-purple-500/30',
-    description: 'Ramenez l\'ambiance du concert à la maison.',
+    description: 'Complétez votre collection avec les classiques intemporels.',
     items: [
       {
-        name: 'Metallica - 72 Seasons',
-        price: '32.99€',
-        desc: 'Double Vinyle Noir 180g',
-        image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=VINYLE',
-        link: `https://www.amazon.fr/dp/B0BMSNBSVQ?tag=${AMAZON_TAG}`,
+        name: 'Metallica - The Black Album',
+        price: 'Vinyle',
+        desc: 'L\'album mythique remasterisé en double vinyle 180g.',
+        image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=METALLICA',
+        link: `https://www.amazon.fr/dp/B095L89XJ5?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      },
+      {
+        name: 'AC/DC - Back In Black',
+        price: 'Vinyle',
+        desc: 'Le classique absolu du rock australien.',
+        image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=ACDC',
+        link: `https://www.amazon.fr/dp/B00008WT5E?tag=${AMAZON_TAG}`,
         platform: 'Amazon'
       },
       {
         name: 'Platine Audio-Technica',
-        price: '149.00€',
-        desc: 'AT-LP60XUSB - Platine Vinyle Automatique',
+        price: 'Matériel',
+        desc: 'AT-LP60XUSB - Platine Vinyle Automatique idéale pour débuter.',
         image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=PLATINE',
         link: `https://www.amazon.fr/dp/B07MVQGVKJ?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      }
+    ]
+  },
+  {
+    id: 'merch',
+    title: 'Merchandising Officiel',
+    icon: Shirt,
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/30',
+    description: 'Portez fièrement les couleurs de vos groupes favoris.',
+    items: [
+      {
+        name: 'T-Shirts Rock & Metal',
+        price: 'Vêtements',
+        desc: 'Des centaines de t-shirts officiels de vos groupes préférés.',
+        image: 'https://placehold.co/400x400/1a1a1a/f97316?text=TSHIRT',
+        link: `https://www.amazon.fr/s?k=t-shirt+metal+rock+officiel&tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      },
+      {
+        name: 'Boutique EMP',
+        price: 'Merch',
+        desc: 'Le spécialiste européen du merchandising rock, metal et alternatif.',
+        image: 'https://placehold.co/400x400/1a1a1a/f97316?text=EMP',
+        link: EFFINITY_EMP,
+        platform: 'EMP'
+      }
+    ]
+  },
+  {
+    id: 'earplugs',
+    title: 'Protections Auditives',
+    icon: ShieldAlert,
+    color: 'text-[#4d94ff]',
+    bgColor: 'bg-[#4d94ff]/10',
+    borderColor: 'border-[#4d94ff]/30',
+    description: 'Indispensable pour continuer à profiter des concerts à vie.',
+    items: [
+      {
+        name: 'Loop Experience Plus',
+        price: 'Bouchons',
+        desc: 'Réduction de bruit avec filtre acoustique, idéal pour la musique live.',
+        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=LOOP',
+        link: `https://www.amazon.fr/dp/B0968HWZXZ?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      },
+      {
+        name: 'Alpine PartyPlug',
+        price: 'Bouchons',
+        desc: 'Bouchons d\'oreilles naturels et confortables pour festivals.',
+        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=ALPINE',
+        link: `https://www.amazon.fr/dp/B00REB9VTO?tag=${AMAZON_TAG}`,
         platform: 'Amazon'
       }
     ]
@@ -107,8 +145,8 @@ export default function Shop() {
             LE SHOP <span className="text-[#4d94ff]">SETLIVE</span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Équipez-vous pour vos prochains festivals, protégez vos oreilles et ramenez l'ambiance des concerts dans votre salon. 
-            <br/><span className="text-xs text-gray-500 mt-2 block">*En achetant via ces liens partenaires, vous soutenez Setlive sans que cela ne vous coûte plus cher.</span>
+            Achetez vos billets officiels, complétez votre collection de vinyles et protégez vos oreilles. 
+            <br/><span className="text-xs text-gray-500 mt-2 block">*En achetant via ces liens affiliés, vous soutenez Setlive sans que cela ne vous coûte plus cher.</span>
           </p>
         </div>
 
@@ -140,7 +178,6 @@ export default function Shop() {
                   >
                     {/* Image Box */}
                     <div className="relative aspect-square bg-[#252525] p-6 flex items-center justify-center overflow-hidden">
-                      {/* Remplace l'image ici quand tu as les vraies photos */}
                       <img 
                         src={item.image} 
                         alt={item.name}
@@ -160,20 +197,23 @@ export default function Shop() {
                         {item.desc}
                       </p>
                       
-                      <div className="flex items-center justify-between mt-auto">
-                        <span className="text-xl font-black italic">{item.price}</span>
+                      <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#333]">
+                        <span className="text-lg font-black italic text-gray-300">{item.price}</span>
                         <Button className="bg-white text-black group-hover:bg-[#4d94ff] group-hover:text-white transition-colors rounded-full px-6 font-bold">
-                          Acheter
+                          Découvrir
                         </Button>
                       </div>
                     </div>
                   </a>
                 ))}
 
-                {/* Card "Voir plus" pour Amazon par exemple */}
+                {/* Card "Voir plus" (Sauf pour Billetterie où on a déjà tout mis) */}
                 {cat.id !== 'tickets' && (
                   <a 
-                    href={`https://www.amazon.fr/s?k=${encodeURIComponent(cat.title)}&tag=${AMAZON_TAG}`}
+                    href={
+                      cat.id === 'merch' ? EFFINITY_EMP : 
+                      `https://www.amazon.fr/s?k=${encodeURIComponent(cat.title)}&tag=${AMAZON_TAG}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group bg-gradient-to-br from-[#1a1a1a] to-[#252525] border border-[#333] border-dashed hover:border-[#4d94ff] rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all min-h-[300px]"
@@ -181,27 +221,15 @@ export default function Shop() {
                     <div className={`p-4 rounded-full ${cat.bgColor} mb-4 group-hover:scale-110 transition-transform`}>
                       <ArrowRight className={`w-8 h-8 ${cat.color}`} />
                     </div>
-                    <h3 className="font-bold text-lg mb-2">Voir plus de choix</h3>
-                    <p className="text-sm text-gray-400">Découvrez le catalogue complet sur {cat.id === 'tickets' ? 'Fnac Spectacles' : 'Amazon'}</p>
+                    <h3 className="font-bold text-lg mb-2">Voir tout le catalogue</h3>
+                    <p className="text-sm text-gray-400">
+                      Explorez plus de choix sur {cat.id === 'merch' ? 'EMP / Amazon' : 'Amazon'}
+                    </p>
                   </a>
                 )}
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Bannière d'affiliation générique (Emp/Effinity) */}
-        <div className="mt-20 p-8 rounded-3xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
-            <h2 className="text-2xl font-black italic uppercase mb-2">Merchandising Officiel 👕</h2>
-            <p className="text-gray-300">T-shirts, sweats et accessoires de vos groupes préférés.</p>
-          </div>
-          <Button 
-            className="w-full md:w-auto bg-purple-500 hover:bg-purple-600 text-white font-bold h-12 px-8 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-            onClick={() => window.open('https://www.amazon.fr/s?k=t-shirt+metal+rock+band&tag=' + AMAZON_TAG, '_blank')}
-          >
-            Voir les collections
-          </Button>
         </div>
 
       </div>
