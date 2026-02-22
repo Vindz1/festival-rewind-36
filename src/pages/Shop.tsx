@@ -1,200 +1,211 @@
 import { Header } from '@/components/Header';
-import { ShoppingBag, Disc, ExternalLink, Speaker, Music, Headphones } from 'lucide-react';
 import { Footer } from '@/components/Footer';
+import { ShoppingCart, Disc, Ticket, ShieldAlert, Shirt, ExternalLink, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+// --- DONNÉES DE LA BOUTIQUE (Facile à modifier) ---
+const AMAZON_TAG = 'setlive-21';
+
+const categories = [
+  {
+    id: 'tickets',
+    title: 'Billetterie & Festivals',
+    icon: Ticket,
+    color: 'text-green-500',
+    bgColor: 'bg-green-500/10',
+    borderColor: 'border-green-500/30',
+    description: 'Sécurisez vos places pour les prochains concerts.',
+    items: [
+      {
+        name: 'Hellfest 2026 - Pass',
+        price: 'Voir tarifs',
+        desc: 'Revente officielle et billetterie',
+        image: 'https://placehold.co/400x400/1a1a1a/22c55e?text=TICKETS',
+        // Remplacer par ton lien Effinity (ex: Ticketmaster / Fnac)
+        link: 'https://www.ticketmaster.fr', 
+        platform: 'Ticketmaster'
+      },
+      {
+        name: 'Fnac Spectacles',
+        price: 'Concerts',
+        desc: 'Trouvez les dates de vos artistes favoris',
+        image: 'https://placehold.co/400x400/1a1a1a/22c55e?text=FNAC',
+        link: 'https://www.fnacspectacles.com', // Lien Effinity
+        platform: 'Fnac'
+      }
+    ]
+  },
+  {
+    id: 'earplugs',
+    title: 'Protection Auditive',
+    icon: ShieldAlert,
+    color: 'text-[#4d94ff]',
+    bgColor: 'bg-[#4d94ff]/10',
+    borderColor: 'border-[#4d94ff]/30',
+    description: 'Indispensable pour profiter de la musique à vie.',
+    items: [
+      {
+        name: 'Loop Experience Plus',
+        price: '34.95€',
+        desc: 'Réduction de bruit avec filtre acoustique',
+        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=LOOP',
+        link: `https://www.amazon.fr/dp/B0968HWZXZ?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      },
+      {
+        name: 'Alpine PartyPlug Pro',
+        price: '29.99€',
+        desc: 'Bouchons d\'oreilles naturels pour concerts',
+        image: 'https://placehold.co/400x400/1a1a1a/4d94ff?text=ALPINE',
+        link: `https://www.amazon.fr/dp/B07S7DML8B?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      }
+    ]
+  },
+  {
+    id: 'vinyls',
+    title: 'Vinyles & Audio',
+    icon: Disc,
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/30',
+    description: 'Ramenez l\'ambiance du concert à la maison.',
+    items: [
+      {
+        name: 'Metallica - 72 Seasons',
+        price: '32.99€',
+        desc: 'Double Vinyle Noir 180g',
+        image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=VINYLE',
+        link: `https://www.amazon.fr/dp/B0BMSNBSVQ?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      },
+      {
+        name: 'Platine Audio-Technica',
+        price: '149.00€',
+        desc: 'AT-LP60XUSB - Platine Vinyle Automatique',
+        image: 'https://placehold.co/400x400/1a1a1a/a855f7?text=PLATINE',
+        link: `https://www.amazon.fr/dp/B07MVQGVKJ?tag=${AMAZON_TAG}`,
+        platform: 'Amazon'
+      }
+    ]
+  }
+];
 
 export default function Shop() {
-  const sections = [
-    {
-      title: "Billetterie Concerts",
-      icon: <Music className="text-red-500" />,
-      color: "red",
-      items: [
-        { 
-          name: "Fnac Spectacles", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://spectacles.fnac.com/", 
-          desc: "Tous les concerts et festivals en France - Points de retrait partout"
-        },
-        { 
-          name: "Cultura Billetterie", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/spectacles.html", 
-          desc: "Concerts, théâtre, one-man shows - Retrait en magasin gratuit"
-        }
-      ]
-    },
-    {
-      title: "Merch Rock & Metal",
-      icon: <ShoppingBag className="text-[#00ff00]" />,
-      color: "green",
-      items: [
-        { 
-          name: "EMP France", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.emp-online.fr/", 
-          desc: "50 000 produits - T-shirts, hoodies, accessoires rock et metal"
-        },
-        { 
-          name: "Amazon Mode Rock", 
-          url: "https://www.amazon.fr/s?k=t+shirt+rock+metal&tag=setlive-21", 
-          desc: "T-shirts de groupes, merchandising officiel et accessoires"
-        },
-        { 
-          name: "Cultura Fashion", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/", 
-          desc: "Vêtements et accessoires culture pop, manga et musique"
-        }
-      ]
-    },
-    {
-      title: "Vinyles & Supports Physiques",
-      icon: <Disc className="text-purple-500" />,
-      color: "purple",
-      items: [
-        { 
-          name: "Fnac Musique", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.fnac.com/Musique/n23", 
-          desc: "Des milliers de vinyles neufs et occasions - Retrait gratuit en magasin"
-        },
-        { 
-          name: "Amazon Vinyles", 
-          url: "https://www.amazon.fr/Vinyles-CD/b?ie=UTF8&node=541686&tag=setlive-21", 
-          desc: "Rééditions collector, vinyles rares et nouveautés - Livraison Prime"
-        },
-        { 
-          name: "Cultura Musique", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.cultura.com/musique.html", 
-          desc: "Vinyles, CD et coffrets collector - Large choix rock et metal"
-        }
-      ]
-    },
-    {
-      title: "Matériel Audio",
-      icon: <Speaker className="text-blue-500" />,
-      color: "blue",
-      items: [
-        { 
-          name: "Audio-Technica AT-LP60X", 
-          url: "https://www.amazon.fr/s?k=audio+technica+AT-LP60X&tag=setlive-21", 
-          desc: "🎵 Platine automatique parfaite pour débuter - Best-seller mondial"
-        },
-        { 
-          name: "Audio-Technica AT-LP120", 
-          url: "https://www.amazon.fr/s?k=audio+technica+AT-LP120&tag=setlive-21", 
-          desc: "🎵 Platine semi-pro avec entraînement direct - Qualité DJ"
-        },
-        { 
-          name: "Marshall Stanmore", 
-          url: "https://www.amazon.fr/s?k=marshall+stanmore&tag=setlive-21", 
-          desc: "🔊 Design iconique - Le son des amplis légendaires chez vous"
-        },
-        { 
-          name: "Sony WH-1000XM5", 
-          url: "https://www.amazon.fr/s?k=sony+wh-1000xm5&tag=setlive-21", 
-          desc: "🎧 Meilleur casque à réduction de bruit - Qualité studio audiophile"
-        },
-        { 
-          name: "Darty Audio & Hi-Fi", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.darty.com/nav/extra/extra_son", 
-          desc: "🛒 Enceintes, amplis, chaînes Hi-Fi - Livraison et installation"
-        },
-        { 
-          name: "Boulanger Audio", 
-          url: "https://action.metaffiliation.com/trk.php?mclic=P51C4C414550505&redir=https://www.boulanger.com/c/tous-les-produits-son-hifi", 
-          desc: "🛒 Large choix platines, enceintes et casques - Garantie étendue"
-        }
-      ]
-    }
-  ];
-
-  const colorClasses = {
-    blue: {
-      border: "hover:border-[#4d94ff]",
-      text: "group-hover:text-[#4d94ff]"
-    },
-    green: {
-      border: "hover:border-[#00ff00]",
-      text: "group-hover:text-[#00ff00]"
-    },
-    purple: {
-      border: "hover:border-purple-500",
-      text: "group-hover:text-purple-400"
-    },
-    yellow: {
-      border: "hover:border-yellow-500",
-      text: "group-hover:text-yellow-400"
-    },
-    pink: {
-      border: "hover:border-pink-500",
-      text: "group-hover:text-pink-400"
-    },
-    red: {
-      border: "hover:border-red-500",
-      text: "group-hover:text-red-400"
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 pb-20">
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-20">
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         
         {/* Hero Section */}
-        <div className="mb-12 text-center">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#4d94ff] to-purple-500 mb-6 shadow-lg shadow-blue-500/20">
+            <ShoppingCart className="w-8 h-8 text-white" />
+          </div>
           <h1 className="text-4xl sm:text-6xl font-black italic uppercase mb-4 tracking-tighter">
-            NOTRE SÉLECTION
+            LE SHOP <span className="text-[#4d94ff]">SETLIVE</span>
           </h1>
-          <p className="text-gray-400 text-sm sm:text-base max-w-2xl mx-auto">
-            Billets, vinyles et matériel audio pour vivre vos concerts à 100%
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            Équipez-vous pour vos prochains festivals, protégez vos oreilles et ramenez l'ambiance des concerts dans votre salon. 
+            <br/><span className="text-xs text-gray-500 mt-2 block">*En achetant via ces liens partenaires, vous soutenez Setlive sans que cela ne vous coûte plus cher.</span>
           </p>
         </div>
 
-        {/* Grid des sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          {sections.map((sec, i) => (
-            <div 
-              key={i} 
-              className="space-y-4 bg-[#252525]/30 p-6 sm:p-8 rounded-3xl border border-[#333] hover:border-[#444] transition-all"
-            >
-              <div className="flex items-center gap-3 border-b border-[#333] pb-4">
-                {sec.icon}
-                <h2 className="text-xl sm:text-2xl font-bold uppercase italic">{sec.title}</h2>
-              </div>
+        {/* Categories Grid */}
+        <div className="space-y-16">
+          {categories.map((cat) => (
+            <div key={cat.id} className="scroll-mt-24" id={cat.id}>
               
-              <div className="space-y-3">
-                {sec.items.map((item, j) => (
+              {/* Category Header */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className={`p-3 rounded-xl ${cat.bgColor} border ${cat.borderColor}`}>
+                  <cat.icon className={`w-6 h-6 ${cat.color}`} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black italic uppercase">{cat.title}</h2>
+                  <p className="text-gray-400 text-sm">{cat.description}</p>
+                </div>
+              </div>
+
+              {/* Products Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cat.items.map((item, idx) => (
                   <a 
-                    key={j} 
-                    href={item.url} 
+                    key={idx} 
+                    href={item.link} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className={`group bg-[#252525] p-4 sm:p-5 rounded-xl border border-transparent ${colorClasses[sec.color].border} transition-all flex items-start gap-3`}
+                    className="group bg-[#1a1a1a] border border-[#333] hover:border-[#4d94ff] rounded-2xl overflow-hidden transition-all hover:shadow-[0_0_20px_-5px_rgba(77,148,255,0.3)] flex flex-col"
                   >
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-bold text-sm sm:text-base mb-2 ${colorClasses[sec.color].text} transition-colors`}>
+                    {/* Image Box */}
+                    <div className="relative aspect-square bg-[#252525] p-6 flex items-center justify-center overflow-hidden">
+                      {/* Remplace l'image ici quand tu as les vraies photos */}
+                      <img 
+                        src={item.image} 
+                        alt={item.name}
+                        className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-xs font-bold flex items-center gap-1.5">
+                        {item.platform} <ExternalLink className="w-3 h-3" />
+                      </div>
+                    </div>
+
+                    {/* Content Box */}
+                    <div className="p-6 flex flex-col flex-1">
+                      <h3 className="font-bold text-lg mb-1 group-hover:text-[#4d94ff] transition-colors line-clamp-2">
                         {item.name}
                       </h3>
-                      <p className="text-xs sm:text-sm text-[#a0a0a0] leading-relaxed">
+                      <p className="text-sm text-gray-400 mb-4 flex-1">
                         {item.desc}
                       </p>
+                      
+                      <div className="flex items-center justify-between mt-auto">
+                        <span className="text-xl font-black italic">{item.price}</span>
+                        <Button className="bg-white text-black group-hover:bg-[#4d94ff] group-hover:text-white transition-colors rounded-full px-6 font-bold">
+                          Acheter
+                        </Button>
+                      </div>
                     </div>
-                    <ExternalLink className={`w-4 h-4 sm:w-5 sm:h-5 text-[#444] ${colorClasses[sec.color].text} transition-colors shrink-0 mt-1`} />
                   </a>
                 ))}
+
+                {/* Card "Voir plus" pour Amazon par exemple */}
+                {cat.id !== 'tickets' && (
+                  <a 
+                    href={`https://www.amazon.fr/s?k=${encodeURIComponent(cat.title)}&tag=${AMAZON_TAG}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group bg-gradient-to-br from-[#1a1a1a] to-[#252525] border border-[#333] border-dashed hover:border-[#4d94ff] rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all min-h-[300px]"
+                  >
+                    <div className={`p-4 rounded-full ${cat.bgColor} mb-4 group-hover:scale-110 transition-transform`}>
+                      <ArrowRight className={`w-8 h-8 ${cat.color}`} />
+                    </div>
+                    <h3 className="font-bold text-lg mb-2">Voir plus de choix</h3>
+                    <p className="text-sm text-gray-400">Découvrez le catalogue complet sur {cat.id === 'tickets' ? 'Fnac Spectacles' : 'Amazon'}</p>
+                  </a>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-12 p-6 bg-[#252525]/30 border border-[#333] rounded-2xl">
-          <p className="text-xs sm:text-sm text-gray-400 leading-relaxed text-center">
-            <strong className="text-white">💡 Bon à savoir :</strong> Certains liens sont affiliés. 
-            En achetant via ces liens, vous soutenez Setlive sans surcoût. 
-            Nous recommandons uniquement des produits que nous utiliserions nous-mêmes.
-          </p>
+        {/* Bannière d'affiliation générique (Emp/Effinity) */}
+        <div className="mt-20 p-8 rounded-3xl bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div>
+            <h2 className="text-2xl font-black italic uppercase mb-2">Merchandising Officiel 👕</h2>
+            <p className="text-gray-300">T-shirts, sweats et accessoires de vos groupes préférés.</p>
+          </div>
+          <Button 
+            className="w-full md:w-auto bg-purple-500 hover:bg-purple-600 text-white font-bold h-12 px-8 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+            onClick={() => window.open('https://www.amazon.fr/s?k=t-shirt+metal+rock+band&tag=' + AMAZON_TAG, '_blank')}
+          >
+            Voir les collections
+          </Button>
         </div>
 
       </div>
-      
+
       <Footer />
     </div>
   );
