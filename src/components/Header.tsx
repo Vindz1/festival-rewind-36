@@ -56,7 +56,7 @@ export const Header = () => {
                   : 'ring-1 ring-[#4d94ff] group-hover:shadow-[0_0_15px_rgba(77,148,255,0.4)]'
               }`}>
                 <img 
-                  src="/favicon.png" 
+                  src="/favicon.svg" 
                   alt="Setlive Logo" 
                   className="w-[120%] h-[120%] max-w-none object-cover" 
                 />
