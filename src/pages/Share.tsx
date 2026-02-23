@@ -27,7 +27,7 @@ export default function Share() {
   const shareText = 'Transformez vos concerts passés et festivals 2026 en playlists universelles ! 🎸';
   const hashtags = 'Setlive,Concerts,Playlists,Festivals';
 
-  const widgetCode = `<a href="https://setlive.fr" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:10px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:sans-serif;font-weight:bold;border:1px solid #4d94ff;"><span style="font-size:20px;">🎧</span> Générez votre playlist du festival avec Setlive !</a>`;
+  const widgetCode = `<a href="https://setlive.fr" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:10px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:sans-serif;font-weight:bold;border:1px solid #4d94ff;"><img src="https://setlive.fr/favicon.svg" alt="Setlive Logo" style="width:24px;height:24px;" /> Générez votre playlist du festival avec Setlive !</a>`;
 
   const socialLinks = [
     {
