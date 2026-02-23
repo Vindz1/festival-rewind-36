@@ -9,13 +9,11 @@ import {
   Linkedin, 
   MessageCircle,
   Mail,
-  Link2,
   Check,
   Copy,
   QrCode,
   Download,
   Code,
-  Music,
   Megaphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,18 +24,26 @@ export default function Share() {
   const [copiedCode, setCopiedCode] = useState(false);
 
   const siteUrl = 'https://setlive.fr';
-  const shareText = 'Transformez vos concerts passés et festivals 2026 en playlists universelles ! Hellfest, Download UK, et tous vos souvenirs de concerts 🎸';
+  const shareText = 'Transformez vos concerts passés et festivals 2026 en playlists universelles ! 🎸';
   const hashtags = 'Setlive,Concerts,Playlists,Festivals';
 
   const widgetCode = `<a href="https://setlive.fr" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:10px;background:#1a1a1a;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:sans-serif;font-weight:bold;border:1px solid #4d94ff;"><span style="font-size:20px;">🎧</span> Générez votre playlist du festival avec Setlive !</a>`;
 
   const socialLinks = [
     {
+      name: 'Instagram',
+      icon: Instagram,
+      color: 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888]',
+      url: 'https://instagram.com',
+      description: 'Partager en Story',
+      isInstagram: true
+    },
+    {
       name: 'Twitter / X',
       icon: Twitter,
       color: 'bg-black hover:bg-gray-800',
       url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(siteUrl)}&hashtags=${hashtags}`,
-      description: 'Partager sur X (Twitter)'
+      description: 'Partager sur X'
     },
     {
       name: 'Facebook',
@@ -47,25 +53,11 @@ export default function Share() {
       description: 'Partager sur Facebook'
     },
     {
-      name: 'LinkedIn',
-      icon: Linkedin,
-      color: 'bg-[#0A66C2] hover:bg-[#004182]',
-      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(siteUrl)}`,
-      description: 'Partager sur LinkedIn'
-    },
-    {
       name: 'WhatsApp',
       icon: MessageCircle,
       color: 'bg-[#25D366] hover:bg-[#1DA851]',
       url: `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + siteUrl)}`,
-      description: 'Partager sur WhatsApp'
-    },
-    {
-      name: 'Email',
-      icon: Mail,
-      color: 'bg-[#4d94ff] hover:bg-[#3d84ef]',
-      url: `mailto:?subject=${encodeURIComponent('Découvre Setlive 🎸')}&body=${encodeURIComponent(shareText + '\n\n' + siteUrl)}`,
-      description: 'Partager par email'
+      description: 'Envoyer à un ami'
     }
   ];
 
@@ -91,8 +83,20 @@ export default function Share() {
     }
   };
 
-  const handleShare = (url: string) => {
-    window.open(url, '_blank', 'width=600,height=400');
+  const handleShare = async (social: any) => {
+    // Astuce spéciale pour Instagram
+    if (social.isInstagram) {
+      try {
+        await navigator.clipboard.writeText(siteUrl);
+        toast.success('Lien copié ! Ouvrez Instagram et collez-le dans votre Story.');
+        setTimeout(() => window.open(social.url, '_blank'), 1500);
+      } catch (err) {
+        window.open(social.url, '_blank');
+      }
+      return;
+    }
+    // Pour les autres réseaux
+    window.open(social.url, '_blank', 'width=600,height=400');
   };
 
   return (
@@ -103,8 +107,9 @@ export default function Share() {
         
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#4d94ff] to-purple-500 mb-6 animate-pulse-slow shadow-lg shadow-blue-500/20">
-            <Share2 className="w-10 h-10 text-white" />
+          {/* Remplacement de l'icône par le Favicon SVG */}
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#1a1a1a] border border-[#4d94ff]/30 mb-6 shadow-[0_0_30px_rgba(77,148,255,0.2)] p-4">
+            <img src="/favicon.svg" alt="Setlive Logo" className="w-full h-full object-contain" />
           </div>
           
           <h1 className="text-4xl sm:text-6xl font-black italic uppercase mb-4 tracking-tighter">
@@ -118,8 +123,27 @@ export default function Share() {
         </div>
 
         {/* ========================================================= */}
-        {/* SECTION 1 : POUR LES FANS (Partage classique) */}
+        {/* SECTION 1 : POUR LES FANS */}
         {/* ========================================================= */}
+
+        {/* Aperçu de l'encart avec le Favicon */}
+        <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl shadow-md">
+          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
+            Aperçu de votre partage
+          </label>
+          <div className="bg-[#1a1a1a] border border-[#404040] rounded-xl overflow-hidden flex flex-col sm:flex-row">
+            <div className="w-full sm:w-1/3 bg-[#252525] p-8 flex items-center justify-center border-b sm:border-b-0 sm:border-r border-[#404040]">
+               <img src="/favicon.svg" alt="Setlive Logo" className="w-24 h-24 drop-shadow-xl" />
+            </div>
+            <div className="p-6 flex flex-col justify-center w-full sm:w-2/3">
+              <h3 className="font-bold text-white mb-2 text-lg lg:text-xl">Setlive - Vos Concerts en Playlists</h3>
+              <p className="text-sm text-gray-400 mb-3 leading-relaxed">
+                Transformez vos concerts passés et les programmations des festivals 2026 en playlists Spotify, Deezer ou Apple Music.
+              </p>
+              <p className="text-xs text-[#4d94ff] font-mono font-bold uppercase tracking-wider">setlive.fr</p>
+            </div>
+          </div>
+        </div>
 
         {/* Copier le lien */}
         <div className="mb-12 p-6 bg-[#252525] border border-[#333] rounded-2xl shadow-md">
@@ -135,7 +159,7 @@ export default function Share() {
             />
             <Button
               onClick={handleCopyLink}
-              className={`px-6 py-6 sm:py-3 transition-all ${
+              className={`px-6 py-6 sm:py-3 transition-all font-bold ${
                 copied 
                   ? 'bg-green-500 hover:bg-green-600' 
                   : 'bg-[#4d94ff] hover:bg-[#6ba6ff]'
@@ -156,28 +180,24 @@ export default function Share() {
             Partager sur les réseaux
           </h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {socialLinks.map((social, index) => (
               <button
                 key={index}
-                onClick={() => handleShare(social.url)}
-                className={`group relative p-6 rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all bg-[#252525] hover:bg-[#2a2a2a]`}
+                onClick={() => handleShare(social)}
+                className={`group relative p-6 rounded-xl border border-[#333] hover:border-[#4d94ff] transition-all bg-[#252525] hover:bg-[#2a2a2a] flex flex-col items-center text-center`}
               >
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-lg ${social.color} transition-colors`}>
-                    <social.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left flex-1">
-                    <h3 className="font-bold text-white mb-1 group-hover:text-[#4d94ff] transition-colors">{social.name}</h3>
-                    <p className="text-xs text-gray-400">{social.description}</p>
-                  </div>
+                <div className={`p-4 rounded-full ${social.color} transition-transform group-hover:scale-110 mb-4 shadow-lg`}>
+                  <social.icon className="w-6 h-6 text-white" />
                 </div>
+                <h3 className="font-bold text-white mb-1 group-hover:text-[#4d94ff] transition-colors">{social.name}</h3>
+                <p className="text-xs text-gray-400">{social.description}</p>
               </button>
             ))}
           </div>
         </div>
 
-        {/* QR Code (Fans) */}
+        {/* QR Code */}
         <div className="mb-20 p-8 bg-gradient-to-br from-[#252525] to-[#1a1a1a] border border-[#333] rounded-2xl text-center shadow-lg">
           <QrCode className="w-12 h-12 mx-auto mb-4 text-[#4d94ff]" />
           <h2 className="text-2xl font-black italic uppercase mb-3">
@@ -257,31 +277,16 @@ export default function Share() {
 
                 <div className="bg-[#252525] p-6 rounded-xl border border-[#333] flex-1">
                   <h3 className="font-bold text-white mb-2 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[#4d94ff]" /> 3. Contact Direct
+                    <Mail className="w-4 h-4 text-[#4d94ff]" /> 3. Devenir Festival Pépite
                   </h3>
-                  <p className="text-xs text-gray-400 mb-4">Vous souhaitez référencer votre festival sur notre carte interactive ? Écrivez-nous !</p>
-                  <Button className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold" onClick={() => window.location.href = "mailto:setlive@proton.me?subject=Partenariat Festival"}>
+                  <p className="text-xs text-gray-400 mb-4">Vous souhaitez être mis en avant sur notre carte interactive ? Écrivez-nous !</p>
+                  <Button className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold" onClick={() => window.location.href = "mailto:setlive@proton.me?subject=Partenariat Setlive"}>
                     setlive@proton.me
                   </Button>
                 </div>
               </div>
 
             </div>
-          </div>
-        </div>
-
-        {/* Call to action final */}
-        <div className="text-center p-8 bg-gradient-to-r from-[#4d94ff]/10 to-purple-500/10 border border-[#4d94ff]/30 rounded-2xl">
-          <h2 className="text-2xl font-black italic uppercase mb-3">
-            Merci de faire grandir la communauté ! 🤘
-          </h2>
-          <p className="text-gray-400 mb-6 max-w-lg mx-auto">
-            Chaque partage nous aide à développer la plateforme, ajouter de nouveaux festivals et améliorer la qualité des setlists.
-          </p>
-          <div className="flex justify-center gap-4">
-            <span className="text-2xl">🎸</span>
-            <span className="text-2xl">🔥</span>
-            <span className="text-2xl">🎫</span>
           </div>
         </div>
 
