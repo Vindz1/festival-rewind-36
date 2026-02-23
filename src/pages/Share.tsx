@@ -138,7 +138,7 @@ export default function Share() {
             <div className="p-6 flex flex-col justify-center w-full sm:w-2/3">
               <h3 className="font-bold text-white mb-2 text-lg lg:text-xl">Setlive - Vos Concerts en Playlists</h3>
               <p className="text-sm text-gray-400 mb-3 leading-relaxed">
-                Transformez vos concerts passés et les programmations des festivals 2026 en playlists Spotify, Deezer ou Apple Music.
+                Transformez vos concerts passés et les programmations des festivals 2026 en playlists Spotify, Deezer, Qobuz, Apple Music, ou autres.
               </p>
               <p className="text-xs text-[#4d94ff] font-mono font-bold uppercase tracking-wider">setlive.fr</p>
             </div>
