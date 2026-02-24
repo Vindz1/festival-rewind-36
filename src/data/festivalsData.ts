@@ -78,7 +78,8 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hard Rock'],
     website: 'https://www.graspop.be',
-    hasDetailedPage: false
+    lineup: ['Limp Bizkit', 'Volbeat', 'Bring Me The Horizon', 'Sabaton', 'Alice Cooper'],
+    hasDetailedPage: true
   },
   {
     id: 'rock-am-ring-2026',
