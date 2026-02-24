@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, Check, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 // Assure-toi que le chemin pointe bien vers le fichier où tu as mis GRASPOP_LINEUP
-import { GRASPOP_LINEUP, ArtistData } from '@/data/graspopData'; 
+import { GRASPOP_LINEUP, ArtistData } from '@/data/graspop'; 
 import { Footer } from '@/components/Footer';
 
 const GraspopPage = () => {
