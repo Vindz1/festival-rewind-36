@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 export default function Index() {
   const navigate = useNavigate();
-  const [setlistUsername, setlistUsername] = useState('');
+  const [setlistUsername, setSetlistUsername] = useState('');
 
   const handleSetlistConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +86,7 @@ export default function Index() {
                 <input
                   type="text"
                   value={setlistUsername}
-                  onChange={(e) => setlistUsername(e.target.value)}
+                  onChange={(e) => setSetlistUsername(e.target.value)}
                   placeholder="Votre pseudo Setlist.fm..."
                   className="flex-1 bg-[#2d2d2d] border border-[#404040] text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-[#4d94ff] transition-colors placeholder:text-gray-500"
                 />
