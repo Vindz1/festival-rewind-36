@@ -17,7 +17,8 @@ export default function Shop() {
       hoverBorder: 'hover:border-green-500/50',
       bgGlow: 'group-hover:bg-green-500/5',
       links: [
-        { name: 'SNCF Connect (Trains & Bus)', url: '#', isComingSoon: true },
+        // LIEN SNCF CONNECT ACTIVÉ !
+        { name: 'SNCF Connect (Trains & Bus)', url: 'https://track.effiliation.com/servlet/effi.redir?id_compteur=23242081&url=https%3A%2F%2Fwww.sncf-connect.com', isComingSoon: false },
         { name: 'Billetterie Officielle', url: '#', isComingSoon: true }
       ]
     },
