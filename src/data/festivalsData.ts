@@ -260,6 +260,7 @@ export const FESTIVALS_2026: Festival[] = [
     dates: '04 Avril 2026',
     year: 2026,
     genre: ['Rock', 'Punk', 'Alternative'],
+    website: 'https://www.facebook.com/AssoROC.37500/?locale=fr_FR',
     hasDetailedPage: false
   },
 
