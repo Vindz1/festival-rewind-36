@@ -1,12 +1,24 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SearchBar } from '@/components/SearchBar';
-import { Clock, Calendar, Crown } from 'lucide-react';
+import { Clock, Calendar, Crown, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Index() {
   const navigate = useNavigate();
+  const [setlistUsername, setlistUsername] = useState('');
+
+  const handleSetlistConnect = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Redirige vers MyConcerts, avec le pseudo Setlist.fm dans l'URL (ou selon ta logique)
+    if (setlistUsername.trim()) {
+      navigate(`/my-concerts?username=${encodeURIComponent(setlistUsername)}`);
+    } else {
+      navigate('/my-concerts');
+    }
+  };
 
   return (
     <div className="min-h-screen text-white">
@@ -27,7 +39,7 @@ export default function Index() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-[#0a0a0a]/80 to-[#0a0a0a]" />
 
         {/* Contenu en bas de l'image */}
-        <div className="relative z-10 w-full">
+        <div className="relative z-10 w-full pt-32">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
             
             {/* Sous-titre */}
@@ -41,7 +53,7 @@ export default function Index() {
             </div>
 
             {/* 2 CTA principaux */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
               <Button
                 onClick={() => navigate('/my-concerts')}
                 size="lg"
@@ -60,6 +72,28 @@ export default function Index() {
                 <Calendar className="w-5 h-5 mr-2" />
                 Festivals 2026
               </Button>
+            </div>
+
+            {/* ENCART DE CONNEXION SETLIST.FM */}
+            <div className="max-w-md mx-auto mb-10 bg-[#141414]/80 backdrop-blur-md border border-[#333] rounded-2xl p-5 shadow-2xl">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <User className="w-5 h-5 text-[#4d94ff]" />
+                <h3 className="font-bold text-white">Lier mon compte Setlist.fm</h3>
+              </div>
+              <p className="text-xs text-gray-400 mb-4">Importez automatiquement tout votre historique de concerts.</p>
+              
+              <form onSubmit={handleSetlistConnect} className="flex gap-2">
+                <input
+                  type="text"
+                  value={setlistUsername}
+                  onChange={(e) => setlistUsername(e.target.value)}
+                  placeholder="Votre pseudo Setlist.fm..."
+                  className="flex-1 bg-[#2d2d2d] border border-[#404040] text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-[#4d94ff] transition-colors placeholder:text-gray-500"
+                />
+                <Button type="submit" className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl px-5">
+                  Go <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </form>
             </div>
 
             {/* Stats */}
