@@ -31,8 +31,8 @@ import WackenPage from '@/pages/WackenPage';
 import MotocultorPage from '@/pages/MotocultorPage';
 import RockAmRingPage from '@/pages/RockAmRingPage';
 import LollapaloozaChilePage from '@/pages/LollapaloozaChilePage';
-import Graspop from '@/pages/Graspoppage';
-import Alcatraz from './pages/Alcatrazpage';
+import GraspopPage from '@/pages/Graspop';
+import AlcatrazPage from './pages/Alcatraz';
 
 const queryClient = new QueryClient();
 
