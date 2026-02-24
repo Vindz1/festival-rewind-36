@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from "@/AuthContext";
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/supabaseClient'; // Vérifiez que ce chemin est bon chez vous
+import { supabase } from '@/supabaseClient';
 import { toast } from 'sonner';
 import { SmartAd } from '@/components/SmartAd';
 import { getUserSubscription } from '@/lib/subscription';
@@ -48,7 +48,12 @@ export default function MyConcerts() {
   // 2. Charger les concerts depuis Setlist.fm (via votre API locale)
   useEffect(() => {
     const fetchAllConcerts = async () => {
-      const username = localStorage.getItem('setlistfm_username');
+      // CHERCHER LE USERNAME DANS TOUTES LES VARIANTES POSSIBLES
+      const username = 
+        localStorage.getItem('setlistfm_username') ||
+        localStorage.getItem('setlist_username') ||
+        localStorage.getItem('setlistUsername') ||
+        searchParams.get('username');
       
       console.log('🔍 Username Setlist.fm:', username);
       
@@ -132,7 +137,7 @@ export default function MyConcerts() {
     };
 
     fetchAllConcerts();
-  }, [user]);
+  }, [user, searchParams]);
 
   const toggleSelection = (setIds: Set<string>, setFunc: any, id: string) => {
     const newSet = new Set(setIds);
@@ -154,13 +159,20 @@ export default function MyConcerts() {
         artist: getArtistName(c),
         venue: getVenueName(c),
         eventDate: getEventDate(c),
-        sets: c.sets,      // ← Doit sauvegarder les sets
+        sets: c.sets,
         tracks: c.tracks
       }));
       
     localStorage.setItem(isUpcoming ? 'selected_upcoming' : 'selected_concerts', JSON.stringify(dataToSave));
     navigate(isUpcoming ? '/generate?mode=upcoming' : '/generate');
   };
+
+  // AFFICHER USERNAME POUR DÉBUG
+  const debugUsername = 
+    localStorage.getItem('setlistfm_username') ||
+    localStorage.getItem('setlist_username') ||
+    localStorage.getItem('setlistUsername') ||
+    searchParams.get('username');
 
   if (loading) return (
     <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
@@ -175,7 +187,7 @@ export default function MyConcerts() {
       <div className="flex-grow max-w-[1200px] mx-auto w-full px-4 pb-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <h1 className="text-3xl font-black italic uppercase text-white">Mes Concerts</h1>
-            {!localStorage.getItem('setlistfm_username') && (
+            {!debugUsername && (
                 <div className="text-sm text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/30">
                     ⚠️ Aucun compte Setlist.fm relié. <button onClick={() => navigate('/')} className="underline font-bold">Relier maintenant</button>
                 </div>
