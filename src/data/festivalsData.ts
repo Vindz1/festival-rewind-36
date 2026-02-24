@@ -250,7 +250,8 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal', 'Hardcore', 'Thrash'],
     website: 'https://www.alcatraz.be',
-    hasDetailedPage: false
+    lineup: ['Powerwolf', 'Slaughter to Prevail', 'Arch Enemy', 'Lamb of God'],
+    hasDetailedPage: true
   },
   {
     id: 'du-rock-chinon-rien-2026',
