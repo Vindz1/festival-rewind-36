@@ -14,53 +14,36 @@ export default function FestivalsPage() {
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status'>('name');
 
-  // État pour gérer le zoom et le centrage de la carte
   const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
 
   const handleFestivalClick = (festival: Festival) => {
-    // Si le festival a une page dédiée, construire l'URL à partir de l'ID
     if (festival.hasDetailedPage) {
-      // Transformer l'ID en path (ex: "hellfest-2026" → "/hellfest-2026")
       navigate(`/${festival.id}`);
     } else {
-      // Sinon, page générique "Coming Soon"
       navigate(`/festivals/${festival.id}`);
     }
   };
 
-  // Fonction de tri
   const getSortedFestivals = (): Festival[] => {
     const festivals = [...FESTIVALS_2026];
     
-    // Mapping mois (avec variations)
     const getMonthNumber = (monthStr: string): number => {
       const normalized = monthStr.toLowerCase().trim();
       const months: Record<string, number> = {
-        'janvier': 1, 'jan': 1,
-        'février': 2, 'fév': 2, 'fev': 2, 'feb': 2,
-        'mars': 3, 'mar': 3,
-        'avril': 4, 'avr': 4, 'apr': 4,
-        'mai': 5, 'may': 5,
-        'juin': 6, 'jun': 6,
-        'juillet': 7, 'juil': 7, 'jul': 7,
-        'août': 8, 'aout': 8, 'aug': 8,
-        'septembre': 9, 'sept': 9, 'sep': 9,
-        'octobre': 10, 'oct': 10,
-        'novembre': 11, 'nov': 11,
-        'décembre': 12, 'déc': 12, 'dec': 12
+        'janvier': 1, 'jan': 1, 'février': 2, 'fév': 2, 'fev': 2, 'feb': 2,
+        'mars': 3, 'mar': 3, 'avril': 4, 'avr': 4, 'apr': 4, 'mai': 5, 'may': 5,
+        'juin': 6, 'jun': 6, 'juillet': 7, 'juil': 7, 'jul': 7, 'août': 8, 'aout': 8, 'aug': 8,
+        'septembre': 9, 'sept': 9, 'sep': 9, 'octobre': 10, 'oct': 10,
+        'novembre': 11, 'nov': 11, 'décembre': 12, 'déc': 12, 'dec': 12
       };
       return months[normalized] || 1;
     };
     
     const parseDate = (dateStr: string): number => {
-      // Format: "18-21 juin 2026" ou "30 juil - 1er août 2026"
       const cleaned = dateStr.toLowerCase().trim();
-      
-      // Extraire le premier nombre (jour de début)
       const dayMatch = cleaned.match(/(\d+)/);
       const day = dayMatch ? parseInt(dayMatch[1]) : 1;
       
-      // Extraire le mois (premier mot qui ressemble à un mois)
       const words = cleaned.split(/[\s-]+/);
       let month = 1;
       for (const word of words) {
@@ -71,55 +54,41 @@ export default function FestivalsPage() {
         }
       }
       
-      // Extraire l'année
       const yearMatch = cleaned.match(/(\d{4})/);
       const year = yearMatch ? parseInt(yearMatch[1]) : 2026;
       
-      // Retourner timestamp: YYYYMMDD
       return year * 10000 + month * 100 + day;
     };
     
     switch (sortBy) {
       case 'name':
-        // Tri alphabétique simple
         return festivals.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-      
       case 'date':
-        // Tri chronologique
         return festivals.sort((a, b) => parseDate(a.dates) - parseDate(b.dates));
-      
       case 'country':
-        // Tri alphabétique par pays (en français maintenant)
         return festivals.sort((a, b) => {
           const countryCompare = a.country.localeCompare(b.country, 'fr');
           if (countryCompare !== 0) return countryCompare;
-          // Si même pays, trier par nom
           return a.name.localeCompare(b.name, 'fr');
         });
-      
       case 'status':
-        // D'abord Live (hasDetailedPage: true), puis par date
         return festivals.sort((a, b) => {
-          // Priorité aux pages complètes
           if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
           if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
-          // Si même statut, trier par date
           return parseDate(a.dates) - parseDate(b.dates);
         });
-      
       default:
         return festivals;
     }
   };
 
-  // Fonctions de gestion du zoom
   const handleZoomIn = () => {
-    if (position.zoom >= 4) return; // Limite de zoom max
+    if (position.zoom >= 4) return;
     setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.5 }));
   };
 
   const handleZoomOut = () => {
-    if (position.zoom <= 1) return; // Limite de zoom min (retour à la normale)
+    if (position.zoom <= 1) return;
     setPosition((pos) => ({ ...pos, zoom: pos.zoom / 1.5 }));
   };
 
@@ -144,14 +113,11 @@ export default function FestivalsPage() {
               </p>
             </div>
 
-            {/* Toggle Map/List */}
             <div className="flex gap-2 bg-[#2d2d2d] p-1 rounded-lg border border-[#404040]">
               <button
                 onClick={() => setViewMode('map')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-sm transition-all ${
-                  viewMode === 'map'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'text-gray-400 hover:text-white'
+                  viewMode === 'map' ? 'bg-[#4d94ff] text-white' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <Map className="w-4 h-4" />
@@ -160,9 +126,7 @@ export default function FestivalsPage() {
               <button
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-sm transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'text-gray-400 hover:text-white'
+                  viewMode === 'list' ? 'bg-[#4d94ff] text-white' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 <List className="w-4 h-4" />
@@ -175,19 +139,13 @@ export default function FestivalsPage() {
         {/* VIEW: CARTE */}
         {viewMode === 'map' && (
           <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
-            
             <div className="absolute inset-0">
               <ComposableMap
                 projection="geoMercator"
                 projectionConfig={{ scale: 147, center: [10, 50] }}
                 style={{ width: "100%", height: "100%" }}
               >
-                {/* On enveloppe la carte dans un ZoomableGroup */}
-                <ZoomableGroup
-                  zoom={position.zoom}
-                  center={position.coordinates}
-                  onMoveEnd={handleMoveEnd}
-                >
+                <ZoomableGroup zoom={position.zoom} center={position.coordinates} onMoveEnd={handleMoveEnd}>
                   <Geographies geography={geoUrl}>
                     {({ geographies }) =>
                       geographies.map(geo => (
@@ -196,7 +154,7 @@ export default function FestivalsPage() {
                           geography={geo}
                           fill="#1a1a1a"
                           stroke="#333"
-                          strokeWidth={0.5 / position.zoom} // Garde une épaisseur de trait constante malgré le zoom
+                          strokeWidth={0.5 / position.zoom}
                           style={{
                             default: { outline: 'none' },
                             hover: { outline: 'none', fill: '#252525' },
@@ -216,16 +174,13 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {/* L'animation "ping" dépend maintenant de hasDetailedPage */}
-                      {festival.hasDetailedPage && (
-                        <circle r={12 / position.zoom} fill="#00ff00" opacity={0.3} className="animate-ping" />
-                      )}
+                      {/* Ici : Un seul point, qui clignote (pulse) s'il est live */}
                       <circle 
-                        r={5 / position.zoom} // Les points gardent la même taille visuelle
+                        r={5 / position.zoom} 
                         fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
                         stroke="#FFFFFF"
                         strokeWidth={1.5 / position.zoom}
-                        className="transition-opacity hover:opacity-80"
+                        className={`transition-opacity hover:opacity-80 ${festival.hasDetailedPage ? 'animate-pulse' : ''}`}
                       />
                     </Marker>
                   ))}
@@ -233,23 +188,15 @@ export default function FestivalsPage() {
               </ComposableMap>
             </div>
 
-            {/* Contrôles de Zoom (Boutons + et -) */}
             <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
-              <button 
-                onClick={handleZoomIn}
-                className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center"
-              >
+              <button onClick={handleZoomIn} className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center">
                 <Plus className="w-5 h-5" />
               </button>
-              <button 
-                onClick={handleZoomOut}
-                className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center"
-              >
+              <button onClick={handleZoomOut} className="bg-[#1a1a1a] hover:bg-[#333] text-white p-2 rounded-lg border border-[#404040] transition-colors shadow-lg flex items-center justify-center">
                 <Minus className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Tooltip hover */}
             {hoveredFestival && (
               <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -277,10 +224,9 @@ export default function FestivalsPage() {
               </div>
             )}
 
-            {/* Légende */}
             <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs z-10">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-3 h-3 rounded-full bg-[#00ff00]" />
+                <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse" />
                 <span>Prog complète</span>
               </div>
               <div className="flex items-center gap-2">
@@ -294,51 +240,13 @@ export default function FestivalsPage() {
         {/* VIEW: LISTE */}
         {viewMode === 'list' && (
           <div>
-            {/* Boutons de tri */}
             <div className="flex flex-wrap gap-2 mb-4">
-              <button
-                onClick={() => setSortBy('name')}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  sortBy === 'name'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
-                }`}
-              >
-                A-Z
-              </button>
-              <button
-                onClick={() => setSortBy('date')}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  sortBy === 'date'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
-                }`}
-              >
-                Date
-              </button>
-              <button
-                onClick={() => setSortBy('country')}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  sortBy === 'country'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
-                }`}
-              >
-                Pays
-              </button>
-              <button
-                onClick={() => setSortBy('status')}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  sortBy === 'status'
-                    ? 'bg-[#4d94ff] text-white'
-                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'
-                }`}
-              >
-                Live / Bientôt
-              </button>
+              <button onClick={() => setSortBy('name')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'name' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>A-Z</button>
+              <button onClick={() => setSortBy('date')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'date' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Date</button>
+              <button onClick={() => setSortBy('country')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'country' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Pays</button>
+              <button onClick={() => setSortBy('status')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'status' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Live / Bientôt</button>
             </div>
 
-            {/* Grid festivals */}
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
               {getSortedFestivals().map(festival => (
               <div
@@ -350,7 +258,6 @@ export default function FestivalsPage() {
                   <h3 className="text-lg sm:text-xl font-bold group-hover:text-[#4d94ff] transition-colors">
                     {festival.name}
                   </h3>
-                  {/* Le badge LIVE/BIENTÔT dépend maintenant de hasDetailedPage */}
                   {festival.hasDetailedPage ? (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
