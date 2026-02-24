@@ -32,7 +32,7 @@ import MotocultorPage from '@/pages/MotocultorPage';
 import RockAmRingPage from '@/pages/RockAmRingPage';
 import LollapaloozaChilePage from '@/pages/LollapaloozaChilePage';
 import Graspop from '@/pages/Graspoppage';
-import Alcatraz2026 from './pages/Alcatraz2026';
+import Alcatraz from './pages/Alcatrazpage';
 
 const queryClient = new QueryClient();
 
