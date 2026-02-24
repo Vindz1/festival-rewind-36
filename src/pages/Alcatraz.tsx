@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Filter, Check, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { ALCATRAZ_LINEUP, ArtistData } from '@/data/alcatrazData'; 
+import { ALCATRAZ_LINEUP, ArtistData } from '@/data/alcatraz'; 
 import { Footer } from '@/components/Footer';
 
 const AlcatrazPage = () => {
