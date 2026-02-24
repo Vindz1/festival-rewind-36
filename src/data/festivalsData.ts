@@ -60,7 +60,7 @@ export const FESTIVALS_2026: Festival[] = [
     name: 'Motocultor Festival',
     location: 'Carhaix, France',
     country: 'France',
-    coordinates: [48.2766, -3.5709], // Coordonnées exactes de Carhaix
+    coordinates: [48.2766, -3.5709], 
     dates: '13-16 août 2026',
     year: 2026,
     genre: ['Metal', 'Hardcore', 'Rock'],
@@ -127,6 +127,151 @@ export const FESTIVALS_2026: Festival[] = [
     year: 2026,
     genre: ['Metal'],
     website: 'https://www.tuska-festival.fi',
+    hasDetailedPage: false
+  },
+
+  // ===== LES PÉPITES (FRANCE & BE) =====
+  {
+    id: 'sylak-2026',
+    name: 'Sylak Open Air',
+    location: 'Saint-Maurice-de-Gourdans, France',
+    country: 'France',
+    coordinates: [45.8239, 5.1956],
+    dates: 'Août 2026',
+    year: 2026,
+    genre: ['Metal', 'Hardcore', 'Punk'],
+    website: 'https://www.sylakopenair.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'planer-fest-2026',
+    name: "Plane'R Fest",
+    location: 'Colombier-Saugnieu, France',
+    country: 'France',
+    coordinates: [45.7119, 5.1158],
+    dates: 'Juillet 2026',
+    year: 2026,
+    genre: ['Metal', 'Metalcore', 'Rock'],
+    website: 'https://www.planerfest.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'xtreme-fest-2026',
+    name: 'Xtreme Fest',
+    location: 'Cap Découverte, France',
+    country: 'France',
+    coordinates: [44.0206, 2.1469],
+    dates: 'Août 2026',
+    year: 2026,
+    genre: ['Punk', 'Hardcore', 'Thrash'],
+    website: 'https://xtremefest.fr',
+    hasDetailedPage: false
+  },
+  {
+    id: 'rock-in-bourlon-2026',
+    name: 'Rock in Bourlon',
+    location: 'Bourlon, France',
+    country: 'France',
+    coordinates: [50.1772, 3.1186],
+    dates: 'Juin 2026',
+    year: 2026,
+    genre: ['Stoner', 'Doom', 'Psych'],
+    website: 'https://www.rockinbourlon.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'mennecy-metal-fest-2026',
+    name: 'Mennecy Metal Fest',
+    location: 'Mennecy, France',
+    country: 'France',
+    coordinates: [48.5667, 2.4333],
+    dates: 'Septembre 2026',
+    year: 2026,
+    genre: ['Metal', 'Hard Rock'],
+    website: 'https://mennecy-metal-fest.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'furios-fest-2026',
+    name: 'Furios Fest',
+    location: 'Saint-Flour, France',
+    country: 'France',
+    coordinates: [45.0333, 3.0833],
+    dates: 'Août 2026',
+    year: 2026,
+    genre: ['Metal', 'Hardcore'],
+    website: 'https://furiosfest.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'betizfest-2026',
+    name: 'BetiZFest',
+    location: 'Cambrai, France',
+    country: 'France',
+    coordinates: [50.1764, 3.2358],
+    dates: 'Avril 2026',
+    year: 2026,
+    genre: ['Punk', 'Alternative', 'Metal'],
+    website: 'https://betizfest.info',
+    hasDetailedPage: false
+  },
+  {
+    id: 'fertois-metal-fest-2026',
+    name: 'Fertois Metal Fest',
+    location: 'La Ferté-sous-Jouarre, France',
+    country: 'France',
+    coordinates: [48.9486, 3.1281],
+    dates: 'Septembre 2026',
+    year: 2026,
+    genre: ['Metal', 'Death', 'Thrash'],
+    website: 'https://fertoismetalfest.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'guitare-en-scene-2026',
+    name: 'Guitare en Scène',
+    location: 'Saint-Julien-en-Genevois, France',
+    country: 'France',
+    coordinates: [46.1436, 6.0822],
+    dates: 'Juillet 2026',
+    year: 2026,
+    genre: ['Rock', 'Hard Rock', 'Blues'],
+    website: 'https://www.guitare-en-scene.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'samarock-2026',
+    name: "Sama'Rock",
+    location: 'La Chaussée-Tirancourt, France',
+    country: 'France',
+    coordinates: [49.9536, 2.1492],
+    dates: 'Juin 2026',
+    year: 2026,
+    genre: ['Pagan Metal', 'Folk Metal'],
+    website: 'https://samarockfestival.com',
+    hasDetailedPage: false
+  },
+  {
+    id: 'alcatraz-2026',
+    name: 'Alcatraz Metal Festival',
+    location: 'Courtrai, Belgique',
+    country: 'Belgique',
+    coordinates: [50.8280, 3.2649],
+    dates: 'Août 2026',
+    year: 2026,
+    genre: ['Metal', 'Hardcore', 'Thrash'],
+    website: 'https://www.alcatraz.be',
+    hasDetailedPage: false
+  },
+  {
+    id: 'du-rock-chinon-rien-2026',
+    name: 'Du Rock Chinon Rien',
+    location: 'Chinon, France',
+    country: 'France',
+    coordinates: [47.1667, 0.2333],
+    dates: 'Mai/Juin 2026',
+    year: 2026,
+    genre: ['Rock', 'Punk', 'Alternative'],
     hasDetailedPage: false
   },
 
@@ -317,7 +462,7 @@ export const FESTIVALS_2026: Festival[] = [
     genre: ['Metal', 'Hard Rock'],
     website: 'https://www.bloodstock.uk.com',
     hasDetailedPage: false
-  },
+  }
 ];
 
 export const getFestivalsByGenre = (genre: string): Festival[] => {
