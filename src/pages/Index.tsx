@@ -8,7 +8,7 @@ export default function Index() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen text-white">
       <Header />
 
       {/* HERO - Image FIXE en background */}
