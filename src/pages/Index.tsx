@@ -25,8 +25,12 @@ export default function Index() {
 
         {/* Contenu qui scroll PAR-DESSUS l'image */}
         <div className="relative min-h-screen flex flex-col justify-end">
-          {/* Shade progressif noir du bas */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black pointer-events-none" />
+          
+          {/* Shade BEAUCOUP plus doux : totalement transparent en haut et au milieu, se fond dans le noir (#0a0a0a) à la toute fin */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0a] pointer-events-none" />
+          
+          {/* Contenu baissé : pb-10 au lieu de pb-20 pour coller beaucoup plus au bord bas de l'écran */}
+          <div className="relative z-10 w-full pb-6 sm:pb-10">
           
           {/* Contenu en bas */}
           <div className="relative z-10 w-full pb-8 sm:pb-20">
