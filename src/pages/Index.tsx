@@ -12,11 +12,9 @@ export default function Index() {
     <div className="min-h-screen text-white">
       <Header />
 
-      {/* HERO - Image FIXE en background */}
-      <section className="relative min-h-screen">
-        {/* Image de fond FIXE - ajustée pour mobile (inset-0 empêche tout débordement) */}
+      {/* Image de fond FIXE - Ajustée en largeur sur mobile, plein écran sur PC */}
         <div 
-          className="fixed inset-0 -z-10 bg-no-repeat bg-cover bg-top sm:bg-center"
+          className="fixed inset-0 -z-10 bg-[#0a0a0a] bg-no-repeat bg-top sm:bg-center bg-contain sm:bg-cover pointer-events-none"
           style={{ backgroundImage: 'url(/og-image.jpg)' }}
         />
 
