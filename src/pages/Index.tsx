@@ -32,7 +32,7 @@ export default function Index() {
               
               {/* Sous-titre */}
               <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
-                Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
+                Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer, Qobuz ou Apple Music
               </p>
 
               {/* Formulaire Setlist.fm */}
@@ -148,7 +148,7 @@ export default function Index() {
                   <span className="text-2xl font-black text-white">3</span>
                 </div>
                 <h3 className="text-lg font-bold mb-2">Exportez</h3>
-                <p className="text-sm text-gray-400">Vers Spotify, Deezer ou Apple Music</p>
+                <p className="text-sm text-gray-400">Vers Spotify, Deezer, Qobuz ou Apple Music</p>
               </div>
             </div>
           </div>
@@ -177,14 +177,14 @@ export default function Index() {
                 </h3>
                 
                 <p className="text-gray-400 mb-6 leading-relaxed">
-                  Retrouvez vos concerts vécus grâce à notre immense base de setlists. 
+                  Retrouvez vos concerts vécus grâce à l'immense base de setlist.fm. 
                   Revivez l'ambiance, titre par titre.
                 </p>
 
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-center gap-3 text-sm text-gray-300">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
-                    Recherche par artiste, ville ou date
+                    Recherche par artiste
                   </li>
                   <li className="flex items-center gap-3 text-sm text-gray-300">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#4d94ff]" />
@@ -219,7 +219,7 @@ export default function Index() {
                 </h3>
                 
                 <p className="text-gray-400 mb-6 leading-relaxed">
-                  Préparez vos festivals à venir ! Programmations complètes des plus grands festivals metal et rock.
+                  Préparez vos festivals à venir ! Programmations complètes des meilleurs festivals metal et rock.
                 </p>
 
                 <ul className="space-y-3 mb-8">
@@ -284,6 +284,10 @@ export default function Index() {
                   <div className="w-5 h-5 shrink-0">✗</div>
                   <span>Pas d'export possible</span>
                 </li>
+                 <li className="flex items-start gap-3 text-sm text-gray-500">
+                  <div className="w-5 h-5 shrink-0">⚠</div>
+                  <span>Avec publicités</span>
+                </li>
               </ul>
 
               <Button
@@ -300,7 +304,6 @@ export default function Index() {
               <h3 className="text-xl font-bold mb-2">Gratuit</h3>
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-3xl font-black">0€</span>
-                <span className="text-gray-400 text-sm">/à vie</span>
               </div>
               <p className="text-sm text-gray-400 mb-6">Pour les festivaliers occasionnels</p>
               
