@@ -13,21 +13,17 @@ export default function Index() {
 
       {/* HERO - Image FIXE en background */}
       <section className="relative min-h-screen">
-        {/* Image de fond FIXE - ne scroll pas */}
+        {/* Image de fond FIXE - ajustée pour mobile (inset-0 empêche tout débordement) */}
         <div 
-          className="fixed top-0 left-0 w-full h-screen -z-10"
-          style={{ 
-            backgroundImage: 'url(/og-image.jpg)',
-            backgroundPosition: 'center center',
-            backgroundSize: 'cover'
-          }}
+          className="fixed inset-0 -z-10 bg-no-repeat bg-cover bg-top sm:bg-center"
+          style={{ backgroundImage: 'url(/og-image.jpg)' }}
         />
 
         {/* Contenu qui scroll PAR-DESSUS l'image */}
         <div className="relative min-h-screen flex flex-col justify-end">
           
-          {/* Shade BEAUCOUP plus doux : totalement transparent en haut et au milieu, se fond dans le noir (#0a0a0a) à la toute fin */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0a] pointer-events-none" />
+         {/* Shade progressif noir du bas - Retardé à 60% pour ne pas assombrir l'image trop vite */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent from-60% via-[#0a0a0a]/80 via-90% to-[#0a0a0a] pointer-events-none" />
           
           {/* Contenu baissé : pb-10 au lieu de pb-20 pour coller beaucoup plus au bord bas de l'écran */}
           <div className="relative z-10 w-full pb-6 sm:pb-10">
