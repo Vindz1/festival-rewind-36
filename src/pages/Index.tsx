@@ -12,101 +12,100 @@ export default function Index() {
     <div className="min-h-screen text-white">
       <Header />
 
-      {/* Image de fond FIXE - Ajustée en largeur sur mobile, plein écran sur PC */}
-        <div 
-          className="fixed inset-0 -z-10 bg-[#0a0a0a] bg-no-repeat bg-top sm:bg-center bg-contain sm:bg-cover pointer-events-none"
-          style={{ backgroundImage: 'url(/og-image.jpg)' }}
-        />
+      {/* Image de fond FIXE - bg-cover sur TOUS les écrans pour remplir la largeur */}
+      <div 
+        className="fixed inset-0 -z-10 bg-[#0a0a0a] bg-no-repeat bg-center bg-cover pointer-events-none"
+        style={{ backgroundImage: 'url(/og-image.jpg)' }}
+      />
 
-        {/* Contenu qui scroll PAR-DESSUS l'image */}
-        <div className="relative min-h-screen flex flex-col justify-end">
-          
-          {/* Shade progressif noir du bas - Retardé à 60% pour ne pas assombrir l'image trop vite */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent from-60% via-[#0a0a0a]/80 via-90% to-[#0a0a0a] pointer-events-none" />
-          
-          {/* Contenu baissé : pb-6 sm:pb-10 pour coller beaucoup plus au bord bas de l'écran */}
-          <div className="relative z-10 w-full pb-6 sm:pb-10">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-              
-              {/* Sous-titre */}
-              <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
-                Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer, Qobuz ou Apple Music
-              </p>
+      {/* Contenu qui scroll PAR-DESSUS l'image */}
+      <section className="relative min-h-screen flex flex-col justify-end">
+        
+        {/* Shade progressif noir du bas - Retardé à 60% pour ne pas assombrir l'image trop vite */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent from-60% via-[#0a0a0a]/80 via-90% to-[#0a0a0a] pointer-events-none" />
+        
+        {/* Contenu baissé : pb-6 sm:pb-10 pour coller beaucoup plus au bord bas de l'écran */}
+        <div className="relative z-10 w-full pb-6 sm:pb-10">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
+            
+            {/* Sous-titre */}
+            <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
+              Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer, Qobuz ou Apple Music
+            </p>
 
-              {/* Formulaire Setlist.fm */}
-              <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
-                <div className="bg-gradient-to-br from-[#2d2d2d]/95 to-[#1a1a1a]/95 border border-[#404040] rounded-2xl p-4 sm:p-6 backdrop-blur-md">
-                  <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center gap-2 justify-center">
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
-                    LIER MON COMPTE SETLIST.FM
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 mb-4">
-                    Importez automatiquement tout votre historique de concerts.
-                  </p>
-                  
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const username = (e.target as any).username.value.trim();
-                      if (username) {
-                        localStorage.setItem('setlist_username', username);
-                        navigate(`/my-concerts?username=${encodeURIComponent(username)}`);
-                      }
-                    }}
-                    className="flex gap-2"
-                  >
-                    <input
-                      name="username"
-                      type="text"
-                      placeholder="Votre pseudo Setlist.fm..."
-                      className="flex-1 min-w-0 h-11 sm:h-12 bg-[#3d3d3d] border border-[#404040] rounded-xl px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-[#4d94ff]"
-                    />
-                    <Button
-                      type="submit"
-                      className="shrink-0 h-11 sm:h-12 px-6 sm:px-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl"
-                    >
-                      Go
-                    </Button>
-                  </form>
-                </div>
-              </div>
-
-              {/* 2 CTA principaux */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 sm:mb-12">
-                <Button
-                  onClick={() => navigate('/my-concerts')}
-                  size="lg"
-                  className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full shadow-lg shadow-blue-500/30"
-                >
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Mes Concerts Passés
-                </Button>
+            {/* Formulaire Setlist.fm */}
+            <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
+              <div className="bg-gradient-to-br from-[#2d2d2d]/95 to-[#1a1a1a]/95 border border-[#404040] rounded-2xl p-4 sm:p-6 backdrop-blur-md">
+                <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center gap-2 justify-center">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
+                  LIER MON COMPTE SETLIST.FM
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-400 mb-4">
+                  Importez automatiquement tout votre historique de concerts.
+                </p>
                 
-                <Button
-                  onClick={() => navigate('/festivals')}
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full"
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const username = (e.target as any).username.value.trim();
+                    if (username) {
+                      localStorage.setItem('setlist_username', username);
+                      navigate(`/my-concerts?username=${encodeURIComponent(username)}`);
+                    }
+                  }}
+                  className="flex gap-2"
                 >
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Festivals 2026
-                </Button>
+                  <input
+                    name="username"
+                    type="text"
+                    placeholder="Votre pseudo Setlist.fm..."
+                    className="flex-1 min-w-0 h-11 sm:h-12 bg-[#3d3d3d] border border-[#404040] rounded-xl px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-[#4d94ff]"
+                  />
+                  <Button
+                    type="submit"
+                    className="shrink-0 h-11 sm:h-12 px-6 sm:px-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl"
+                  >
+                    Go
+                  </Button>
+                </form>
               </div>
+            </div>
 
-              {/* Stats - CACHÉ SUR MOBILE */}
-              <div className="hidden sm:flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-white drop-shadow-md">Millions de setlists</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
-                  <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span className="text-white drop-shadow-md">Multi-plateformes</span>
-                </div>
+            {/* 2 CTA principaux */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 sm:mb-12">
+              <Button
+                onClick={() => navigate('/my-concerts')}
+                size="lg"
+                className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full shadow-lg shadow-blue-500/30"
+              >
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Mes Concerts Passés
+              </Button>
+              
+              <Button
+                onClick={() => navigate('/festivals')}
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full"
+              >
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Festivals 2026
+              </Button>
+            </div>
+
+            {/* Stats - CACHÉ SUR MOBILE */}
+            <div className="hidden sm:flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-white drop-shadow-md">Millions de setlists</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
+                <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <span className="text-white drop-shadow-md">Multi-plateformes</span>
               </div>
             </div>
           </div>
