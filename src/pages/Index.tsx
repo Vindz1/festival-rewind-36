@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -22,14 +23,11 @@ export default function Index() {
         {/* Contenu qui scroll PAR-DESSUS l'image */}
         <div className="relative min-h-screen flex flex-col justify-end">
           
-         {/* Shade progressif noir du bas - Retardé à 60% pour ne pas assombrir l'image trop vite */}
+          {/* Shade progressif noir du bas - Retardé à 60% pour ne pas assombrir l'image trop vite */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent from-60% via-[#0a0a0a]/80 via-90% to-[#0a0a0a] pointer-events-none" />
           
-          {/* Contenu baissé : pb-10 au lieu de pb-20 pour coller beaucoup plus au bord bas de l'écran */}
+          {/* Contenu baissé : pb-6 sm:pb-10 pour coller beaucoup plus au bord bas de l'écran */}
           <div className="relative z-10 w-full pb-6 sm:pb-10">
-          
-          {/* Contenu en bas */}
-          <div className="relative z-10 w-full pb-8 sm:pb-20">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
               
               {/* Sous-titre */}
@@ -308,7 +306,7 @@ export default function Index() {
               
               <ul className="space-y-3 mb-8">
                 <li className="flex items-start gap-3 text-sm">
-                  <div className="w-5 h-5 shrink-0 text-gray-400">✓</div>
+                  <div className="w-5 h-5 shrink-0 text-white">✓</div>
                   <span><strong>2 exports par an</strong></span>
                 </li>
                 <li className="flex items-start gap-3 text-sm">
