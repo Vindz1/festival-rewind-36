@@ -12,11 +12,17 @@ export default function Index() {
     <div className="min-h-screen text-white">
       <Header />
 
-      {/* Image de fond FIXE - bg-cover sur TOUS les écrans pour remplir la largeur */}
-      <div 
-        className="fixed inset-0 -z-10 bg-[#0a0a0a] bg-no-repeat bg-center bg-cover pointer-events-none"
-        style={{ backgroundImage: 'url(/og-image.jpg)' }}
-      />
+      {/* Image de fond FIXE - Utilisation d'une vraie balise img pour meilleur contrôle */}
+      <div className="fixed inset-0 -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
+        <img 
+          src="/og-image.jpg" 
+          alt=""
+          className="w-full h-full object-cover object-center"
+          style={{ 
+            objectPosition: 'center 35%' // Ajuste la position verticale pour voir le logo
+          }}
+        />
+      </div>
 
       {/* Contenu qui scroll PAR-DESSUS l'image */}
       <section className="relative min-h-screen flex flex-col justify-end">
