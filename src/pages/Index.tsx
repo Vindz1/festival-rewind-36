@@ -11,100 +11,106 @@ export default function Index() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
 
-      {/* HERO - Image avec contenu par-dessus */}
-      <section 
-        className="relative min-h-screen flex flex-col justify-end bg-cover bg-center"
-        style={{ 
-          backgroundImage: 'url(/og-image.jpg)',
-          backgroundPosition: 'center center',
-          backgroundSize: 'cover'
-        }}
-      >
-        {/* Overlay gradient du bas */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black" />
+      {/* HERO - Image FIXE en background */}
+      <section className="relative min-h-screen">
+        {/* Image de fond FIXE - ne scroll pas */}
+        <div 
+          className="fixed top-0 left-0 w-full h-screen -z-10"
+          style={{ 
+            backgroundImage: 'url(/og-image.jpg)',
+            backgroundPosition: 'center center',
+            backgroundSize: 'cover'
+          }}
+        />
 
-        {/* Contenu en bas de l'image - AVEC PADDING BOTTOM POUR MOBILE */}
-        <div className="relative z-10 w-full pb-8 sm:pb-20">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-            
-            {/* Sous-titre */}
-            <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
-              Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
-            </p>
-
-            {/* Formulaire Setlist.fm */}
-            <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
-              <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-4 sm:p-6 backdrop-blur-sm">
-                <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center gap-2">
-                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
-                  LIER MON COMPTE SETLIST.FM
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-400 mb-4">
-                  Importez automatiquement tout votre historique de concerts.
-                </p>
-                
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const username = (e.target as any).username.value.trim();
-                    if (username) {
-                      localStorage.setItem('setlist_username', username);
-                      navigate(`/my-concerts?username=${encodeURIComponent(username)}`);
-                    }
-                  }}
-                  className="flex gap-2"
-                >
-                  <input
-                    name="username"
-                    type="text"
-                    placeholder="Votre pseudo Setlist.fm..."
-                    className="flex-1 min-w-0 h-11 sm:h-12 bg-[#3d3d3d] border border-[#404040] rounded-xl px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-[#4d94ff]"
-                  />
-                  <Button
-                    type="submit"
-                    className="shrink-0 h-11 sm:h-12 px-6 sm:px-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl"
-                  >
-                    Go
-                  </Button>
-                </form>
-              </div>
-            </div>
-
-            {/* 2 CTA principaux */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 sm:mb-12">
-              <Button
-                onClick={() => navigate('/my-concerts')}
-                size="lg"
-                className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full shadow-lg shadow-blue-500/30"
-              >
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Mes Concerts Passés
-              </Button>
+        {/* Contenu qui scroll PAR-DESSUS l'image */}
+        <div className="relative min-h-screen flex flex-col justify-end">
+          {/* Shade progressif noir du bas */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black pointer-events-none" />
+          
+          {/* Contenu en bas */}
+          <div className="relative z-10 w-full pb-8 sm:pb-20">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
               
-              <Button
-                onClick={() => navigate('/festivals')}
-                size="lg"
-                variant="outline"
-                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full"
-              >
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Festivals 2026
-              </Button>
-            </div>
+              {/* Sous-titre */}
+              <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium max-w-3xl mx-auto drop-shadow-lg">
+                Concerts vécus ou à venir : transformez vos setlists en playlists Spotify, Deezer ou Apple Music
+              </p>
 
-            {/* Stats - CACHÉ SUR MOBILE, visible desktop */}
-            <div className="hidden sm:flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-white drop-shadow-md">Millions de setlists</span>
+              {/* Formulaire Setlist.fm */}
+              <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
+                <div className="bg-gradient-to-br from-[#2d2d2d]/95 to-[#1a1a1a]/95 border border-[#404040] rounded-2xl p-4 sm:p-6 backdrop-blur-md">
+                  <h3 className="text-base sm:text-lg font-bold text-white mb-3 flex items-center gap-2 justify-center">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#4d94ff]" />
+                    LIER MON COMPTE SETLIST.FM
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-400 mb-4">
+                    Importez automatiquement tout votre historique de concerts.
+                  </p>
+                  
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const username = (e.target as any).username.value.trim();
+                      if (username) {
+                        localStorage.setItem('setlist_username', username);
+                        navigate(`/my-concerts?username=${encodeURIComponent(username)}`);
+                      }
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      name="username"
+                      type="text"
+                      placeholder="Votre pseudo Setlist.fm..."
+                      className="flex-1 min-w-0 h-11 sm:h-12 bg-[#3d3d3d] border border-[#404040] rounded-xl px-4 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:border-[#4d94ff]"
+                    />
+                    <Button
+                      type="submit"
+                      className="shrink-0 h-11 sm:h-12 px-6 sm:px-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl"
+                    >
+                      Go
+                    </Button>
+                  </form>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
-                <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
+
+              {/* 2 CTA principaux */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 sm:mb-12">
+                <Button
+                  onClick={() => navigate('/my-concerts')}
+                  size="lg"
+                  className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full shadow-lg shadow-blue-500/30"
+                >
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Mes Concerts Passés
+                </Button>
+                
+                <Button
+                  onClick={() => navigate('/festivals')}
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-12 sm:h-14 text-base sm:text-lg rounded-full"
+                >
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Festivals 2026
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <span className="text-white drop-shadow-md">Multi-plateformes</span>
+
+              {/* Stats - CACHÉ SUR MOBILE */}
+              <div className="hidden sm:flex flex-wrap justify-center gap-6 sm:gap-8 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-white drop-shadow-md">Millions de setlists</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#4d94ff]" />
+                  <span className="text-white drop-shadow-md">Principaux festivals 2026</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-500" />
+                  <span className="text-white drop-shadow-md">Multi-plateformes</span>
+                </div>
               </div>
             </div>
           </div>
