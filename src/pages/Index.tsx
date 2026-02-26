@@ -12,15 +12,12 @@ export default function Index() {
     <div className="min-h-screen text-white">
       <Header />
 
-      {/* Image de fond FIXE - Utilisation d'une vraie balise img pour meilleur contrôle */}
+      {/* Image de fond FIXE - CONTAIN sur mobile (voir toute la largeur), COVER sur desktop */}
       <div className="fixed inset-0 -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
         <img 
           src="/og-image.jpg" 
           alt=""
-          className="w-full h-full object-cover object-center"
-          style={{ 
-            objectPosition: 'center 35%' // Ajuste la position verticale pour voir le logo
-          }}
+          className="w-full h-full object-contain sm:object-cover object-top sm:object-center"
         />
       </div>
 
