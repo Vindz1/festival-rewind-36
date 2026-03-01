@@ -1,6 +1,5 @@
 // api/search.js ou api/search.ts
 
-// Fonction helper pour parser les dates Setlist.fm (format DD-MM-YYYY)
 function parseDateSetlistFm(dateStr) {
   const parts = dateStr.split('-');
   if (parts.length === 3) {
@@ -10,7 +9,6 @@ function parseDateSetlistFm(dateStr) {
   return new Date(dateStr);
 }
 
-// Fonction helper pour formater en YYYYMMDD
 function formatDateSetlistFm(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -19,146 +17,107 @@ function formatDateSetlistFm(date) {
 }
 
 export default async function handler(req, res) {
-  // CORRECTION ICI : On récupère bien 'type' et 'p' depuis la requête URL
   const { q, action, username, upcoming, type, p } = req.query;
-  
   const SETLIST_FM_API_KEY = process.env.SETLIST_FM_API_KEY || 'votre-clé-api';
 
   try {
-    // CAS 1 : Recherche de concerts pour un artiste, ville ou tournée
+    // CAS 1 : Recherche Classique
     if (q && !action) {
-      // 1. On sécurise le type de recherche (par défaut: artistName)
-      const searchType = ['artistName', 'cityName', 'tourName'].includes(type) ? type : 'artistName';
-      // 2. On récupère la page demandée (par défaut: 1)
+      // Si "type" n'est pas fourni, on utilise "all" (Mélangé) par défaut
+      const searchType = ['artistName', 'cityName', 'tourName', 'all'].includes(type) ? type : 'all';
       const page = p || 1;
       
-      console.log(`🔍 Recherche pour: ${q} (Type: ${searchType}, Page: ${page})`);
-      
-      // 3. L'URL s'adapte maintenant à la ville/tournée et à la page !
-      let apiUrl = `https://api.setlist.fm/rest/1.0/search/setlists?${searchType}=${encodeURIComponent(q)}&p=${page}`;
-      
-      if (upcoming === 'true') {
-        const today = new Date();
-        const todayStr = formatDateSetlistFm(today);
-        apiUrl += `&date=${todayStr}`; // Setlist.fm cherche >= cette date
-      }
-      
-      const response = await fetch(apiUrl, {
-        headers: {
-          'x-api-key': SETLIST_FM_API_KEY,
-          'Accept': 'application/json'
+      let results = [];
+      let total = 0;
+      let itemsPerPage = 20;
+
+      // Fonction pour appeler Setlist.fm
+      const fetchSetlists = async (queryType) => {
+        let apiUrl = `https://api.setlist.fm/rest/1.0/search/setlists?${queryType}=${encodeURIComponent(q)}&p=${page}`;
+        if (upcoming === 'true') {
+          apiUrl += `&date=${formatDateSetlistFm(new Date())}`;
         }
-      });
-
-      if (!response.ok) {
-        console.error(`❌ Setlist.fm API error: ${response.status}`);
-        return res.status(response.status).json({ 
-          error: 'Erreur API Setlist.fm',
-          results: []
+        const response = await fetch(apiUrl, {
+          headers: { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' }
         });
+        if (response.ok) {
+          const data = await response.json();
+          return { setlist: data.setlist || [], total: data.total || 0, itemsPerPage: data.itemsPerPage || 20 };
+        }
+        return { setlist: [], total: 0, itemsPerPage: 20 };
+      };
+
+      if (searchType === 'all') {
+        // Double recherche : Artiste + Tournée
+        const artistData = await fetchSetlists('artistName');
+        const tourData = await fetchSetlists('tourName');
+        
+        results = [...artistData.setlist, ...tourData.setlist];
+        total = Math.max(artistData.total, tourData.total) * 2; // Estimation du total restant
+        itemsPerPage = artistData.itemsPerPage;
+
+        // Éliminer les doublons
+        const unique = [];
+        const ids = new Set();
+        for (const c of results) {
+          if (!ids.has(c.id)) { ids.add(c.id); unique.push(c); }
+        }
+        
+        // Trier par date du plus récent au plus ancien
+        unique.sort((a,b) => parseDateSetlistFm(b.eventDate) - parseDateSetlistFm(a.eventDate));
+        results = unique;
+
+      } else {
+        // Recherche stricte (Ville, ou forcé Artiste)
+        const data = await fetchSetlists(searchType);
+        results = data.setlist;
+        total = data.total;
+        itemsPerPage = data.itemsPerPage;
       }
 
-      const data = await response.json();
-      const concerts = data.setlist || [];
-      
-      console.log(`✅ ${concerts.length} concert(s) trouvé(s)`);
-
-      // 4. On renvoie aussi les infos de pagination !
       return res.status(200).json({
-        results: concerts,
-        total: data.total || 0,
-        itemsPerPage: data.itemsPerPage || 20,
-        page: data.page || 1
+        results,
+        total,
+        itemsPerPage,
+        page: parseInt(page)
       });
     }
 
-    // CAS 2 : Récupérer les concerts d'un utilisateur (action=user)
+    // CAS 2 : User
     if (action === 'user' && username) {
-      console.log(`📡 Récupération concerts pour user: ${username}`);
-      
+      // ... (Reste de ton code pour User ne change pas)
       let allConcerts = [];
       let page = 1;
       let hasMore = true;
-
       while (hasMore) {
-        const response = await fetch(
-          `https://api.setlist.fm/rest/1.0/user/${username}/attended?p=${page}`,
-          {
-            headers: {
-              'x-api-key': SETLIST_FM_API_KEY,
-              'Accept': 'application/json'
-            }
-          }
-        );
-
-        if (!response.ok) {
-          console.error(`❌ Error fetching page ${page}`);
-          break;
-        }
-
+        const response = await fetch(`https://api.setlist.fm/rest/1.0/user/${username}/attended?p=${page}`, {
+          headers: { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' }
+        });
+        if (!response.ok) break;
         const data = await response.json();
         const concerts = data.setlist || [];
-        
-        if (concerts.length === 0) {
-          hasMore = false;
-        } else {
+        if (concerts.length === 0) hasMore = false;
+        else {
           allConcerts = [...allConcerts, ...concerts];
-          const totalPages = Math.ceil((data.total || 0) / (data.itemsPerPage || 20));
-          
-          if (page >= totalPages) {
-            hasMore = false;
-          } else {
-            page++;
-          }
+          if (page >= Math.ceil((data.total || 0) / (data.itemsPerPage || 20))) hasMore = false;
+          else page++;
         }
       }
-
-      console.log(`✅ Total: ${allConcerts.length} concerts`);
-
-      return res.status(200).json({
-        results: allConcerts,
-        total: allConcerts.length
-      });
+      return res.status(200).json({ results: allConcerts, total: allConcerts.length });
     }
 
-    // CAS 3 : Récupérer les détails d'une setlist (action=songs)
+    // CAS 3 : Songs
     if (action === 'songs') {
       const { setlistId } = req.query;
-      
-      if (!setlistId) {
-        return res.status(400).json({ error: 'setlistId requis' });
-      }
-
-      const response = await fetch(
-        `https://api.setlist.fm/rest/1.0/setlist/${setlistId}`,
-        {
-          headers: {
-            'x-api-key': SETLIST_FM_API_KEY,
-            'Accept': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        return res.status(response.status).json({ error: 'Setlist introuvable' });
-      }
-
-      const data = await response.json();
-      
-      return res.status(200).json(data);
+      const response = await fetch(`https://api.setlist.fm/rest/1.0/setlist/${setlistId}`, {
+        headers: { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' }
+      });
+      if (!response.ok) return res.status(response.status).json({ error: 'Introuvable' });
+      return res.status(200).json(await response.json());
     }
 
-    // Aucun paramètre valide
-    return res.status(400).json({ 
-      error: 'Paramètres invalides',
-      message: 'Utilisez ?q=artiste OU ?action=user&username=xxx'
-    });
-
+    return res.status(400).json({ error: 'Invalide' });
   } catch (error) {
-    console.error('❌ Erreur API:', error);
-    return res.status(500).json({ 
-      error: 'Erreur serveur',
-      results: []
-    });
+    return res.status(500).json({ error: 'Erreur serveur', results: [] });
   }
 }
