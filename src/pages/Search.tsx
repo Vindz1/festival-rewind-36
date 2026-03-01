@@ -19,29 +19,30 @@ export default function Search() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // On récupère la requête ET le type depuis l'URL (envoyés par SearchBar)
   const initialQuery = searchParams.get('q') || '';
-  const searchType = searchParams.get('type') || 'artistName';
+  const urlSearchType = searchParams.get('type') || 'artistName';
   
   const [query, setQuery] = useState(initialQuery);
+  const [localSearchType, setLocalSearchType] = useState(urlSearchType);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [artistName, setArtistName] = useState('');
   
-  // Gestion de la pagination
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     if (initialQuery) {
-      handleSearch(initialQuery, 1, false);
+      handleSearch(initialQuery, 1, false, urlSearchType);
     }
-  }, [initialQuery, searchType]);
+  }, [initialQuery, urlSearchType]);
 
-  const handleSearch = async (searchQuery?: string, pageNum: number = 1, isLoadMore: boolean = false) => {
+  const handleSearch = async (searchQuery?: string, pageNum: number = 1, isLoadMore: boolean = false, typeOverride?: string) => {
     const q = searchQuery || query;
+    const currentTypeToUse = typeOverride || localSearchType;
+    
     if (!q.trim()) {
       toast.error("Entrez une recherche");
       return;
@@ -57,10 +58,9 @@ export default function Search() {
     }
     
     try {
-      console.log(`🔍 Recherche (Page ${pageNum}) pour: ${q} (Type: ${searchType})`);
+      console.log(`🔍 Recherche (Page ${pageNum}) pour: ${q} (Type: ${currentTypeToUse})`);
       
-      // On envoie le texte (q), le type de recherche (type) et la page (p) à ton API
-      const response = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}&type=${searchType}&p=${pageNum}`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}&type=${currentTypeToUse}&p=${pageNum}`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -72,7 +72,6 @@ export default function Search() {
         if (!isLoadMore) toast.error(`Aucun résultat trouvé pour "${q}"`);
         setHasMore(false);
       } else {
-        // Filtrer uniquement les concerts avec setlist renseignée
         const concertsWithSetlist = data.results.filter((concert: Concert) => {
           return concert.sets && concert.sets.set && concert.sets.set.length > 0;
         });
@@ -88,8 +87,6 @@ export default function Search() {
           }
         }
 
-        // Setlist.fm renvoie itemsPerPage, total, et page. On s'en sert pour savoir s'il reste des pages.
-        // (Si ton API backend ne renvoie pas ça, on devine que si on a 20 résultats, il y a peut-être une suite).
         const itemsPerPage = data.itemsPerPage || 20;
         const totalItems = data.total || 0;
         if (pageNum * itemsPerPage < totalItems || data.results.length === 20) {
@@ -110,7 +107,7 @@ export default function Search() {
   const loadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    handleSearch(query, nextPage, true);
+    handleSearch(query, nextPage, true, localSearchType);
   };
 
   const parseDate = (dateStr: string): Date => {
@@ -125,9 +122,7 @@ export default function Search() {
   const formatDate = (dateStr: string): string => {
     const date = parseDate(dateStr);
     return date.toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
+      day: 'numeric', month: 'long', year: 'numeric' 
     });
   };
 
@@ -190,19 +185,43 @@ export default function Search() {
           </p>
         </div>
 
-        {/* Formulaire de recherche */}
+        {/* Formulaire de recherche avec SELECT intégré */}
         <form 
-          onSubmit={(e) => { e.preventDefault(); setPage(1); handleSearch(query, 1, false); }} 
-          className="relative group max-w-2xl mx-auto mb-12"
+          onSubmit={(e) => { 
+            e.preventDefault(); 
+            setPage(1); 
+            // On met à jour l'URL proprement
+            navigate(`/search?type=${localSearchType}&q=${encodeURIComponent(query)}`);
+            handleSearch(query, 1, false, localSearchType); 
+          }} 
+          className="relative max-w-3xl mx-auto mb-12 flex items-center bg-white/5 border-2 border-white/10 rounded-full focus-within:ring-2 focus-within:ring-[#4d94ff]/50 focus-within:border-[#4d94ff] transition-all shadow-2xl h-16 sm:h-20 overflow-hidden"
         >
-          <SearchIcon className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5 sm:w-6 sm:h-6 group-focus-within:text-[#4d94ff] transition-colors z-10" />
-          <Input 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Rechercher..." 
-            className="h-16 sm:h-20 pl-12 sm:pl-16 pr-32 sm:pr-40 bg-white/5 border-2 border-white/10 text-base sm:text-xl rounded-full focus:ring-2 focus:ring-[#4d94ff]/50 focus:border-[#4d94ff] transition-all shadow-2xl placeholder:text-gray-600"
-            disabled={loading}
-          />
+          {/* Menu déroulant */}
+          <select
+            value={localSearchType}
+            onChange={(e) => setLocalSearchType(e.target.value)}
+            className="h-full bg-transparent text-[#4d94ff] font-bold px-4 sm:px-6 border-r border-white/10 focus:outline-none cursor-pointer hover:bg-white/5 transition-colors"
+          >
+            <option value="artistName" className="text-black">Artiste</option>
+            <option value="cityName" className="text-black">Ville</option>
+            <option value="tourName" className="text-black">Tournée</option>
+          </select>
+          
+          <div className="relative flex-1 h-full">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5 sm:w-6 sm:h-6 z-10" />
+            <Input 
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={
+                localSearchType === 'cityName' ? "Ex: Paris, Lyon..." : 
+                localSearchType === 'tourName' ? "Ex: Lamomali Tour..." : 
+                "Metallica, Gojira..."
+              }
+              className="w-full h-full pl-12 sm:pl-14 pr-32 sm:pr-40 bg-transparent border-0 text-base sm:text-xl focus-visible:ring-0 placeholder:text-gray-600 rounded-none"
+              disabled={loading}
+            />
+          </div>
+          
           <Button 
             type="submit" 
             disabled={loading}
@@ -279,7 +298,7 @@ export default function Search() {
                     
                     <div className="flex-1 min-w-0">
                       <h3 className={`text-sm sm:text-base font-bold truncate ${isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
-                        {concert.venue.name}
+                        {concert.venue.name} <span className="text-[#a0a0a0] font-normal text-xs sm:text-sm">({concert.artist.name})</span>
                       </h3>
                       <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-[#a0a0a0] mt-1">
                         <span className="flex items-center gap-1">
