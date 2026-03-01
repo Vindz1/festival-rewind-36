@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Check, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Check, XCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { NANCY_OPEN_AIR_LINEUP, ArtistData } from '@/data/NancyOpenAir'; 
 import { Footer } from '@/components/Footer';
@@ -34,7 +34,6 @@ const NancyOpenAirPage = () => {
     if (newDays.has(day)) newDays.delete(day);
     else newDays.add(day);
     setSelectedDays(newDays);
-    autoSelectArtists(newDays, selectedStages);
   };
 
   const toggleStage = (stage: string) => {
@@ -42,196 +41,170 @@ const NancyOpenAirPage = () => {
     if (newStages.has(stage)) newStages.delete(stage);
     else newStages.add(stage);
     setSelectedStages(newStages);
-    autoSelectArtists(selectedDays, newStages);
-  };
-
-  const autoSelectArtists = (days: Set<string>, stages: Set<string>) => {
-    const newSelection = new Set<string>();
-    
-    artists.forEach(artist => {
-      const dayMatch = days.size === 0 || days.has(artist.day);
-      const stageMatch = stages.size === 0 || stages.has(artist.stage);
-      
-      if ((days.size > 0 || stages.size > 0) && dayMatch && stageMatch) {
-        newSelection.add(artist.id);
-      }
-    });
-    
-    if (days.size > 0 || stages.size > 0) {
-      setSelectedArtists(newSelection);
-    }
-  };
-
-  const handleClearSelection = () => {
-    setSelectedArtists(new Set());
   };
 
   const toggleArtist = (id: string) => {
-    const newSet = new Set(selectedArtists);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedArtists(newSet);
+    const newArtists = new Set(selectedArtists);
+    if (newArtists.has(id)) newArtists.delete(id);
+    else newArtists.add(id);
+    setSelectedArtists(newArtists);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedArtists.size === filteredArtists.length) {
+      setSelectedArtists(new Set());
+    } else {
+      setSelectedArtists(new Set(filteredArtists.map(a => a.id)));
+    }
   };
 
   const handleGenerate = () => {
     if (selectedArtists.size === 0) {
-      toast.error("Sélectionnez au moins un artiste !");
+      toast.error('Sélectionnez au moins un artiste');
       return;
     }
 
-    const selectedArray = artists
+    const selectedTracks = artists
       .filter(a => selectedArtists.has(a.id))
-      .map(a => ({
-        id: a.id,
-        artist: a.name,
-        eventDate: a.day + " - Alcatraz Metal Festival 2026"
-      }));
+      .map(a => ({ artist: a.name, name: '' }));
 
-    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
-    navigate('/generate?mode=upcoming');
+    const playlistData = {
+      playlistName: `Heavy Weekend 2026 - My Selection`,
+      mainArtist: 'Nancy Open Air',
+      songs: selectedTracks
+    };
+
+    localStorage.setItem('playlistData', JSON.stringify(playlistData));
+    navigate('/generate');
   };
 
   const filteredArtists = artists.filter(artist => {
-    const dayMatch = selectedDays.size === 0 || selectedDays.has(artist.day);
-    const stageMatch = selectedStages.size === 0 || selectedStages.has(artist.stage);
-    return dayMatch && stageMatch;
+    const matchDay = selectedDays.size === 0 || selectedDays.has(artist.day);
+    const matchStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
+    return matchDay && matchStage;
   });
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
-       
-      <main className="pt-20 pb-20 sm:pb-16 max-w-[1400px] mx-auto px-4">
-        <h1 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter mb-4 text-white drop-shadow-lg">
-          HEAVY WEEK-END <br/>
-          <span className="text-[#4d94ff]">NANCY OPEN AIR</span>
-        </h1>
-        <p className="text-lg text-gray-300 font-medium mb-6">
-          5 - 7 Juin 2026 • Zénith de Nancy (Maxéville)
-        </p>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         
-        {/* Le fameux bouton Site Officiel */}
-        <a 
-          href="https://www.heavyweekend.live/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 mt-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm font-bold text-white transition-all backdrop-blur-sm"
-        >
-          <ExternalLink className="w-4 h-4 text-[#4d94ff]" />
-          Site Officiel
-        </a>
+        {/* EN-TÊTE / HERO */}
+        <div className="mb-8">
+          <h1 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter mb-4 text-white drop-shadow-lg">
+            HEAVY WEEK-END <br/>
+            <span className="text-[#4d94ff]">NANCY OPEN AIR</span>
+          </h1>
+          <p className="text-lg text-gray-300 font-medium mb-4">
+            5 - 7 Juin 2026 • Zénith de Nancy (Maxéville)
+          </p>
+
+          <a 
+            href="https://www.heavyweekend.live/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm font-bold text-white transition-all backdrop-blur-sm"
+          >
+            <ExternalLink className="w-4 h-4 text-[#4d94ff]" />
+            Site Officiel
+          </a>
         </div>
 
         <div className="lg:hidden mb-4">
-          <Button
+          <Button 
+            variant="outline" 
             onClick={() => setShowFilters(!showFilters)}
-            className="w-full bg-[#2d2d2d] border border-[#404040] text-white hover:bg-[#3d3d3d] flex items-center justify-between"
+            className="w-full bg-[#1a1a1a] border-[#333] text-white hover:bg-[#252525]"
           >
-            <span className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtres
-              {(selectedDays.size > 0 || selectedStages.size > 0) && (
-                <span className="bg-[#00cc00] text-black text-xs px-2 py-0.5 rounded-full font-bold">
-                  {selectedDays.size + selectedStages.size}
-                </span>
-              )}
-            </span>
-            {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <Filter className="w-4 h-4 mr-2" />
+            {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+            {showFilters ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
           </Button>
         </div>
 
-        <div className="grid lg:grid-cols-[280px_1fr] gap-4 sm:gap-6">
-          <div className={`
-            bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 lg:sticky lg:top-20 lg:h-fit
-            ${showFilters ? 'block' : 'hidden lg:block'}
-          `}>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2 text-white font-bold">
-                <Filter className="w-5 h-5 text-[#00ff00]" />
-                Filtres
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* FILTRES */}
+          <div className={`lg:w-80 space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+            <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-[#333] sticky top-24">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-[#4d94ff]" /> Filtres
+                </h2>
+                {(selectedDays.size > 0 || selectedStages.size > 0) && (
+                  <button 
+                    onClick={() => { setSelectedDays(new Set()); setSelectedStages(new Set()); }}
+                    className="text-xs text-[#a0a0a0] hover:text-white flex items-center gap-1"
+                  >
+                    <XCircle className="w-3 h-3" /> Effacer
+                  </button>
+                )}
               </div>
-              {(selectedDays.size > 0 || selectedStages.size > 0) && (
-                <button 
-                  onClick={() => {
-                    setSelectedDays(new Set());
-                    setSelectedStages(new Set());
-                  }}
-                  className="text-xs text-[#00ff00] hover:text-[#33ff33] font-medium"
-                >
-                  Réinitialiser
-                </button>
-              )}
-            </div>
 
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-[#a0a0a0] uppercase tracking-wider mb-3">Jours</h3>
-              <div className="space-y-2">
-                {availableDays.map(day => (
-                  <label key={day} className="flex items-center gap-3 cursor-pointer group">
-                    <Checkbox 
-                      checked={selectedDays.has(day)}
-                      onCheckedChange={() => toggleDay(day)}
-                      className="border-[#666] data-[state=checked]:bg-[#00ff00] data-[state=checked]:border-[#00ff00] data-[state=checked]:text-black"
-                    />
-                    <span className="text-sm text-[#e0e0e0] group-hover:text-white transition-colors">{day}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-[#666] uppercase tracking-wider mb-3">Jours</h3>
+                  <div className="space-y-2">
+                    {availableDays.map(day => (
+                      <label key={day} className="flex items-center gap-3 cursor-pointer group">
+                        <Checkbox 
+                          checked={selectedDays.has(day)}
+                          onCheckedChange={() => toggleDay(day)}
+                          className="border-[#4d94ff] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:text-white"
+                        />
+                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
-            <div>
-              <h3 className="text-sm font-bold text-[#a0a0a0] uppercase tracking-wider mb-3">Scènes</h3>
-              <div className="space-y-2">
-                {availableStages.map(stage => (
-                  <label key={stage} className="flex items-center gap-3 cursor-pointer group">
-                    <Checkbox 
-                      checked={selectedStages.has(stage)}
-                      onCheckedChange={() => toggleStage(stage)}
-                      className="border-[#666] data-[state=checked]:bg-[#00ff00] data-[state=checked]:border-[#00ff00] data-[state=checked]:text-black"
-                    />
-                    <span className="text-sm text-[#e0e0e0] group-hover:text-white transition-colors">{stage}</span>
-                  </label>
-                ))}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#666] uppercase tracking-wider mb-3">Scènes</h3>
+                  <div className="space-y-2">
+                    {availableStages.map(stage => (
+                      <label key={stage} className="flex items-center gap-3 cursor-pointer group">
+                        <Checkbox 
+                          checked={selectedStages.has(stage)}
+                          onCheckedChange={() => toggleStage(stage)}
+                          className="border-[#4d94ff] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:text-white"
+                        />
+                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{stage}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              <Button 
+                onClick={handleGenerate}
+                disabled={selectedArtists.size === 0}
+                className="w-full mt-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold h-12 shadow-lg shadow-blue-500/20"
+              >
+                Créer la Playlist ({selectedArtists.size})
+              </Button>
             </div>
           </div>
 
-          <div className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  Artistes ({filteredArtists.length})
-                </h2>
-                {selectedArtists.size > 0 && (
-                  <p className="text-sm text-[#00ff00] mt-1 font-medium">
-                    {selectedArtists.size} artiste{selectedArtists.size > 1 ? 's' : ''} sélectionné{selectedArtists.size > 1 ? 's' : ''}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedArtists.size > 0 && (
-                  <Button 
-                    variant="outline"
-                    onClick={handleClearSelection}
-                    className="flex-1 sm:flex-none h-9 text-xs bg-transparent border-[#404040] text-white hover:bg-[#333] hover:text-white"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Effacer
-                  </Button>
-                )}
+          {/* LISTE DES ARTISTES */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-6 bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+              <div className="flex items-center gap-4">
                 <Button 
-                  onClick={handleGenerate}
-                  disabled={selectedArtists.size === 0}
-                  className="flex-1 sm:flex-none h-9 text-xs bg-[#00cc00] hover:bg-[#00ff00] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="bg-transparent border-[#404040] text-white hover:bg-[#2d2d2d]"
                 >
-                  <Check className="w-4 h-4 mr-2" />
-                  Générer Setlist
+                  {selectedArtists.size === filteredArtists.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Button>
+                <span className="text-sm text-[#a0a0a0]">
+                  {filteredArtists.length} artiste{filteredArtists.length > 1 ? 's' : ''}
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pb-24 lg:pb-0">
               {filteredArtists.map(artist => {
                 const isSelected = selectedArtists.has(artist.id);
                 return (
@@ -239,22 +212,22 @@ const NancyOpenAirPage = () => {
                     key={artist.id}
                     onClick={() => toggleArtist(artist.id)}
                     className={`
-                      flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border
+                      relative flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl cursor-pointer transition-all duration-200 border
                       ${isSelected 
-                        ? 'bg-[#00ff00]/10 border-[#00ff00]' 
-                        : 'bg-[#1a1a1a] border-[#333] hover:border-[#666] hover:bg-[#222]'
+                        ? 'bg-[#4d94ff]/10 border-[#4d94ff] shadow-[0_0_15px_rgba(77,148,255,0.15)]' 
+                        : 'bg-[#1a1a1a] border-[#333] hover:border-[#666] hover:bg-[#252525]'
                       }
                     `}
                   >
                     <div className={`
-                      w-5 h-5 rounded flex items-center justify-center shrink-0 border transition-colors
-                      ${isSelected ? 'bg-[#00ff00] border-[#00ff00]' : 'border-[#666] bg-[#2d2d2d]'}
+                      w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors
+                      ${isSelected ? 'border-[#4d94ff] bg-[#4d94ff]' : 'border-[#404040] bg-transparent'}
                     `}>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-black" />}
+                      {isSelected && <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-xs sm:text-sm font-medium truncate ${isSelected ? 'text-[#00ff00]' : 'text-white'}`}>
+                      <h3 className={`text-xs sm:text-sm font-medium truncate ${isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
                         {artist.name}
                       </h3>
                       <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-[#a0a0a0] mt-0.5">
@@ -271,6 +244,7 @@ const NancyOpenAirPage = () => {
         </div>
       </main>
 
+      {/* FOOTER MOBILE FIXE */}
       {selectedArtists.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
           <div className="flex items-center justify-between gap-3">
@@ -279,7 +253,7 @@ const NancyOpenAirPage = () => {
             </span>
             <Button 
               onClick={handleGenerate} 
-              className="bg-[#00cc00] hover:bg-[#00ff00] text-black font-bold px-6"
+              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6"
             >
               Créer Playlist
             </Button>
