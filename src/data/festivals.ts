@@ -15,6 +15,9 @@ export interface Festival {
   dates: string;
   artists: Artist[];
   imageUrl?: string;
+  hasDetailedPage: boolean;
+  isPepite?: boolean; // <-- Permet de changer la couleur sur la carte
+
 }
 
 export const stages = {
