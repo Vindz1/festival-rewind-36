@@ -30,7 +30,6 @@ export default function Search() {
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [artistName, setArtistName] = useState('');
   
-  // NOUVEAU: Les filtres (Checkboxes dynamiques)
   const [filterArtists, setFilterArtists] = useState<Set<string>>(new Set());
   const [filterYears, setFilterYears] = useState<Set<string>>(new Set());
 
@@ -59,8 +58,8 @@ export default function Search() {
       setArtistName(q.trim());
       setConcerts([]);
       setSelectedConcerts(new Set());
-      setFilterArtists(new Set()); // Reset filtres
-      setFilterYears(new Set()); // Reset filtres
+      setFilterArtists(new Set()); 
+      setFilterYears(new Set()); 
     }
     
     try {
@@ -78,19 +77,14 @@ export default function Search() {
         if (!isLoadMore) toast.error(`Aucun résultat trouvé pour "${q}"`);
         setHasMore(false);
       } else {
-        const concertsWithSetlist = data.results.filter((concert: Concert) => {
-          return concert.sets && concert.sets.set && concert.sets.set.length > 0;
-        });
+        // MODIFICATION : ON GARDE TOUS LES RÉSULTATS MÊME VIDES
+        const allConcerts = data.results;
         
         if (isLoadMore) {
-          setConcerts(prev => [...prev, ...concertsWithSetlist]);
+          setConcerts(prev => [...prev, ...allConcerts]);
         } else {
-          setConcerts(concertsWithSetlist);
-          if (concertsWithSetlist.length > 0) {
-            toast.success(`${concertsWithSetlist.length} concerts trouvés.`);
-          } else {
-            toast.warning(`Page 1 analysée: Aucune setlist pleine. Essayez "Chercher d'autres dates".`);
-          }
+          setConcerts(allConcerts);
+          toast.success(`${allConcerts.length} concerts trouvés.`);
         }
 
         const itemsPerPage = data.itemsPerPage || 20;
@@ -147,15 +141,21 @@ export default function Search() {
   };
 
   const handleSelectAll = (displayedList: Concert[]) => {
-    // Ne sélectionner que les concerts actuellement visibles (filtrés)
-    const displayedIds = displayedList.map(c => c.id);
-    const areAllSelected = displayedIds.every(id => selectedConcerts.has(id));
+    // MODIFICATION : Ne sélectionner QUE les concerts affichés QUI ONT au moins 1 chanson
+    const validIds = displayedList.filter(c => getSongCount(c) > 0).map(c => c.id);
     
+    if (validIds.length === 0) {
+      toast.warning("Aucun concert sélectionnable dans cette liste.");
+      return;
+    }
+
+    const areAllSelected = validIds.every(id => selectedConcerts.has(id));
     const newSet = new Set(selectedConcerts);
+    
     if (areAllSelected) {
-      displayedIds.forEach(id => newSet.delete(id));
+      validIds.forEach(id => newSet.delete(id));
     } else {
-      displayedIds.forEach(id => newSet.add(id));
+      validIds.forEach(id => newSet.add(id));
     }
     setSelectedConcerts(newSet);
   };
@@ -329,7 +329,7 @@ export default function Search() {
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold mb-1">{artistName}</h2>
                 <p className="text-xs sm:text-sm text-gray-400">
-                  {displayedConcerts.length} setlist{displayedConcerts.length > 1 ? 's' : ''} affichée{displayedConcerts.length > 1 ? 's' : ''} (Pages explorées : {page})
+                  {displayedConcerts.length} concert{displayedConcerts.length > 1 ? 's' : ''} affiché{displayedConcerts.length > 1 ? 's' : ''} (Pages explorées : {page})
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -357,31 +357,36 @@ export default function Search() {
             {/* Liste des concerts */}
             <div className="space-y-2">
               {displayedConcerts.map((concert) => {
-                const isSelected = selectedConcerts.has(concert.id);
                 const songCount = getSongCount(concert);
+                const hasSetlist = songCount > 0;
+                const isSelected = selectedConcerts.has(concert.id);
                 
                 return (
                   <div
                     key={concert.id}
-                    onClick={() => toggleConcert(concert.id)}
+                    onClick={() => hasSetlist && toggleConcert(concert.id)} // Clic désactivé si vide
                     className={`
-                      flex items-center gap-3 sm:gap-4 p-3 sm:p-4 cursor-pointer transition-colors border-l-2 rounded-r-lg
-                      ${isSelected 
-                        ? 'bg-[#4d94ff]/10 border-[#4d94ff]' 
-                        : 'bg-[#2d2d2d] border-transparent hover:bg-[#3d3d3d]'}
+                      flex items-center gap-3 sm:gap-4 p-3 sm:p-4 transition-colors border-l-2 rounded-r-lg
+                      ${!hasSetlist 
+                        ? 'opacity-50 cursor-not-allowed bg-[#1a1a1a] border-transparent' // STYLE POUR SETLIST VIDE
+                        : isSelected 
+                        ? 'bg-[#4d94ff]/10 border-[#4d94ff] cursor-pointer' 
+                        : 'bg-[#2d2d2d] border-transparent hover:bg-[#3d3d3d] cursor-pointer'}
                     `}
                   >
                     <div className={`
                       w-4 h-4 sm:w-5 sm:h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors
-                      ${isSelected ? 'bg-[#4d94ff] border-[#4d94ff]' : 'border-[#404040]'}
+                      ${!hasSetlist 
+                        ? 'border-[#333] bg-[#222]' // Checkbox grisée
+                        : isSelected ? 'bg-[#4d94ff] border-[#4d94ff]' : 'border-[#404040]'}
                     `}>
-                      {isSelected && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
+                      {isSelected && hasSetlist && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />}
                     </div>
                     
-                    <ListMusic className={`w-4 h-4 sm:w-5 sm:h-5 ${isSelected ? 'text-[#4d94ff]' : 'text-gray-500'}`} />
+                    <ListMusic className={`w-4 h-4 sm:w-5 sm:h-5 ${!hasSetlist ? 'text-gray-600' : isSelected ? 'text-[#4d94ff]' : 'text-gray-500'}`} />
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-sm sm:text-base font-bold truncate ${isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
+                      <h3 className={`text-sm sm:text-base font-bold truncate ${!hasSetlist ? 'text-gray-500 italic' : isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
                         {concert.venue.name} <span className="text-[#a0a0a0] font-normal text-xs sm:text-sm">({concert.artist.name})</span>
                       </h3>
                       <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-[#a0a0a0] mt-1">
@@ -394,15 +399,11 @@ export default function Search() {
                           <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           {getLocationString(concert)}
                         </span>
-                        {songCount > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Music className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                              {songCount} morceaux
-                            </span>
-                          </>
-                        )}
+                        <span>•</span>
+                        <span className={`flex items-center gap-1 ${!hasSetlist ? 'text-red-400/70' : ''}`}>
+                          <Music className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          {hasSetlist ? `${songCount} morceaux` : 'Setlist vide'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -435,15 +436,10 @@ export default function Search() {
         {!loading && query && concerts.length === 0 && (
           <div className="text-center py-20">
             <AlertCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2 text-gray-400">Aucune setlist trouvée</h3>
+            <h3 className="text-xl font-bold mb-2 text-gray-400">Aucun concert trouvé</h3>
             <p className="text-gray-500 mb-8">
-              Il y a peut-être des concerts, mais personne n'a encore renseigné les morceaux.
+              Aucune trace de ce groupe ou de cette tournée sur Setlist.fm.
             </p>
-            {hasMore && (
-               <Button onClick={loadMore} className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white">
-                 Explorer les pages plus anciennes
-               </Button>
-            )}
           </div>
         )}
 
