@@ -19,7 +19,8 @@ function formatDateSetlistFm(date) {
 }
 
 export default async function handler(req, res) {
-  const { q, action, username, upcoming } = req.query;
+  // CORRECTION ICI : On récupère bien 'type' et 'p' depuis la requête URL
+  const { q, action, username, upcoming, type, p } = req.query;
   
   const SETLIST_FM_API_KEY = process.env.SETLIST_FM_API_KEY || 'votre-clé-api';
 
