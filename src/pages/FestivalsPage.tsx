@@ -12,7 +12,7 @@ export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status' | 'pepite'>('name');
 
   const [position, setPosition] = useState({ coordinates: [10, 50] as [number, number], zoom: 1 });
 
@@ -75,6 +75,13 @@ export default function FestivalsPage() {
         return festivals.sort((a, b) => {
           if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
           if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
+          return parseDate(a.dates) - parseDate(b.dates);
+        });
+      case 'pepite':
+        return festivals.sort((a, b) => {
+          if (a.isPepite && !b.isPepite) return -1;
+          if (!a.isPepite && b.isPepite) return 1;
+          // Si les deux sont (ou ne sont pas) des pépites, on les trie par date
           return parseDate(a.dates) - parseDate(b.dates);
         });
       default:
@@ -174,7 +181,6 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {/* Le point du festival mis à jour pour la Pépite */}
                       <circle 
                         r={5 / position.zoom} 
                         fill={festival.isPepite ? '#ff5500' : (festival.hasDetailedPage ? '#00ff00' : '#4d94ff')}
@@ -256,11 +262,25 @@ export default function FestivalsPage() {
         {/* VIEW: LISTE */}
         {viewMode === 'list' && (
           <div>
+            {/* BOUTONS DE TRI MIS À JOUR */}
             <div className="flex flex-wrap gap-2 mb-4">
               <button onClick={() => setSortBy('name')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'name' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>A-Z</button>
               <button onClick={() => setSortBy('date')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'date' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Date</button>
               <button onClick={() => setSortBy('country')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'country' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Pays</button>
               <button onClick={() => setSortBy('status')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'status' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Live / Bientôt</button>
+              
+              {/* NOUVEAU BOUTON DE TRI: PÉPITES */}
+              <button 
+                onClick={() => setSortBy('pepite')} 
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                  sortBy === 'pepite' 
+                    ? 'bg-[#ff5500] text-white shadow-[0_0_10px_rgba(255,85,0,0.5)]' 
+                    : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-[#ff5500] hover:border-[#ff5500]/50'
+                }`}
+              >
+                <Zap className="w-4 h-4" />
+                Pépites
+              </button>
             </div>
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
