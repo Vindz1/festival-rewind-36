@@ -41,7 +41,7 @@ export const FESTIVALS_2026: Festival[] = [
     website: 'https://www.heavyweekend.live/',
     lineup: ['Gojira', 'Sabaton', 'Electric Callboy'],
     hasDetailedPage: true,
-    isPepite: true // Mémorise bien que ceci va le faire clignoter en rouge/orange sur ta carte !
+    isPepite: false // Mémorise bien que ceci va le faire clignoter en rouge/orange sur ta carte !
   },
   {
     id: 'download-uk-2026',
