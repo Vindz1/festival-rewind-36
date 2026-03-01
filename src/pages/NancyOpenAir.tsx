@@ -88,7 +88,7 @@ const NancyOpenAirPage = () => {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-8">
         
         {/* EN-TÊTE / HERO */}
         <div className="mb-8">
