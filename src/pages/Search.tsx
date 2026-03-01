@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search as SearchIcon, Music, Loader2, Calendar, MapPin, Check, XCircle, AlertCircle, ListMusic, Plus } from 'lucide-react';
+import { Search as SearchIcon, Music, Loader2, Calendar, MapPin, Check, XCircle, AlertCircle, ListMusic, Plus, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Concert {
@@ -20,7 +20,7 @@ export default function Search() {
   const [searchParams] = useSearchParams();
   
   const initialQuery = searchParams.get('q') || '';
-  const urlSearchType = searchParams.get('type') || 'artistName';
+  const urlSearchType = searchParams.get('type') || 'all';
   
   const [query, setQuery] = useState(initialQuery);
   const [localSearchType, setLocalSearchType] = useState(urlSearchType);
@@ -30,6 +30,10 @@ export default function Search() {
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [artistName, setArtistName] = useState('');
   
+  // NOUVEAU: Les filtres (Checkboxes dynamiques)
+  const [filterArtists, setFilterArtists] = useState<Set<string>>(new Set());
+  const [filterYears, setFilterYears] = useState<Set<string>>(new Set());
+
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
@@ -55,6 +59,8 @@ export default function Search() {
       setArtistName(q.trim());
       setConcerts([]);
       setSelectedConcerts(new Set());
+      setFilterArtists(new Set()); // Reset filtres
+      setFilterYears(new Set()); // Reset filtres
     }
     
     try {
@@ -81,9 +87,9 @@ export default function Search() {
         } else {
           setConcerts(concertsWithSetlist);
           if (concertsWithSetlist.length > 0) {
-            toast.success(`Concerts trouvés. Chargez plus de pages si besoin !`);
+            toast.success(`${concertsWithSetlist.length} concerts trouvés.`);
           } else {
-            toast.warning(`Page 1 analysée: Aucune setlist pleine. Essayez "Charger plus".`);
+            toast.warning(`Page 1 analysée: Aucune setlist pleine. Essayez "Chercher d'autres dates".`);
           }
         }
 
@@ -140,9 +146,18 @@ export default function Search() {
     setSelectedConcerts(newSet);
   };
 
-  const handleSelectAll = () => {
-    if (selectedConcerts.size === concerts.length) setSelectedConcerts(new Set());
-    else setSelectedConcerts(new Set(concerts.map(c => c.id)));
+  const handleSelectAll = (displayedList: Concert[]) => {
+    // Ne sélectionner que les concerts actuellement visibles (filtrés)
+    const displayedIds = displayedList.map(c => c.id);
+    const areAllSelected = displayedIds.every(id => selectedConcerts.has(id));
+    
+    const newSet = new Set(selectedConcerts);
+    if (areAllSelected) {
+      displayedIds.forEach(id => newSet.delete(id));
+    } else {
+      displayedIds.forEach(id => newSet.add(id));
+    }
+    setSelectedConcerts(newSet);
   };
 
   const handleGeneratePlaylist = () => {
@@ -169,6 +184,30 @@ export default function Search() {
     return parts.join(', ') || 'Lieu non spécifié';
   };
 
+  // ----- LOGIQUE DES FILTRES -----
+  const availableArtists = Array.from(new Set(concerts.map(c => c.artist.name)));
+  const availableYears = Array.from(new Set(concerts.map(c => c.eventDate.split('-')[2]))).sort().reverse();
+  
+  const displayedConcerts = concerts.filter(c => {
+    const matchArtist = filterArtists.size === 0 || filterArtists.has(c.artist.name);
+    const matchYear = filterYears.size === 0 || filterYears.has(c.eventDate.split('-')[2]);
+    return matchArtist && matchYear;
+  });
+
+  const toggleFilterArtist = (name: string) => {
+    const newSet = new Set(filterArtists);
+    if (newSet.has(name)) newSet.delete(name);
+    else newSet.add(name);
+    setFilterArtists(newSet);
+  };
+
+  const toggleFilterYear = (year: string) => {
+    const newSet = new Set(filterYears);
+    if (newSet.has(year)) newSet.delete(year);
+    else newSet.add(year);
+    setFilterYears(newSet);
+  };
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
       <Header />
@@ -185,26 +224,25 @@ export default function Search() {
           </p>
         </div>
 
-        {/* Formulaire de recherche avec SELECT intégré */}
+        {/* Formulaire de recherche */}
         <form 
           onSubmit={(e) => { 
             e.preventDefault(); 
             setPage(1); 
-            // On met à jour l'URL proprement
             navigate(`/search?type=${localSearchType}&q=${encodeURIComponent(query)}`);
             handleSearch(query, 1, false, localSearchType); 
           }} 
           className="relative max-w-3xl mx-auto mb-12 flex items-center bg-white/5 border-2 border-white/10 rounded-full focus-within:ring-2 focus-within:ring-[#4d94ff]/50 focus-within:border-[#4d94ff] transition-all shadow-2xl h-16 sm:h-20 overflow-hidden"
         >
-          {/* Menu déroulant */}
           <select
             value={localSearchType}
             onChange={(e) => setLocalSearchType(e.target.value)}
             className="h-full bg-transparent text-[#4d94ff] font-bold px-4 sm:px-6 border-r border-white/10 focus:outline-none cursor-pointer hover:bg-white/5 transition-colors"
           >
-            <option value="artistName" className="text-black">Artiste</option>
-            <option value="cityName" className="text-black">Ville</option>
+            <option value="all" className="text-black">Tout (Mélangé)</option>
+            <option value="artistName" className="text-black">Artiste Exact</option>
             <option value="tourName" className="text-black">Tournée</option>
+            <option value="cityName" className="text-black">Ville</option>
           </select>
           
           <div className="relative flex-1 h-full">
@@ -212,11 +250,7 @@ export default function Search() {
             <Input 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={
-                localSearchType === 'cityName' ? "Ex: Paris, Lyon..." : 
-                localSearchType === 'tourName' ? "Ex: Lamomali Tour..." : 
-                "Metallica, Gojira..."
-              }
+              placeholder="Metallica, Lamomali..."
               className="w-full h-full pl-12 sm:pl-14 pr-32 sm:pr-40 bg-transparent border-0 text-base sm:text-xl focus-visible:ring-0 placeholder:text-gray-600 rounded-none"
               disabled={loading}
             />
@@ -242,20 +276,69 @@ export default function Search() {
         {/* Résultats */}
         {!loading && concerts.length > 0 && (
           <div className="space-y-6">
+            
+            {/* Section FILTRES (Si plusieurs choix disponibles) */}
+            {(availableArtists.length > 1 || availableYears.length > 1) && (
+              <div className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 mb-4 text-[#a0a0a0] font-bold text-sm uppercase">
+                  <Filter className="w-4 h-4" /> Filtres
+                </div>
+                
+                {availableArtists.length > 1 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Filtrer par Artiste Exact :</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableArtists.map(a => (
+                        <button
+                          key={a}
+                          onClick={() => toggleFilterArtist(a)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                            filterArtists.has(a) ? 'bg-[#4d94ff] text-white shadow-[0_0_10px_rgba(77,148,255,0.3)]' : 'bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#404040]'
+                          }`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {availableYears.length > 1 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2">Filtrer par Année :</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableYears.map(y => (
+                        <button
+                          key={y}
+                          onClick={() => toggleFilterYear(y)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                            filterYears.has(y) ? 'bg-[#4d94ff] text-white shadow-[0_0_10px_rgba(77,148,255,0.3)]' : 'bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#404040]'
+                          }`}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Toolbar Supérieure */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-5">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold mb-1">{artistName}</h2>
                 <p className="text-xs sm:text-sm text-gray-400">
-                  {concerts.length} setlist{concerts.length > 1 ? 's' : ''} trouvée{concerts.length > 1 ? 's' : ''} (Pages explorées : {page})
+                  {displayedConcerts.length} setlist{displayedConcerts.length > 1 ? 's' : ''} affichée{displayedConcerts.length > 1 ? 's' : ''} (Pages explorées : {page})
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 <Button 
                   variant="outline"
-                  onClick={handleSelectAll}
+                  onClick={() => handleSelectAll(displayedConcerts)}
                   className="text-xs border-[#404040] text-[#a0a0a0] hover:bg-[#3d3d3d] hover:text-white"
                 >
-                  {selectedConcerts.size === concerts.length ? (
+                  {selectedConcerts.size > 0 ? (
                     <><XCircle className="w-3 h-3 mr-1.5" /> Tout désélectionner</>
                   ) : (
                     <><Check className="w-3 h-3 mr-1.5" /> Tout sélectionner</>
@@ -271,8 +354,9 @@ export default function Search() {
               </div>
             </div>
 
+            {/* Liste des concerts */}
             <div className="space-y-2">
-              {concerts.map((concert) => {
+              {displayedConcerts.map((concert) => {
                 const isSelected = selectedConcerts.has(concert.id);
                 const songCount = getSongCount(concert);
                 
