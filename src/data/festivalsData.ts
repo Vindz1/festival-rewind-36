@@ -30,6 +30,20 @@ export const FESTIVALS_2026: Festival[] = [
     hasDetailedPage: true
   },
   {
+    id: 'heavy-weekend-2026',
+    name: 'Heavy Week-end (Nancy Open Air)',
+    location: 'Maxéville, France',
+    country: 'France',
+    coordinates: [48.7136, 6.1396], // Coordonnées exactes du Zénith de Nancy
+    dates: '5-7 juin 2026',
+    year: 2026,
+    genre: ['Metal', 'Hard Rock'],
+    website: 'https://www.heavyweekend.live/',
+    lineup: ['Gojira', 'Sabaton', 'Electric Callboy'],
+    hasDetailedPage: true,
+    isPepite: true // Mémorise bien que ceci va le faire clignoter en rouge/orange sur ta carte !
+  },
+  {
     id: 'download-uk-2026',
     name: 'Download Festival UK',
     location: 'Donington Park, UK',
