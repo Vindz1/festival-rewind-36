@@ -174,13 +174,18 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {/* Ici : Un seul point, qui clignote (pulse) s'il est live */}
+                      {/* Le point du festival mis à jour pour la Pépite */}
                       <circle 
                         r={5 / position.zoom} 
-                        fill={festival.hasDetailedPage ? '#00ff00' : '#4d94ff'}
+                        fill={festival.isPepite ? '#ff5500' : (festival.hasDetailedPage ? '#00ff00' : '#4d94ff')}
                         stroke="#FFFFFF"
                         strokeWidth={1.5 / position.zoom}
-                        className={`transition-opacity hover:opacity-80 ${festival.hasDetailedPage ? 'animate-pulse' : ''}`}
+                        className={`transition-opacity hover:opacity-80 ${(festival.hasDetailedPage || festival.isPepite) ? 'animate-pulse' : ''}`}
+                        style={{
+                          filter: festival.isPepite 
+                            ? 'drop-shadow(0 0 8px #ff5500)' 
+                            : (festival.hasDetailedPage ? 'drop-shadow(0 0 8px #00ff00)' : 'none')
+                        }}
                       />
                     </Marker>
                   ))}
@@ -197,16 +202,22 @@ export default function FestivalsPage() {
               </button>
             </div>
 
+            {/* Info-bulle au survol */}
             {hoveredFestival && (
               <div className="absolute bottom-4 left-4 bg-[#1a1a1a] border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h3 className="text-lg font-bold">{hoveredFestival.name}</h3>
-                  {hoveredFestival.hasDetailedPage && (
+                  {hoveredFestival.isPepite ? (
+                    <span className="bg-[#ff5500] text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 animate-pulse">
+                      <Zap className="w-2.5 h-2.5" />
+                      PÉPITE
+                    </span>
+                  ) : hoveredFestival.hasDetailedPage ? (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="space-y-1 text-sm text-gray-400">
                   <div className="flex items-center gap-2">
@@ -224,9 +235,14 @@ export default function FestivalsPage() {
               </div>
             )}
 
+            {/* Légende en haut à droite */}
             <div className="absolute top-4 right-4 bg-[#1a1a1a] border border-[#404040] rounded-lg p-3 text-xs z-10">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse" />
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#ff5500] animate-pulse drop-shadow-[0_0_5px_#ff5500]" />
+                <span className="font-bold text-[#ff5500]">Pépite / Coup de ♥</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse drop-shadow-[0_0_5px_#00ff00]" />
                 <span>Prog complète</span>
               </div>
               <div className="flex items-center gap-2">
@@ -252,13 +268,23 @@ export default function FestivalsPage() {
               <div
                 key={festival.id}
                 onClick={() => handleFestivalClick(festival)}
-                className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 sm:p-5 cursor-pointer hover:border-[#4d94ff] transition-all group"
+                className={`bg-[#2d2d2d] border rounded-xl p-4 sm:p-5 cursor-pointer transition-all group ${
+                  festival.isPepite ? 'border-[#ff5500]/50 hover:border-[#ff5500] hover:shadow-[0_0_15px_rgba(255,85,0,0.15)]' : 'border-[#404040] hover:border-[#4d94ff]'
+                }`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg sm:text-xl font-bold group-hover:text-[#4d94ff] transition-colors">
+                  <h3 className={`text-lg sm:text-xl font-bold transition-colors ${
+                    festival.isPepite ? 'group-hover:text-[#ff5500]' : 'group-hover:text-[#4d94ff]'
+                  }`}>
                     {festival.name}
                   </h3>
-                  {festival.hasDetailedPage ? (
+                  {/* Badges dans la liste */}
+                  {festival.isPepite ? (
+                    <span className="bg-[#ff5500] text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 animate-pulse">
+                      <Zap className="w-2.5 h-2.5" />
+                      PÉPITE
+                    </span>
+                  ) : festival.hasDetailedPage ? (
                     <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                       <Zap className="w-2.5 h-2.5" />
                       LIVE
