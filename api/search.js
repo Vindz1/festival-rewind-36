@@ -24,14 +24,18 @@ export default async function handler(req, res) {
   const SETLIST_FM_API_KEY = process.env.SETLIST_FM_API_KEY || 'votre-clé-api';
 
   try {
-    // CAS 1 : Recherche de concerts pour un artiste
+    // CAS 1 : Recherche de concerts pour un artiste, ville ou tournée
     if (q && !action) {
-      console.log(`🔍 Recherche concerts pour: ${q}${upcoming ? ' (à venir uniquement)' : ''}`);
+      // 1. On sécurise le type de recherche (par défaut: artistName)
+      const searchType = ['artistName', 'cityName', 'tourName'].includes(type) ? type : 'artistName';
+      // 2. On récupère la page demandée (par défaut: 1)
+      const page = p || 1;
       
-      // Construire l'URL avec ou sans le filtre upcoming
-      let apiUrl = `https://api.setlist.fm/rest/1.0/search/setlists?artistName=${encodeURIComponent(q)}&p=1`;
+      console.log(`🔍 Recherche pour: ${q} (Type: ${searchType}, Page: ${page})`);
       
-      // Si upcoming=true, chercher uniquement les concerts futurs
+      // 3. L'URL s'adapte maintenant à la ville/tournée et à la page !
+      let apiUrl = `https://api.setlist.fm/rest/1.0/search/setlists?${searchType}=${encodeURIComponent(q)}&p=${page}`;
+      
       if (upcoming === 'true') {
         const today = new Date();
         const todayStr = formatDateSetlistFm(today);
@@ -58,9 +62,12 @@ export default async function handler(req, res) {
       
       console.log(`✅ ${concerts.length} concert(s) trouvé(s)`);
 
+      // 4. On renvoie aussi les infos de pagination !
       return res.status(200).json({
         results: concerts,
-        total: data.total || 0
+        total: data.total || 0,
+        itemsPerPage: data.itemsPerPage || 20,
+        page: data.page || 1
       });
     }
 
