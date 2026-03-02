@@ -34,6 +34,7 @@ import LollapaloozaChilePage from '@/pages/LollapaloozaChilePage';
 import GraspopPage from './pages/Graspop';
 import AlcatrazPage from './pages/Alcatraz';
 import NancyOpenAirPage from './pages/NancyOpenAir';
+import RockEnSeinePage from './pages/RockEnSeine';
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/graspop-2026" element={<GraspopPage />} />
             <Route path="/alcatraz-2026" element={<AlcatrazPage />} />
             <Route path="/heavy-weekend-2026" element={<NancyOpenAirPage />} />
+            <Route path="/rock-en-seine-2026" element={<RockEnSeinePage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
