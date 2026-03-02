@@ -44,6 +44,20 @@ export const FESTIVALS_2026: Festival[] = [
     isPepite: false // Mémorise bien que ceci va le faire clignoter en rouge/orange sur ta carte !
   },
   {
+    id: 'rock-en-seine-2026',
+    name: 'Rock en Seine',
+    location: 'Saint-Cloud, France',
+    country: 'France',
+    coordinates: [48.838, 2.219], // Coordonnées exactes du Domaine de Saint-Cloud
+    dates: '26-30 août 2026',
+    year: 2026,
+    genre: ['Rock', 'Indie', 'Pop', 'Hip-Hop'],
+    website: 'https://www.rockenseine.com/',
+    lineup: ['The Cure', 'Nick Cave', 'Tyler, The Creator', 'Deftones'],
+    hasDetailedPage: true,
+    isPepite: false
+  },
+  {
     id: 'download-uk-2026',
     name: 'Download Festival UK',
     location: 'Donington Park, UK',
