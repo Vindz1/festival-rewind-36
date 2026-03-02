@@ -285,17 +285,19 @@ export const FESTIVALS_2026: Festival[] = [
     lineup: ['Powerwolf', 'Slaughter to Prevail', 'Arch Enemy', 'Lamb of God'],
     hasDetailedPage: true
   },
-  {
+{
     id: 'du-rock-chinon-rien-2026',
     name: 'Du Rock Chinon Rien',
     location: 'Chinon, France',
     country: 'France',
     coordinates: [47.1667, 0.2333],
-    dates: '04 Avril 2026',
+    dates: '4 avril 2026',
     year: 2026,
-    genre: ['Rock', 'Punk', 'Alternative'],
-    website: 'https://www.facebook.com/AssoROC.37500/?locale=fr_FR',
-    hasDetailedPage: false
+    genre: ['Rock', 'Punk', 'Rock Celtique', 'Pop'],
+    website: 'https://swll.to/WJoUHe',
+    lineup: ['Celkilt', 'Upraise', 'BallsInHead'],
+    hasDetailedPage: true,
+    isPepite: false
   },
 
   // ===== AMÉRIQUE DU NORD =====
