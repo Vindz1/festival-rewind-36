@@ -161,16 +161,18 @@ export const FESTIVALS_2026: Festival[] = [
 
   // ===== LES PÉPITES (FRANCE & BE) =====
   {
-    id: 'sylak-2026',
+    id: 'sylak-open-air-2026',
     name: 'Sylak Open Air',
     location: 'Saint-Maurice-de-Gourdans, France',
     country: 'France',
-    coordinates: [45.8239, 5.1956],
-    dates: '31 Juillet - 02 Août 2026',
+    coordinates: [45.8225, 5.1953],
+    dates: '31 juillet - 2 août 2026',
     year: 2026,
-    genre: ['Metal', 'Hardcore', 'Punk'],
-    website: 'https://www.sylakopenair.com',
-    hasDetailedPage: false
+    genre: ['Metal', 'Hardcore', 'Punk', 'Death Metal'],
+    website: 'https://www.sylakopenair.com/',
+    lineup: ['Black Label Society', 'Biohazard', 'Dark Tranquillity', 'Rise Of The Northstar'],
+    hasDetailedPage: true,
+    isPepite: false 
   },
   {
     id: 'planer-fest-2026',
