@@ -37,6 +37,7 @@ import NancyOpenAirPage from './pages/NancyOpenAir';
 import RockEnSeinePage from './pages/RockEnSeine';
 import SylakOpenAirPage from './pages/SylakOpenAir';
 import PlanerFestPage from './pages/PlanerFest';
+import DuRockChinonRienPage from './pages/DuRockChinonRien';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
             <Route path="/rock-en-seine-2026" element={<RockEnSeinePage />} />
             <Route path="/sylak-open-air-2026" element={<SylakOpenAirPage />} />
             <Route path="/planer-fest-2026" element={<PlanerFestPage />} />
+            <Route path="/du-rock-chinon-rien-2026" element={<DuRockChinonRienPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
