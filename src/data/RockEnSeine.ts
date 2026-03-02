@@ -22,16 +22,17 @@ export const ROCK_EN_SEINE_LINEUP: ArtistData[] = [
   { id: 'res-je-3', name: 'Djo', stage: 'Grande Scène', day: 'Jeudi 27 Août' },
   { id: 'res-je-4', name: 'Lorde', stage: 'Grande Scène', day: 'Jeudi 27 Août' },
 
-  // ==========================================
+// ==========================================
   // VENDREDI 28 AOÛT 2026
   // ==========================================
   { id: 'res-ve-1', name: 'CMAT', stage: 'Scène Firestone', day: 'Vendredi 28 Août' },
   { id: 'res-ve-2', name: 'Wilco', stage: 'Scène de la Cascade', day: 'Vendredi 28 Août' },
   { id: 'res-ve-3', name: 'Kurt Vile & The Violators', stage: 'Scène Bosquet', day: 'Vendredi 28 Août' },
-  { id: 'res-ve-4', name: 'Biffy Clyro', stage: 'Scène de la Cascade', day: 'Vendredi 28 Août' },
-  { id: 'res-ve-5', name: 'Franz Ferdinand', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
-  { id: 'res-ve-6', name: 'The Black Keys', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
-  { id: 'res-ve-7', name: 'Nick Cave & The Bad Seeds', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
+  { id: 'res-ve-4', name: 'Wet Leg', stage: 'Scène de la Cascade', day: 'Vendredi 28 Août' }, // <-- L'ajout est ici !
+  { id: 'res-ve-5', name: 'Biffy Clyro', stage: 'Scène de la Cascade', day: 'Vendredi 28 Août' },
+  { id: 'res-ve-6', name: 'Franz Ferdinand', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
+  { id: 'res-ve-7', name: 'The Black Keys', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
+  { id: 'res-ve-8', name: 'Nick Cave & The Bad Seeds', stage: 'Grande Scène', day: 'Vendredi 28 Août' },
 
   // ==========================================
   // SAMEDI 29 AOÛT 2026
