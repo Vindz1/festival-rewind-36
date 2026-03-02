@@ -174,17 +174,19 @@ export const FESTIVALS_2026: Festival[] = [
     hasDetailedPage: true,
     isPepite: false 
   },
-  {
+{
     id: 'planer-fest-2026',
     name: "Plane'R Fest",
     location: 'Colombier-Saugnieu, France',
     country: 'France',
-    coordinates: [45.7119, 5.1158],
-    dates: '03-04 Juillet 2026',
+    coordinates: [45.711, 5.114],
+    dates: '3 - 4 juillet 2026',
     year: 2026,
-    genre: ['Metal', 'Metalcore', 'Rock'],
-    website: 'https://www.planerfest.com',
-    hasDetailedPage: false
+    genre: ['Metal', 'Metalcore', 'Power Metal', 'Death Metal'],
+    website: 'https://www.planerfest.com/',
+    lineup: ['Imminence', 'Queensrÿche', 'Wind Rose', 'Insomnium'],
+    hasDetailedPage: true,
+    isPepite: false
   },
   {
     id: 'xtreme-fest-2026',
