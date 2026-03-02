@@ -71,11 +71,25 @@ export default function Generate() {
       let type: 'festival' | 'past' | 'future' | null = null;
       let pName = "Ma Setlist";
 
+      // 1. Essai de récupération via location.state (Ancien système)
       if (stateData?.artists && Array.isArray(stateData.artists)) {
         type = 'festival';
         dataToUse = stateData.artists.map((artistName: string) => ({ artist: artistName, isFuture: true, id: artistName.toLowerCase().replace(/\s+/g, '-') }));
         pName = stateData.eventName || "Festival Playlist";
-      } else if (mode === 'upcoming') {
+      } 
+      // 2. NOUVEAU SYSTÈME : Les festivals (Hellfest, Plane'R Fest, etc.)
+      else if (localStorage.getItem('playlistData')) {
+        const raw = localStorage.getItem('playlistData');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          type = 'festival';
+          // On s'assure que les données sont bien transformées pour iTunes
+          dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
+          pName = parsed.playlistName || "Ma Sélection";
+        }
+      }
+      // 3. Les concerts futurs
+      else if (mode === 'upcoming') {
         type = 'future';
         const futureRaw = localStorage.getItem('selected_upcoming');
         if (futureRaw) {
@@ -83,7 +97,9 @@ export default function Generate() {
           dataToUse = parsed.map((c: any) => ({ ...c, artist: c.artist?.name || c.artist, isFuture: true }));
           pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : "Ma Sélection Future";
         }
-      } else {
+      } 
+      // 4. Les concerts passés (Setlist.fm)
+      else {
         type = 'past';
         const pastRaw = localStorage.getItem('selected_concerts');
         if (pastRaw) {
@@ -139,9 +155,10 @@ export default function Generate() {
         } catch (err) { console.error('Erreur historique:', err); }
       }
 
-      if (type === 'festival') { localStorage.removeItem('selected_concerts'); localStorage.removeItem('selected_upcoming'); }
-      else if (type === 'past') localStorage.removeItem('selected_concerts');
-      else if (type === 'future') localStorage.removeItem('selected_upcoming');
+      // Nettoyage de tous les tiroirs possibles une fois terminé !
+      localStorage.removeItem('playlistData');
+      localStorage.removeItem('selected_concerts'); 
+      localStorage.removeItem('selected_upcoming');
 
       toast.success(`${uniqueTracks.length} morceaux prêts !`);
     } catch (err: any) {
@@ -181,7 +198,6 @@ export default function Generate() {
   };
 
 const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
-    // La fameuse logique de cascade : US d'abord, puis UK, puis FR
     const countries = ['US', 'GB', 'FR'];
     let allTracks: Track[] = [];
     const normalizedSearchArtist = normalizeString(artist);
@@ -189,15 +205,14 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
     for (const country of countries) {
       try {
         const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artist)}&entity=song&limit=${Math.max(limit * 5, 50)}&country=${country}`);
-        if (!response.ok) continue; // Si le pays plante, on passe au suivant
+        if (!response.ok) continue; 
         
         const data = await response.json();
         if (!data.results?.length) continue;
 
-        // On filtre et on note les morceaux trouvés
         const newTracks = data.results
           .map((item: any) => {
-            const n = normalizeString(item.artistName || ''); // Sécurité anti-crash ajoutée
+            const n = normalizeString(item.artistName || ''); 
             const score = n === normalizedSearchArtist ? 100 : n.includes(normalizedSearchArtist) ? 50 : 0;
             return { ...item, score };
           })
@@ -205,23 +220,17 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
           .sort((a: any, b: any) => b.score - a.score)
           .map((item: any) => ({ artist: item.artistName, name: item.trackName }));
 
-        // On ajoute les nouveaux morceaux à notre liste globale
         allTracks = [...allTracks, ...newTracks];
-        
-        // On déduplique pour voir combien on en a VRAIMENT
         const uniqueTracks = deduplicateTracks(allTracks);
 
-        // Si on a atteint notre quota de 10 (ou plus), on arrête de chercher !
         if (uniqueTracks.length >= limit) {
           return uniqueTracks.slice(0, limit);
         }
       } catch (err) {
-        // En cas d'erreur réseau, on ignore et on passe au pays suivant
         console.error(`Erreur iTunes (${country}) pour ${artist}:`, err);
       }
     }
 
-    // Si on a fini de fouiller tous les pays, on renvoie ce qu'on a trouvé (même s'il y en a moins de 10)
     return deduplicateTracks(allTracks).slice(0, limit);
   };
 
@@ -297,7 +306,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
         ) : (
           <div className="animate-in fade-in duration-500">
 
-            {/* HEADER - compact mobile */}
             <div className="text-center pt-4 sm:pt-8 pb-3 sm:pb-6">
               <h1 className="text-3xl sm:text-5xl md:text-8xl font-black italic uppercase mb-2 tracking-tighter leading-none">
                 C'est prêt !
@@ -310,7 +318,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               </p>
             </div>
 
-            {/* BADGE QUOTA - compact */}
             <div className="mb-4 text-center">
               {!user ? (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-xs">
@@ -336,10 +343,8 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               )}
             </div>
 
-            {/* ===== MOBILE : Layout compact ===== */}
             <div className="flex flex-col sm:hidden gap-3 mb-4">
               
-              {/* 1. Copier */}
               <button
                 onClick={handleCopy}
                 disabled={!!user && !quota.canExport}
@@ -354,7 +359,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                 : <><Copy className="w-5 h-5" /> 1. Copier la liste</>}
               </button>
 
-              {/* 2. TuneMyMusic */}
               <a
                 href="https://www.tunemymusic.com/fr/transfer"
                 target="_blank"
@@ -364,7 +368,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                 <ExternalLink className="w-5 h-5" /> 2. Ouvrir TuneMyMusic
               </a>
 
-              {/* Liste + bouton .txt côte à côte */}
               <div className="flex gap-2">
                 <details className="flex-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden">
                   <summary className="cursor-pointer px-4 py-3 font-bold uppercase text-sm flex items-center justify-between">
@@ -384,7 +387,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                   </div>
                 </details>
 
-                {/* .txt - Premium only */}
                 {isPremium ? (
                   <button onClick={handleDownload} className="flex flex-col items-center justify-center gap-1 px-4 py-3 bg-[#252525] border border-yellow-500/40 hover:border-yellow-500 rounded-xl transition-all">
                     <Download className="w-5 h-5 text-yellow-500" />
@@ -400,7 +402,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               </div>
             </div>
 
-            {/* ===== DESKTOP : Grid 2 colonnes ===== */}
             <div className="hidden sm:grid md:grid-cols-2 gap-8 mb-10">
               <div className="bg-[#252525] border border-[#333] rounded-3xl p-8 md:p-10 flex flex-col justify-between shadow-xl hover:border-[#4d94ff] transition-all">
                 <div>
@@ -448,7 +449,6 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               </div>
             </div>
 
-            {/* DESKTOP : Liste + .txt */}
             <div className="hidden sm:block">
               <details className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden mb-6">
                 <summary className="cursor-pointer p-6 font-black uppercase text-lg hover:bg-[#2d2d2d] transition-colors flex items-center justify-between">
