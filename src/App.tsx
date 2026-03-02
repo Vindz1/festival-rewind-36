@@ -36,6 +36,7 @@ import AlcatrazPage from './pages/Alcatraz';
 import NancyOpenAirPage from './pages/NancyOpenAir';
 import RockEnSeinePage from './pages/RockEnSeine';
 import SylakOpenAirPage from './pages/SylakOpenAir';
+import PlanerFestPage from './pages/PlanerFest';
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => (
             <Route path="/heavy-weekend-2026" element={<NancyOpenAirPage />} />
             <Route path="/rock-en-seine-2026" element={<RockEnSeinePage />} />
             <Route path="/sylak-open-air-2026" element={<SylakOpenAirPage />} />
+            <Route path="/planer-fest-2026" element={<PlanerFestPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
