@@ -71,24 +71,20 @@ export default function Generate() {
       let type: 'festival' | 'past' | 'future' | null = null;
       let pName = "Ma Setlist";
 
-      // 1. Essai de récupération via location.state (Ancien système)
       if (stateData?.artists && Array.isArray(stateData.artists)) {
         type = 'festival';
         dataToUse = stateData.artists.map((artistName: string) => ({ artist: artistName, isFuture: true, id: artistName.toLowerCase().replace(/\s+/g, '-') }));
         pName = stateData.eventName || "Festival Playlist";
       } 
-      // 2. NOUVEAU SYSTÈME : Les festivals (Hellfest, Plane'R Fest, etc.)
       else if (localStorage.getItem('playlistData')) {
         const raw = localStorage.getItem('playlistData');
         if (raw) {
           const parsed = JSON.parse(raw);
           type = 'festival';
-          // On s'assure que les données sont bien transformées pour iTunes
           dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
           pName = parsed.playlistName || "Ma Sélection";
         }
       }
-      // 3. Les concerts futurs
       else if (mode === 'upcoming') {
         type = 'future';
         const futureRaw = localStorage.getItem('selected_upcoming');
@@ -98,7 +94,6 @@ export default function Generate() {
           pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : "Ma Sélection Future";
         }
       } 
-      // 4. Les concerts passés (Setlist.fm)
       else {
         type = 'past';
         const pastRaw = localStorage.getItem('selected_concerts');
@@ -155,7 +150,6 @@ export default function Generate() {
         } catch (err) { console.error('Erreur historique:', err); }
       }
 
-      // Nettoyage de tous les tiroirs possibles une fois terminé !
       localStorage.removeItem('playlistData');
       localStorage.removeItem('selected_concerts'); 
       localStorage.removeItem('selected_upcoming');
@@ -197,7 +191,7 @@ export default function Generate() {
     return result;
   };
 
-const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
+  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
     const countries = ['US', 'GB', 'FR'];
     let allTracks: Track[] = [];
     const normalizedSearchArtist = normalizeString(artist);
@@ -289,6 +283,10 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
     );
   }
 
+  // --- LOGIQUE DE PROTECTION DE LA LISTE ---
+  const canViewFullList = !!user && quota.canExport;
+  const visibleSongs = canViewFullList ? songs : songs.slice(0, 3); // Ne garder que les 3 premiers si bloqué
+
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-16 flex flex-col font-sans">
       <Header />
@@ -343,19 +341,20 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               )}
             </div>
 
+            {/* VERSION MOBILE */}
             <div className="flex flex-col sm:hidden gap-3 mb-4">
               
               <button
                 onClick={handleCopy}
-                disabled={!!user && !quota.canExport}
+                disabled={!canViewFullList}
                 className={`w-full h-14 flex items-center justify-center gap-3 font-black italic uppercase text-base rounded-xl transition-all shadow-md ${
                   copied ? 'bg-[#00ff00] text-black'
-                  : user && !quota.canExport ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : !canViewFullList ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                   : 'bg-[#4d94ff] text-white active:scale-95'
                 }`}
               >
                 {copied ? <><Check className="w-5 h-5" /> Copié !</>
-                : user && !quota.canExport ? <><Lock className="w-5 h-5" /> Quota épuisé</>
+                : !canViewFullList ? <><Lock className="w-5 h-5" /> Quota épuisé</>
                 : <><Copy className="w-5 h-5" /> 1. Copier la liste</>}
               </button>
 
@@ -369,13 +368,13 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               </a>
 
               <div className="flex gap-2">
-                <details className="flex-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden">
+                <details className="flex-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden relative">
                   <summary className="cursor-pointer px-4 py-3 font-bold uppercase text-sm flex items-center justify-between">
                     <span className="flex items-center gap-2"><Music className="w-4 h-4" /> Liste</span>
                     <span className="text-[#666] text-xs">{songs.length}</span>
                   </summary>
-                  <div className="p-3 max-h-52 overflow-y-auto space-y-1.5">
-                    {songs.map((song, idx) => (
+                  <div className="p-3 max-h-52 overflow-y-auto space-y-1.5 relative">
+                    {visibleSongs.map((song, idx) => (
                       <div key={idx} className="flex items-start gap-2 p-2 rounded bg-[#1a1a1a]">
                         <span className="text-[#666] font-mono text-xs min-w-[1.5rem]">{idx + 1}</span>
                         <div className="flex-1 min-w-0">
@@ -384,6 +383,23 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                         </div>
                       </div>
                     ))}
+
+                    {/* EFFET DE MASQUAGE MOBILE */}
+                    {!canViewFullList && songs.length > 3 && (
+                      <div className="relative mt-1 overflow-hidden rounded bg-[#1a1a1a] p-2 pointer-events-none select-none">
+                        <div className="blur-[2px] opacity-30 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-[#666] font-mono text-xs min-w-[1.5rem]">4</span>
+                            <div><p className="font-bold text-white text-xs">••••••••</p></div>
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-[#252525] to-[#252525]/50">
+                          <span className="text-[10px] font-bold text-yellow-500 bg-[#252525] px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-1 shadow-lg">
+                            <Lock className="w-3 h-3" /> Liste masquée
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </details>
 
@@ -402,6 +418,7 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
               </div>
             </div>
 
+            {/* VERSION DESKTOP */}
             <div className="hidden sm:grid md:grid-cols-2 gap-8 mb-10">
               <div className="bg-[#252525] border border-[#333] rounded-3xl p-8 md:p-10 flex flex-col justify-between shadow-xl hover:border-[#4d94ff] transition-all">
                 <div>
@@ -415,15 +432,15 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                 </div>
                 <Button
                   onClick={handleCopy}
-                  disabled={!!user && !quota.canExport}
+                  disabled={!canViewFullList}
                   className={`w-full h-20 md:h-24 text-xl md:text-2xl font-black italic uppercase rounded-none shadow-[8px_8px_0px_rgba(0,0,0,0.3)] transition-all ${
                     copied ? 'bg-[#00ff00] text-black'
-                    : user && !quota.canExport ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : !canViewFullList ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                     : 'bg-[#4d94ff] text-white hover:bg-white hover:text-black'
                   }`}
                 >
                   {copied ? <><Check className="mr-2 w-6 h-6" /> Copié !</>
-                  : user && !quota.canExport ? <><Lock className="mr-2 w-6 h-6" /> Quota épuisé</>
+                  : !canViewFullList ? <><Lock className="mr-2 w-6 h-6" /> Quota épuisé</>
                   : <><Copy className="mr-2 w-6 h-6" /> Copier</>}
                 </Button>
               </div>
@@ -455,8 +472,8 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                   <span className="flex items-center gap-2"><Music className="w-5 h-5" /> Liste complète</span>
                   <span className="text-[#666] text-sm">{songs.length} titres</span>
                 </summary>
-                <div className="p-6 pt-0 max-h-96 overflow-y-auto space-y-2">
-                  {songs.map((song, idx) => (
+                <div className="p-6 pt-0 max-h-96 overflow-y-auto space-y-2 relative">
+                  {visibleSongs.map((song, idx) => (
                     <div key={idx} className="flex items-start gap-3 p-3 rounded bg-[#1a1a1a] hover:bg-[#2d2d2d] transition-colors">
                       <span className="text-[#666] font-mono text-sm min-w-[2rem]">{String(idx + 1).padStart(2, '0')}</span>
                       <div className="flex-1 min-w-0">
@@ -465,6 +482,32 @@ const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]>
                       </div>
                     </div>
                   ))}
+
+                  {/* EFFET DE MASQUAGE DESKTOP */}
+                  {!canViewFullList && songs.length > 3 && (
+                    <div className="relative mt-2 overflow-hidden rounded bg-[#1a1a1a] p-3 pointer-events-none select-none">
+                      <div className="blur-[3px] opacity-40 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <span className="text-[#666] font-mono text-sm min-w-[2rem]">04</span>
+                          <div><p className="font-bold text-white">••••••••••••••</p><p className="text-sm text-[#a0a0a0]">••••••••</p></div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-[#666] font-mono text-sm min-w-[2rem]">05</span>
+                          <div><p className="font-bold text-white">••••••••</p><p className="text-sm text-[#a0a0a0]">••••••••••••</p></div>
+                        </div>
+                      </div>
+                      
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-[#252525] via-[#252525]/80 to-[#252525]/20 pointer-events-auto">
+                        <Button 
+                          onClick={() => !user ? navigate('/auth') : navigate('/subscription')}
+                          className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold shadow-lg shadow-yellow-500/20"
+                        >
+                          <Lock className="w-4 h-4 mr-2" />
+                          Débloquer les {songs.length} titres
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </details>
 
