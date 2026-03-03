@@ -236,17 +236,19 @@ export const FESTIVALS_2026: Festival[] = [
     website: 'https://furiosfest.com',
     hasDetailedPage: false
   },
-  {
+{
     id: 'betizfest-2026',
     name: 'BetiZFest',
     location: 'Cambrai, France',
     country: 'France',
-    coordinates: [50.1764, 3.2358],
-    dates: '09-11 Avril 2026',
+    coordinates: [50.1764, 3.2366],
+    dates: '9 - 11 avril 2026',
     year: 2026,
-    genre: ['Punk', 'Alternative', 'Metal'],
-    website: 'https://betizfest.info',
-    hasDetailedPage: false
+    genre: ['Punk', 'Hardcore', 'Metal Alternatif'],
+    website: 'https://betizfest.info/',
+    lineup: ['Lofofora', 'Black Bomb A', 'Strike Anywhere', 'Poésie Zéro'],
+    hasDetailedPage: true,
+    isPepite: false
   },
   {
     id: 'fertois-metal-fest-2026',
