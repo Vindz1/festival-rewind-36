@@ -315,6 +315,19 @@ export const FESTIVALS_2026: Festival[] = [
     hasDetailedPage: true,
     isPepite: false
   },
+  {
+  id: 'angry-burger-2026',
+  name: 'Angry Burger Festival',
+  location: 'Château-Gontier, France',
+  country: 'France',
+  coordinates: [47.8286, -0.7042], // Coordonnées approximatives
+  dates: '7-9 août 2026',
+  year: 2026,
+  genre: ['Punk', 'Rock', 'Metal', 'Electro'],
+  website: 'https://angryburgerfestival.fr/',
+  lineup: ['47TER', 'RIDSA', 'BLACK BOMB A', 'LOFOFORA'],
+  hasDetailedPage: true
+},
 
   // ===== AMÉRIQUE DU NORD =====
   {
