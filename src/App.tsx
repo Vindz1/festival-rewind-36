@@ -38,6 +38,7 @@ import RockEnSeinePage from './pages/RockEnSeine';
 import SylakOpenAirPage from './pages/SylakOpenAir';
 import PlanerFestPage from './pages/PlanerFest';
 import DuRockChinonRienPage from './pages/DuRockChinonRien';
+import BetiZFestPage from './pages/BetiZFest';
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/sylak-open-air-2026" element={<SylakOpenAirPage />} />
             <Route path="/planer-fest-2026" element={<PlanerFestPage />} />
             <Route path="/du-rock-chinon-rien-2026" element={<DuRockChinonRienPage />} />
+            <Route path="/betizfest-2026" element={<BetiZFestPage />} />
           </Routes>
           
           {/* Bouton flottant sur toutes les pages */}
