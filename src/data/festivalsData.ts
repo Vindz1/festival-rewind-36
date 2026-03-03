@@ -301,6 +301,20 @@ export const FESTIVALS_2026: Festival[] = [
     hasDetailedPage: true,
     isPepite: false
   },
+  {
+    id: 'on-na-plus-20-ans-2026',
+    name: "On N'a Plus 20 Ans X",
+    location: 'Fontenay-le-Comte, France',
+    country: 'France',
+    coordinates: [46.4667, -0.8033],
+    dates: '3 - 5 avril 2026',
+    year: 2026,
+    genre: ['Punk', 'Rock', 'Metal', 'Ska'],
+    website: 'https://www.facebook.com/festivalonnaplus20ans/',
+    lineup: ['Tagada Jones Orchestra', 'Les Wampas', 'Ludwig von 88', 'Tambours du Bronx'],
+    hasDetailedPage: true,
+    isPepite: false
+  },
 
   // ===== AMÉRIQUE DU NORD =====
   {
