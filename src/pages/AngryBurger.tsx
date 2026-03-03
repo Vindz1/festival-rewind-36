@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Check, XCircle } from 'lucide-react';
+import { Filter, Check, XCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { ANGRY_BURGER_LINEUP, ArtistData } from '@/data/AngryBurger'; 
 import { Footer } from '@/components/Footer';
@@ -31,193 +31,209 @@ const AngryBurgerPage = () => {
 
   const toggleDay = (day: string) => {
     const newDays = new Set(selectedDays);
-    if (newDays.has(day)) {
-      newDays.delete(day);
-    } else {
-      newDays.add(day);
-    }
+    if (newDays.has(day)) newDays.delete(day);
+    else newDays.add(day);
     setSelectedDays(newDays);
-    
-    // Auto-select/deselect artists
-    const newSelectedArtists = new Set(selectedArtists);
-    artists.forEach(artist => {
-      if (artist.day === day) {
-        if (newDays.has(day)) {
-          newSelectedArtists.add(artist.id);
-        } else {
-          newSelectedArtists.delete(artist.id);
-        }
-      }
-    });
-    setSelectedArtists(newSelectedArtists);
   };
 
   const toggleStage = (stage: string) => {
     const newStages = new Set(selectedStages);
-    if (newStages.has(stage)) {
-      newStages.delete(stage);
-    } else {
-      newStages.add(stage);
-    }
+    if (newStages.has(stage)) newStages.delete(stage);
+    else newStages.add(stage);
     setSelectedStages(newStages);
   };
 
-  const toggleArtist = (artistId: string) => {
-    const newSelected = new Set(selectedArtists);
-    if (newSelected.has(artistId)) {
-      newSelected.delete(artistId);
+  const toggleArtist = (id: string) => {
+    const newArtists = new Set(selectedArtists);
+    if (newArtists.has(id)) newArtists.delete(id);
+    else newArtists.add(id);
+    setSelectedArtists(newArtists);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedArtists.size === filteredArtists.length) {
+      setSelectedArtists(new Set());
     } else {
-      newSelected.add(artistId);
+      setSelectedArtists(new Set(filteredArtists.map(a => a.id)));
     }
-    setSelectedArtists(newSelected);
-  };
-
-  const selectAll = () => {
-    setSelectedArtists(new Set(artists.map(a => a.id)));
-    setSelectedDays(new Set(availableDays));
-  };
-
-  const deselectAll = () => {
-    setSelectedArtists(new Set());
-    setSelectedDays(new Set());
-    setSelectedStages(new Set());
   };
 
   const handleGenerate = () => {
     if (selectedArtists.size === 0) {
-      toast.error("Sélectionnez au moins un artiste pour générer une playlist !");
+      toast.error('Sélectionnez au moins un artiste');
       return;
     }
 
-    const selectedArtistData = artists
+    const selectedTracks = artists
       .filter(a => selectedArtists.has(a.id))
-      .map(a => ({
-        id: a.id,
-        artist: a.name,
-        eventDate: `${a.day} - Angry Burger Festival 2026`
-      }));
+      .map(a => ({ artist: a.name, name: '' }));
 
-    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArtistData));
-    navigate('/generate?mode=upcoming');
+    const playlistData = {
+      playlistName: `Angry Burger 2026 - My Selection`,
+      mainArtist: 'Angry Burger Festival',
+      songs: selectedTracks
+    };
+
+    localStorage.setItem('playlistData', JSON.stringify(playlistData));
+    navigate('/generate');
   };
 
   const filteredArtists = artists.filter(artist => {
-    const dayMatch = selectedDays.size === 0 || selectedDays.has(artist.day);
-    const stageMatch = selectedStages.size === 0 || selectedStages.has(artist.stage);
-    return dayMatch && stageMatch;
+    const matchDay = selectedDays.size === 0 || selectedDays.has(artist.day);
+    const matchStage = selectedStages.size === 0 || selectedStages.has(artist.stage);
+    return matchDay && matchStage;
   });
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Header />
-      
-      <main className="pt-20 pb-24 lg:pb-12 max-w-[1400px] mx-auto px-4">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 bg-[#2d2d2d] border border-[#404040] rounded-xl p-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="px-3 py-1 bg-[#00cc00] text-black text-[10px] font-bold rounded-full uppercase tracking-wider">
-                Line-up Officiel
-              </span>
-              <span className="text-[#a0a0a0] text-xs font-medium">
-                {artists.length} Groupes confirmés
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
-              ANGRY BURGER <span className="text-[#00cc00]">FESTIVAL</span>
-            </h1>
-            <p className="text-[#a0a0a0] mt-2 font-medium flex items-center gap-2">
-              7 - 9 AOÛT 2026 • CHÂTEAU-GONTIER, FR
-            </p>
-          </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              variant="outline" 
-              onClick={deselectAll}
-              className="border-[#404040] text-white hover:bg-[#3d3d3d] flex items-center gap-2"
-            >
-              <XCircle className="w-4 h-4" /> Effacer
-            </Button>
-            <Button 
-              onClick={handleGenerate}
-              className="bg-[#00cc00] hover:bg-[#00ff00] text-black font-bold px-8 shadow-[0_0_20px_rgba(0,204,0,0.3)]"
-            >
-              GÉNÉRER MA PLAYLIST
-            </Button>
-          </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-8">
+        
+        {/* EN-TÊTE / HERO */}
+        <div className="mb-8">
+          <h1 className="text-4xl sm:text-6xl font-black italic uppercase tracking-tighter mb-4 text-white drop-shadow-lg">
+            ANGRY BURGER <br/>
+            <span className="text-[#4d94ff]">FESTIVAL 2026</span>
+          </h1>
+          <p className="text-lg text-gray-300 font-medium mb-4">
+            7 - 9 Août 2026 • Château-Gontier, FR
+          </p>
+
+          <a 
+            href="https://angryburgerfestival.fr/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm font-bold text-white transition-all backdrop-blur-sm"
+          >
+            <ExternalLink className="w-4 h-4 text-[#4d94ff]" />
+            Site Officiel
+          </a>
         </div>
 
-        <div className="grid lg:grid-cols-[300px_1fr] gap-8">
-          {/* Filters Sidebar */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block space-y-6`}>
-            <div className="bg-[#2d2d2d] border border-[#404040] rounded-xl p-5 sticky top-24">
-              <h2 className="text-white font-bold mb-6 flex items-center gap-2 uppercase tracking-wide">
-                <Filter className="w-4 h-4 text-[#00cc00]" /> Filtrer par
-              </h2>
+        <div className="lg:hidden mb-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full bg-[#1a1a1a] border-[#333] text-white hover:bg-[#252525]"
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+            {showFilters ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+          </Button>
+        </div>
 
-              <div className="space-y-8">
-                {/* Jours */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* FILTRES */}
+          <div className={`lg:w-80 space-y-6 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+            <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-[#333] sticky top-24">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-[#4d94ff]" /> Filtres
+                </h2>
+                {(selectedDays.size > 0 || selectedStages.size > 0) && (
+                  <button 
+                    onClick={() => { setSelectedDays(new Set()); setSelectedStages(new Set()); }}
+                    className="text-xs text-[#a0a0a0] hover:text-white flex items-center gap-1"
+                  >
+                    <XCircle className="w-3 h-3" /> Effacer
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-6">
                 <div>
-                  <p className="text-[10px] font-bold text-[#a0a0a0] mb-4 uppercase tracking-[0.2em]">Jours</p>
-                  <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-[#666] uppercase tracking-wider mb-3">Jours</h3>
+                  <div className="space-y-2">
                     {availableDays.map(day => (
-                      <div key={day} className="flex items-center space-x-3 cursor-pointer group" onClick={() => toggleDay(day)}>
+                      <label key={day} className="flex items-center gap-3 cursor-pointer group">
                         <Checkbox 
                           checked={selectedDays.has(day)}
-                          className="border-[#404040] data-[state=checked]:bg-[#00cc00] data-[state=checked]:border-[#00cc00]"
+                          onCheckedChange={() => toggleDay(day)}
+                          className="border-[#4d94ff] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:text-white"
                         />
-                        <span className={`text-sm transition-colors ${selectedDays.has(day) ? 'text-white font-semibold' : 'text-[#a0a0a0] group-hover:text-white'}`}>
-                          {day}
-                        </span>
-                      </div>
+                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{day}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
 
-                {/* Bouton Tout Sélectionner */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#666] uppercase tracking-wider mb-3">Scènes</h3>
+                  <div className="space-y-2">
+                    {availableStages.map(stage => (
+                      <label key={stage} className="flex items-center gap-3 cursor-pointer group">
+                        <Checkbox 
+                          checked={selectedStages.has(stage)}
+                          onCheckedChange={() => toggleStage(stage)}
+                          className="border-[#4d94ff] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:text-white"
+                        />
+                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{stage}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleGenerate}
+                disabled={selectedArtists.size === 0}
+                className="w-full mt-8 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold h-12 shadow-lg shadow-blue-500/20"
+              >
+                Créer la Playlist ({selectedArtists.size})
+              </Button>
+            </div>
+          </div>
+
+          {/* LISTE DES ARTISTES */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-6 bg-[#1a1a1a] p-4 rounded-xl border border-[#333]">
+              <div className="flex items-center gap-4">
                 <Button 
-                  variant="ghost" 
-                  onClick={selectAll}
-                  className="w-full justify-start px-0 text-[#00cc00] hover:bg-transparent hover:text-[#00ff00] text-xs font-bold"
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="bg-transparent border-[#404040] text-white hover:bg-[#2d2d2d]"
                 >
-                  + TOUT SÉLECTIONNER
+                  {selectedArtists.size === filteredArtists.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                 </Button>
+                <span className="text-sm text-[#a0a0a0]">
+                  {filteredArtists.length} artiste{filteredArtists.length > 1 ? 's' : ''}
+                </span>
               </div>
             </div>
-          </aside>
 
-          {/* Artists Grid */}
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {filteredArtists.map((artist) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pb-24 lg:pb-0">
+              {filteredArtists.map(artist => {
                 const isSelected = selectedArtists.has(artist.id);
                 return (
                   <div 
                     key={artist.id}
                     onClick={() => toggleArtist(artist.id)}
-                    className={`group relative flex items-center gap-4 p-3 rounded-xl border transition-all duration-200 cursor-pointer ${
-                      isSelected 
-                        ? 'bg-[#00cc00]/10 border-[#00cc00] shadow-[0_0_15px_rgba(0,204,0,0.1)]' 
-                        : 'bg-[#2d2d2d] border-[#404040] hover:border-[#505050]'
-                    }`}
+                    className={`
+                      relative flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl cursor-pointer transition-all duration-200 border
+                      ${isSelected 
+                        ? 'bg-[#4d94ff]/10 border-[#4d94ff] shadow-[0_0_15px_rgba(77,148,255,0.15)]' 
+                        : 'bg-[#1a1a1a] border-[#333] hover:border-[#666] hover:bg-[#252525]'
+                      }
+                    `}
                   >
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${
-                      isSelected ? 'bg-[#00cc00] border-[#00cc00]' : 'bg-[#1a1a1a] border-[#404040]'
-                    }`}>
-                      {isSelected ? (
-                        <Check className="w-5 h-5 text-black" />
-                      ) : (
-                        <span className="text-[#404040] font-bold text-xs group-hover:text-[#606060]">AB</span>
-                      )}
+                    <div className={`
+                      w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors
+                      ${isSelected ? 'border-[#4d94ff] bg-[#4d94ff]' : 'border-[#404040] bg-transparent'}
+                    `}>
+                      {isSelected && <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-xs sm:text-sm font-medium truncate ${isSelected ? 'text-[#00cc00]' : 'text-white'}`}>
+                      <h3 className={`text-xs sm:text-sm font-medium truncate ${isSelected ? 'text-[#4d94ff]' : 'text-white'}`}>
                         {artist.name}
                       </h3>
-                      <div className="flex gap-2 text-[10px] text-[#a0a0a0] mt-0.5">
+                      <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-[#a0a0a0] mt-0.5">
                         <span className="truncate">{artist.day}</span>
+                        <span>•</span>
+                        <span className="truncate">{artist.stage}</span>
                       </div>
                     </div>
                   </div>
@@ -228,7 +244,7 @@ const AngryBurgerPage = () => {
         </div>
       </main>
 
-      {/* Mobile Floating Bar */}
+      {/* FOOTER MOBILE FIXE */}
       {selectedArtists.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
           <div className="flex items-center justify-between gap-3">
@@ -237,7 +253,7 @@ const AngryBurgerPage = () => {
             </span>
             <Button 
               onClick={handleGenerate} 
-              className="bg-[#00cc00] hover:bg-[#00ff00] text-black font-bold px-6"
+              className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-6"
             >
               Créer Playlist
             </Button>
