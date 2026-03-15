@@ -6,7 +6,7 @@ import { Map, List, MapPin, Calendar, Zap, Plus, Minus } from 'lucide-react';
 import { FESTIVALS_2026, Festival } from '@/data/festivalsData';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup, Annotation } from 'react-simple-maps';
 
-// Carte HAUTE RÉS avec plus de détails
+// Carte HAUTE RÉS avec plus de détails.
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
 // VILLES COMPLÈTES - Tous les pays d'Europe + autres continents
