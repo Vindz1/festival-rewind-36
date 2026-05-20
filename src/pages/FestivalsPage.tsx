@@ -13,18 +13,18 @@ export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status' | 'pepite'>('status');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status'>('status');
 
-  // ZOOM MOBILE : initial 2x, max 30x (TRÈS FORT)
+  // ZOOM sur l'Europe par défaut
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const [position, setPosition] = useState({ 
-    coordinates: [10, 50] as [number, number], 
-    zoom: isMobile ? 2.5 : 1.5 // Mobile démarre encore plus zoomé
+    coordinates: [10, 52] as [number, number], // Centré sur l'Europe centrale
+    zoom: isMobile ? 3 : 2.2 // Zoom plus serré sur l'Europe
   });
 
-  // FILTRER : Afficher uniquement les festivals "Live" (hasDetailedPage) ou "Pépite" (isPepite)
+  // FILTRER : Afficher uniquement les festivals "Live" (hasDetailedPage)
   const visibleFestivals = FESTIVALS_2026.filter(
-    festival => festival.hasDetailedPage || festival.isPepite
+    festival => festival.hasDetailedPage
   );
 
   const handleFestivalClick = (festival: Festival) => {
@@ -86,12 +86,6 @@ export default function FestivalsPage() {
         return festivals.sort((a, b) => {
           if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
           if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
-          return parseDate(a.dates) - parseDate(b.dates);
-        });
-      case 'pepite':
-        return festivals.sort((a, b) => {
-          if (a.isPepite && !b.isPepite) return -1;
-          if (!a.isPepite && b.isPepite) return 1;
           return parseDate(a.dates) - parseDate(b.dates);
         });
       default:
@@ -193,7 +187,7 @@ export default function FestivalsPage() {
                     }
                   </Geographies>
 
-                  {/* FESTIVALS - Uniquement ceux qui sont Live ou Pépites */}
+                  {/* FESTIVALS - Uniquement ceux avec prog complète */}
                   {visibleFestivals.map(festival => (
                     <Marker
                       key={festival.id}
@@ -203,26 +197,22 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {/* Effet pulse pour Live et Pépites */}
-                      {(festival.hasDetailedPage || festival.isPepite) && (
-                        <circle 
-                          r={12 / position.zoom} 
-                          fill={festival.isPepite ? '#ff5500' : '#00ff00'} 
-                          opacity={0.3} 
-                          className="animate-ping" 
-                        />
-                      )}
+                      {/* Effet pulse pour festivals Live */}
+                      <circle 
+                        r={12 / position.zoom} 
+                        fill="#00ff00" 
+                        opacity={0.3} 
+                        className="animate-ping" 
+                      />
                       {/* Marqueur principal */}
                       <circle 
                         r={6 / position.zoom}
-                        fill={festival.isPepite ? '#ff5500' : (festival.hasDetailedPage ? '#00ff00' : '#4d94ff')}
+                        fill="#00ff00"
                         stroke="#FFFFFF"
                         strokeWidth={2 / position.zoom}
                         className="transition-opacity hover:opacity-80"
                         style={{
-                          filter: festival.isPepite 
-                            ? 'drop-shadow(0 0 8px #ff5500)' 
-                            : (festival.hasDetailedPage ? 'drop-shadow(0 0 8px #00ff00)' : 'none')
+                          filter: 'drop-shadow(0 0 8px #00ff00)'
                         }}
                       />
                       {/* Nom du festival - visible si zoom > 6 */}
@@ -271,17 +261,10 @@ export default function FestivalsPage() {
               <div className="absolute bottom-4 left-4 bg-[#1a1a1a]/95 backdrop-blur-sm border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h3 className="text-lg font-bold">{hoveredFestival.name}</h3>
-                  {hoveredFestival.isPepite ? (
-                    <span className="bg-[#ff5500] text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 animate-pulse">
-                      <Zap className="w-2.5 h-2.5" />
-                      PÉPITE
-                    </span>
-                  ) : hoveredFestival.hasDetailedPage ? (
-                    <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                      <Zap className="w-2.5 h-2.5" />
-                      LIVE
-                    </span>
-                  ) : null}
+                  <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5" />
+                    LIVE
+                  </span>
                 </div>
                 <div className="space-y-1 text-sm text-gray-400">
                   <div className="flex items-center gap-2">
@@ -298,10 +281,6 @@ export default function FestivalsPage() {
 
             {/* Légende */}
             <div className="absolute top-4 right-4 bg-[#1a1a1a]/95 backdrop-blur-sm border border-[#404040] rounded-lg p-3 text-xs z-10">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#ff5500] animate-pulse drop-shadow-[0_0_5px_#ff5500]" />
-                <span className="font-bold text-[#ff5500]">Pépite</span>
-              </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse drop-shadow-[0_0_5px_#00ff00]" />
                 <span>Prog complète</span>
@@ -322,11 +301,7 @@ export default function FestivalsPage() {
               <button onClick={() => setSortBy('name')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'name' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>A-Z</button>
               <button onClick={() => setSortBy('date')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'date' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Date</button>
               <button onClick={() => setSortBy('country')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'country' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Pays</button>
-              <button onClick={() => setSortBy('status')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'status' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Live / Bientôt</button>
-              <button onClick={() => setSortBy('pepite')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${sortBy === 'pepite' ? 'bg-[#ff5500] text-white shadow-[0_0_10px_rgba(255,85,0,0.5)]' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-[#ff5500] hover:border-[#ff5500]/50'}`}>
-                <Zap className="w-4 h-4" />
-                Pépites
-              </button>
+              <button onClick={() => setSortBy('status')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'status' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Par statut</button>
             </div>
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -334,29 +309,16 @@ export default function FestivalsPage() {
                 <div
                   key={festival.id}
                   onClick={() => handleFestivalClick(festival)}
-                  className={`bg-[#2d2d2d] border rounded-xl p-4 sm:p-5 cursor-pointer transition-all group ${
-                    festival.isPepite ? 'border-[#ff5500]/50 hover:border-[#ff5500] hover:shadow-[0_0_15px_rgba(255,85,0,0.15)]' : 'border-[#404040] hover:border-[#4d94ff]'
-                  }`}
+                  className="bg-[#2d2d2d] border border-[#404040] hover:border-[#4d94ff] rounded-xl p-4 sm:p-5 cursor-pointer transition-all group"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className={`text-lg sm:text-xl font-bold transition-colors ${festival.isPepite ? 'group-hover:text-[#ff5500]' : 'group-hover:text-[#4d94ff]'}`}>
+                    <h3 className="text-lg sm:text-xl font-bold transition-colors group-hover:text-[#4d94ff]">
                       {festival.name}
                     </h3>
-                    {festival.isPepite ? (
-                      <span className="bg-[#ff5500] text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 animate-pulse">
-                        <Zap className="w-2.5 h-2.5" />
-                        PÉPITE
-                      </span>
-                    ) : festival.hasDetailedPage ? (
-                      <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                        <Zap className="w-2.5 h-2.5" />
-                        LIVE
-                      </span>
-                    ) : (
-                      <span className="bg-yellow-500/10 text-yellow-500 text-[10px] px-2 py-0.5 rounded-full font-bold border border-yellow-500/20">
-                        BIENTÔT
-                      </span>
-                    )}
+                    <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                      <Zap className="w-2.5 h-2.5" />
+                      LIVE
+                    </span>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-400 mb-3">
