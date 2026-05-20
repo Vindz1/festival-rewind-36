@@ -1,6 +1,6 @@
-// src/pages/FestivalDynamicPage.tsx
+// src/pages/FestivalDynamicPage.tsx - VERSION CORRIGÉE
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,23 @@ interface Festival {
 }
 
 const FestivalDynamicPage = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  // Extraire le slug de l'URL - supporte /festival/:slug et /:slug
+  const getSlugFromUrl = () => {
+    // Si on a params.slug (route /festival/:slug)
+    if (params.slug) return params.slug;
+    
+    // Sinon, extraire de l'URL directement
+    const pathname = location.pathname;
+    const parts = pathname.split('/').filter(Boolean);
+    // Prendre le dernier segment de l'URL
+    return parts[parts.length - 1] || '';
+  };
+
+  const slug = getSlugFromUrl();
 
   const [festival, setFestival] = useState<Festival | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -46,6 +61,7 @@ const FestivalDynamicPage = () => {
   // Charger le festival et ses données
   useEffect(() => {
     if (slug) {
+      console.log('Loading festival with slug:', slug);
       loadFestivalData(slug);
     }
   }, [slug]);
@@ -54,6 +70,8 @@ const FestivalDynamicPage = () => {
     setLoading(true);
 
     try {
+      console.log('Fetching festival:', festivalSlug);
+      
       // 1. Charger le festival
       const { data: festivalData, error: festivalError } = await supabase
         .from('festivals')
@@ -62,12 +80,21 @@ const FestivalDynamicPage = () => {
         .eq('is_active', true)
         .single();
 
-      if (festivalError || !festivalData) {
+      if (festivalError) {
+        console.error('Festival error:', festivalError);
         navigate('/festivals');
         toast.error('Festival non trouvé');
         return;
       }
 
+      if (!festivalData) {
+        console.error('No festival data');
+        navigate('/festivals');
+        toast.error('Festival non trouvé');
+        return;
+      }
+
+      console.log('Festival found:', festivalData);
       setFestival(festivalData);
 
       // 2. Charger les artistes avec leurs informations de jour et scène
@@ -85,10 +112,12 @@ const FestivalDynamicPage = () => {
         .order('order_index');
 
       if (artistsError) {
-        console.error('Error loading artists:', artistsError);
+        console.error('Artists error:', artistsError);
         toast.error('Erreur lors du chargement des artistes');
         return;
       }
+
+      console.log('Artists loaded:', artistsData?.length || 0);
 
       // Transformer les données
       const transformedArtists: Artist[] = (artistsData || []).map((artist: any) => ({
@@ -188,7 +217,10 @@ const FestivalDynamicPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <div className="text-[#00ff00] text-xl">Chargement...</div>
+        <div className="text-center">
+          <div className="text-[#00ff00] text-xl mb-2">Chargement...</div>
+          <div className="text-[#a0a0a0] text-sm">Slug: {slug}</div>
+        </div>
       </div>
     );
   }
@@ -196,7 +228,16 @@ const FestivalDynamicPage = () => {
   if (!festival) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <div className="text-[#ff6b6b] text-xl">Festival non trouvé</div>
+        <div className="text-center">
+          <div className="text-[#ff6b6b] text-xl mb-2">Festival non trouvé</div>
+          <div className="text-[#a0a0a0] text-sm">Slug recherché: {slug}</div>
+          <Button 
+            onClick={() => navigate('/festivals')}
+            className="mt-4 bg-[#00cc00] hover:bg-[#00ff00] text-black"
+          >
+            Voir tous les festivals
+          </Button>
+        </div>
       </div>
     );
   }
