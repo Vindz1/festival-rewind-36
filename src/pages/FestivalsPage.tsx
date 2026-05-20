@@ -4,167 +4,10 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Map, List, MapPin, Calendar, Zap, Plus, Minus } from 'lucide-react';
 import { FESTIVALS_2026, Festival } from '@/data/festivalsData';
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup, Annotation } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
 // Carte HAUTE RÉS avec plus de détails.
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
-
-// VILLES COMPLÈTES - Tous les pays d'Europe + autres continents
-const MAJOR_CITIES = [
-  // France
-  { name: "Paris", coordinates: [2.3522, 48.8566] },
-  { name: "Lyon", coordinates: [4.8357, 45.7640] },
-  { name: "Marseille", coordinates: [5.3698, 43.2965] },
-  { name: "Toulouse", coordinates: [1.4442, 43.6047] },
-  { name: "Bordeaux", coordinates: [-0.5792, 44.8378] },
-  { name: "Nantes", coordinates: [-1.5534, 47.2184] },
-  { name: "Strasbourg", coordinates: [7.7521, 48.5734] },
-  { name: "Lille", coordinates: [3.0573, 50.6292] },
-  
-  // Royaume-Uni
-  { name: "Londres", coordinates: [-0.1276, 51.5074] },
-  { name: "Manchester", coordinates: [-2.2426, 53.4808] },
-  { name: "Birmingham", coordinates: [-1.8904, 52.4862] },
-  { name: "Édimbourg", coordinates: [-3.1883, 55.9533] },
-  { name: "Glasgow", coordinates: [-4.2518, 55.8642] },
-  { name: "Liverpool", coordinates: [-2.9916, 53.4084] },
-  { name: "Leeds", coordinates: [-1.5491, 53.8008] },
-  
-  // Allemagne
-  { name: "Berlin", coordinates: [13.4050, 52.5200] },
-  { name: "Munich", coordinates: [11.5820, 48.1351] },
-  { name: "Hambourg", coordinates: [9.9937, 53.5511] },
-  { name: "Francfort", coordinates: [8.6821, 50.1109] },
-  { name: "Cologne", coordinates: [6.9603, 50.9375] },
-  { name: "Stuttgart", coordinates: [9.1829, 48.7758] },
-  { name: "Düsseldorf", coordinates: [6.7735, 51.2277] },
-  { name: "Dortmund", coordinates: [7.4653, 51.5136] },
-  { name: "Nuremberg", coordinates: [11.0767, 49.4521] },
-  
-  // Espagne
-  { name: "Madrid", coordinates: [-3.7038, 40.4168] },
-  { name: "Barcelone", coordinates: [2.1734, 41.3851] },
-  { name: "Valence", coordinates: [-0.3774, 39.4699] },
-  { name: "Séville", coordinates: [-5.9845, 37.3891] },
-  { name: "Bilbao", coordinates: [-2.9253, 43.2630] },
-  { name: "Malaga", coordinates: [-4.4214, 36.7213] },
-  
-  // Italie
-  { name: "Rome", coordinates: [12.4964, 41.9028] },
-  { name: "Milan", coordinates: [9.1900, 45.4642] },
-  { name: "Naples", coordinates: [14.2681, 40.8518] },
-  { name: "Turin", coordinates: [7.6869, 45.0703] },
-  { name: "Florence", coordinates: [11.2558, 43.7696] },
-  { name: "Venise", coordinates: [12.3155, 45.4408] },
-  { name: "Bologne", coordinates: [11.3426, 44.4949] },
-  
-  // Pays-Bas
-  { name: "Amsterdam", coordinates: [4.9041, 52.3676] },
-  { name: "Rotterdam", coordinates: [4.4777, 51.9244] },
-  { name: "La Haye", coordinates: [4.3007, 52.0705] },
-  { name: "Utrecht", coordinates: [5.1214, 52.0907] },
-  
-  // Belgique
-  { name: "Bruxelles", coordinates: [4.3517, 50.8503] },
-  { name: "Anvers", coordinates: [4.4025, 51.2194] },
-  { name: "Gand", coordinates: [3.7174, 51.0543] },
-  { name: "Liège", coordinates: [5.5797, 50.6326] },
-  
-  // Suisse
-  { name: "Zurich", coordinates: [8.5417, 47.3769] },
-  { name: "Genève", coordinates: [6.1432, 46.2044] },
-  { name: "Bâle", coordinates: [7.5886, 47.5596] },
-  { name: "Berne", coordinates: [7.4474, 46.9480] },
-  
-  // Autriche
-  { name: "Vienne", coordinates: [16.3738, 48.2082] },
-  { name: "Salzbourg", coordinates: [13.0550, 47.8095] },
-  { name: "Innsbruck", coordinates: [11.3927, 47.2692] },
-  
-  // Scandinavie
-  { name: "Copenhague", coordinates: [12.5683, 55.6761] },
-  { name: "Stockholm", coordinates: [18.0686, 59.3293] },
-  { name: "Oslo", coordinates: [10.7522, 59.9139] },
-  { name: "Helsinki", coordinates: [24.9384, 60.1699] },
-  { name: "Göteborg", coordinates: [11.9746, 57.7089] },
-  { name: "Bergen", coordinates: [5.3221, 60.3913] },
-  
-  // Portugal
-  { name: "Lisbonne", coordinates: [-9.1393, 38.7223] },
-  { name: "Porto", coordinates: [-8.6291, 41.1579] },
-  
-  // Grèce
-  { name: "Athènes", coordinates: [23.7275, 37.9838] },
-  { name: "Thessalonique", coordinates: [22.9444, 40.6401] },
-  
-  // Europe de l'Est
-  { name: "Prague", coordinates: [14.4378, 50.0755] },
-  { name: "Varsovie", coordinates: [21.0122, 52.2297] },
-  { name: "Budapest", coordinates: [19.0402, 47.4979] },
-  { name: "Bucarest", coordinates: [26.1025, 44.4268] },
-  { name: "Sofia", coordinates: [23.3219, 42.6977] },
-  { name: "Zagreb", coordinates: [15.9819, 45.8150] },
-  { name: "Belgrade", coordinates: [20.4489, 44.7866] },
-  { name: "Kiev", coordinates: [30.5234, 50.4501] },
-  
-  // Irlande
-  { name: "Dublin", coordinates: [-6.2603, 53.3498] },
-  { name: "Cork", coordinates: [-8.4756, 51.8969] },
-  
-  // Pologne
-  { name: "Cracovie", coordinates: [19.9450, 50.0647] },
-  { name: "Gdansk", coordinates: [18.6466, 54.3520] },
-  { name: "Wroclaw", coordinates: [17.0385, 51.1079] },
-  
-  // Autres Europe
-  { name: "Luxembourg", coordinates: [6.1296, 49.6116] },
-  { name: "Bratislava", coordinates: [17.1077, 48.1486] },
-  { name: "Ljubljana", coordinates: [14.5058, 46.0569] },
-  { name: "Tallinn", coordinates: [24.7536, 59.4370] },
-  { name: "Riga", coordinates: [24.1052, 56.9496] },
-  { name: "Vilnius", coordinates: [25.2797, 54.6872] },
-  
-  // Amérique du Nord
-  { name: "New York", coordinates: [-74.0060, 40.7128] },
-  { name: "Los Angeles", coordinates: [-118.2437, 34.0522] },
-  { name: "Chicago", coordinates: [-87.6298, 41.8781] },
-  { name: "San Francisco", coordinates: [-122.4194, 37.7749] },
-  { name: "Toronto", coordinates: [-79.3832, 43.6532] },
-  { name: "Montreal", coordinates: [-73.5673, 45.5017] },
-  { name: "Vancouver", coordinates: [-123.1207, 49.2827] },
-  
-  // Amérique du Sud
-  { name: "São Paulo", coordinates: [-46.6333, -23.5505] },
-  { name: "Rio de Janeiro", coordinates: [-43.1729, -22.9068] },
-  { name: "Buenos Aires", coordinates: [-58.3816, -34.6037] },
-  { name: "Santiago", coordinates: [-70.6693, -33.4489] },
-  { name: "Lima", coordinates: [-77.0428, -12.0464] },
-  { name: "Bogota", coordinates: [-74.0721, 4.7110] },
-  
-  // Asie
-  { name: "Tokyo", coordinates: [139.6503, 35.6762] },
-  { name: "Seoul", coordinates: [126.9780, 37.5665] },
-  { name: "Pékin", coordinates: [116.4074, 39.9042] },
-  { name: "Shanghai", coordinates: [121.4737, 31.2304] },
-  { name: "Hong Kong", coordinates: [114.1694, 22.3193] },
-  { name: "Singapour", coordinates: [103.8198, 1.3521] },
-  { name: "Bangkok", coordinates: [100.5018, 13.7563] },
-  { name: "Mumbai", coordinates: [72.8777, 19.0760] },
-  { name: "Delhi", coordinates: [77.1025, 28.7041] },
-  
-  // Océanie
-  { name: "Sydney", coordinates: [151.2093, -33.8688] },
-  { name: "Melbourne", coordinates: [144.9631, -37.8136] },
-  { name: "Brisbane", coordinates: [153.0251, -27.4698] },
-  { name: "Auckland", coordinates: [174.7633, -36.8485] },
-  
-  // Afrique
-  { name: "Le Caire", coordinates: [31.2357, 30.0444] },
-  { name: "Johannesburg", coordinates: [28.0473, -26.2041] },
-  { name: "Le Cap", coordinates: [18.4241, -33.9249] },
-  { name: "Lagos", coordinates: [3.3792, 6.5244] },
-  { name: "Nairobi", coordinates: [36.8219, -1.2921] },
-];
 
 export default function FestivalsPage() {
   const navigate = useNavigate();
@@ -179,6 +22,11 @@ export default function FestivalsPage() {
     zoom: isMobile ? 2.5 : 1.5 // Mobile démarre encore plus zoomé
   });
 
+  // FILTRER : Afficher uniquement les festivals "Live" (hasDetailedPage) ou "Pépite" (isPepite)
+  const visibleFestivals = FESTIVALS_2026.filter(
+    festival => festival.hasDetailedPage || festival.isPepite
+  );
+
   const handleFestivalClick = (festival: Festival) => {
     if (festival.hasDetailedPage) {
       navigate(`/${festival.id}`);
@@ -188,7 +36,7 @@ export default function FestivalsPage() {
   };
 
   const getSortedFestivals = (): Festival[] => {
-    const festivals = [...FESTIVALS_2026];
+    const festivals = [...visibleFestivals];
     
     const getMonthNumber = (monthStr: string): number => {
       const normalized = monthStr.toLowerCase().trim();
@@ -279,7 +127,7 @@ export default function FestivalsPage() {
                 FESTIVALS <span className="text-[#4d94ff]">2026</span>
               </h1>
               <p className="text-sm sm:text-base text-gray-400">
-                {FESTIVALS_2026.length} festivals • Metal, Rock & plus
+                {visibleFestivals.length} festivals • Metal, Rock & plus
               </p>
             </div>
 
@@ -345,41 +193,8 @@ export default function FestivalsPage() {
                     }
                   </Geographies>
 
-                  {/* VILLES PRINCIPALES - Affichées seulement si zoom > 2 */}
-                  {position.zoom > 2 && MAJOR_CITIES.map(city => (
-                    <Annotation
-                      key={city.name}
-                      subject={city.coordinates}
-                      dx={0}
-                      dy={0}
-                      connectorProps={{}}
-                    >
-                      <g>
-                        {/* Point de la ville */}
-                        <circle 
-                          r={2 / position.zoom} 
-                          fill="#888" 
-                          stroke="#fff"
-                          strokeWidth={0.5 / position.zoom}
-                        />
-                        {/* Nom de la ville - visible si zoom > 4 */}
-                        {position.zoom > 4 && (
-                          <text
-                            x={4 / position.zoom}
-                            y={1 / position.zoom}
-                            fontSize={10 / position.zoom}
-                            fill="#999"
-                            style={{ fontFamily: 'system-ui', pointerEvents: 'none' }}
-                          >
-                            {city.name}
-                          </text>
-                        )}
-                      </g>
-                    </Annotation>
-                  ))}
-
-                  {/* FESTIVALS */}
-                  {FESTIVALS_2026.map(festival => (
+                  {/* FESTIVALS - Uniquement ceux qui sont Live ou Pépites */}
+                  {visibleFestivals.map(festival => (
                     <Marker
                       key={festival.id}
                       coordinates={[festival.coordinates[1], festival.coordinates[0]]}
@@ -487,13 +302,9 @@ export default function FestivalsPage() {
                 <div className="w-3 h-3 rounded-full bg-[#ff5500] animate-pulse drop-shadow-[0_0_5px_#ff5500]" />
                 <span className="font-bold text-[#ff5500]">Pépite</span>
               </div>
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse drop-shadow-[0_0_5px_#00ff00]" />
                 <span>Prog complète</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#4d94ff]" />
-                <span>Bientôt</span>
               </div>
             </div>
 
@@ -504,7 +315,7 @@ export default function FestivalsPage() {
           </div>
         )}
 
-        {/* VIEW: LISTE (inchangée) */}
+        {/* VIEW: LISTE */}
         {viewMode === 'list' && (
           <div>
             <div className="flex flex-wrap gap-2 mb-4">
