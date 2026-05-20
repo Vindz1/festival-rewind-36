@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Music, Crown, ShoppingBag, User, LogOut, History, Globe as GlobeIcon } from 'lucide-react';
+import { Music, Crown, ShoppingBag, User, LogOut, History, Globe as GlobeIcon, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
@@ -13,10 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// 🔒 EMAIL ADMIN - Changez ceci par votre vrai email
+const ADMIN_EMAIL = 'vindz1@pm.me'; // ⚠️ CHANGEZ CECI !
+
 export const Header = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -24,6 +28,9 @@ export const Header = () => {
         try {
           const sub = await getUserSubscription(user.id);
           setIsPremium(sub?.subscription_type === 'premium');
+          
+          // 🔒 Vérifier si l'utilisateur est admin
+          setIsAdmin(user.email === ADMIN_EMAIL);
         } catch (e) {
           console.error(e);
         }
@@ -166,6 +173,20 @@ export const Header = () => {
                     <Crown className="mr-2 h-4 w-4" />
                     {isPremium ? 'Mon Abonnement' : 'Passer PREMIUM'}
                   </DropdownMenuItem>
+                  
+                  {/* 🔒 LIEN ADMIN - VISIBLE UNIQUEMENT POUR VOUS */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator className="bg-[#00ff00]/30" />
+                      <DropdownMenuItem 
+                        onClick={() => navigate('/admin/festivals')} 
+                        className="cursor-pointer focus:bg-[#00ff00] focus:text-black font-bold border border-[#00ff00]/30"
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        🎸 Admin Festivals
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   
                   <DropdownMenuSeparator className="bg-[#333]" />
                   
