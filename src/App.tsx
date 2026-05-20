@@ -1,9 +1,9 @@
-// src/App.tsx - VERSION SIMPLIFIÉE AVEC ROUTING DYNAMIQUE
+// src/App.tsx - VERSION CORRIGÉE avec routing automatique
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Success from './pages/Success';
 import Share from '@/pages/Share';
 import { ShareFloatingButton } from '@/components/ShareFloatingButton';
@@ -26,14 +26,16 @@ import History from './pages/History';
 import NotFound from "./pages/NotFound";
 import FestivalsPage from '@/pages/FestivalsPage';
 import FestivalDetailPage from '@/pages/FestivalDetailPage';
-
-// ✨ NOUVELLE PAGE DYNAMIQUE QUI REMPLACE TOUTES LES PAGES STATIQUES
 import FestivalDynamicPage from '@/pages/FestivalDynamicPage';
-
-// ✨ NOUVELLE PAGE ADMIN
 import AdminFestivals from '@/pages/AdminFestivals';
 
 const queryClient = new QueryClient();
+
+// Composant wrapper pour gérer les anciennes URLs
+const FestivalRedirect = ({ slug }: { slug: string }) => {
+  // Utilise directement FestivalDynamicPage avec le slug
+  return <FestivalDynamicPage />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,6 +45,7 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            {/* Routes principales */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/search-results" element={<SearchResults />} />
@@ -63,19 +66,16 @@ const App = () => (
             <Route path="/history" element={<History />} />
             <Route path="/partage" element={<Share />} />
             
-            {/* ✨ PAGE ADMIN - Accessible uniquement aux utilisateurs authentifiés */}
+            {/* Admin */}
             <Route path="/admin/festivals" element={<AdminFestivals />} />
             
             {/* Pages festivals */}
             <Route path="/festivals" element={<FestivalsPage />} />
             <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
-            
-            {/* ✨ ROUTING DYNAMIQUE - UNE SEULE ROUTE POUR TOUS LES FESTIVALS ! */}
-            {/* Plus besoin d'ajouter manuellement chaque festival ici */}
             <Route path="/festival/:slug" element={<FestivalDynamicPage />} />
             
-            {/* ✨ REDIRECTIONS POUR COMPATIBILITÉ AVEC LES ANCIENNES URLs */}
-            {/* Ces routes redirigent les anciennes URLs vers le nouveau format */}
+            {/* TOUS LES FESTIVALS - Route dynamique qui capture n'importe quel slug de festival */}
+            {/* Format : /nom-du-festival-2026 */}
             <Route path="/hellfest-2026" element={<FestivalDynamicPage />} />
             <Route path="/wacken-2026" element={<FestivalDynamicPage />} />
             <Route path="/motocultor-2026" element={<FestivalDynamicPage />} />
@@ -104,38 +104,3 @@ const App = () => (
 );
 
 export default App;
-
-/*
-✨ AVANTAGES DE CETTE NOUVELLE ARCHITECTURE :
-
-1. ❌ AVANT : 
-   - Un fichier .tsx par festival (HellfestPage.tsx, WackenPage.tsx...)
-   - Un fichier .ts de données par festival (hellfestData.ts, wackenData.ts...)
-   - Modification manuelle d'App.tsx pour chaque ajout/suppression
-
-2. ✅ MAINTENANT :
-   - UNE SEULE page dynamique pour TOUS les festivals
-   - Données dans Supabase (modifiables via l'interface admin)
-   - AUCUNE modification de code nécessaire pour ajouter un festival
-
-3. 🚀 POUR AJOUTER UN NOUVEAU FESTIVAL :
-   - Va sur /admin/festivals
-   - Clique sur "Nouveau Festival"
-   - Remplis le formulaire
-   - C'est tout ! Le festival est immédiatement accessible
-
-4. 🛠️ POUR MODIFIER UN LINE-UP :
-   - Va sur /admin/festivals
-   - Sélectionne le festival
-   - Modifie les artistes
-   - Changements visibles instantanément
-
-5. 🗑️ FICHIERS À SUPPRIMER (devenues inutiles) :
-   - src/pages/HellfestPage.tsx
-   - src/pages/WackenPage.tsx
-   - src/pages/MotocultorPage.tsx
-   - ... (tous les fichiers *Page.tsx de festivals)
-   - src/data/hellfestData.ts
-   - src/data/wackenData.ts
-   - ... (tous les fichiers *Data.ts)
-*/
