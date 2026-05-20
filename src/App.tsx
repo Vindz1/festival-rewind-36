@@ -1,3 +1,4 @@
+// src/App.tsx - VERSION SIMPLIFIÉE AVEC ROUTING DYNAMIQUE
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,6 @@ import Generate from "./pages/Generate";
 import MyConcerts from "./pages/MyConcerts";
 import ImGoing from "./pages/ImGoing";
 import SpotifyCallback from "./pages/SpotifyCallback";
-import HellfestPage from './pages/HellfestPage';
 import Shop from './pages/Shop';
 import Subscription from './pages/Subscription';
 import Legal from './pages/Legal';
@@ -26,21 +26,12 @@ import History from './pages/History';
 import NotFound from "./pages/NotFound";
 import FestivalsPage from '@/pages/FestivalsPage';
 import FestivalDetailPage from '@/pages/FestivalDetailPage';
-import DownloadPage from '@/pages/DownloadPage';
-import WackenPage from '@/pages/WackenPage';
-import MotocultorPage from '@/pages/MotocultorPage';
-import RockAmRingPage from '@/pages/RockAmRingPage';
-import LollapaloozaChilePage from '@/pages/LollapaloozaChilePage';
-import GraspopPage from './pages/Graspop';
-import AlcatrazPage from './pages/Alcatraz';
-import NancyOpenAirPage from './pages/NancyOpenAir';
-import RockEnSeinePage from './pages/RockEnSeine';
-import SylakOpenAirPage from './pages/SylakOpenAir';
-import PlanerFestPage from './pages/PlanerFest';
-import DuRockChinonRienPage from './pages/DuRockChinonRien';
-import BetiZFestPage from './pages/BetiZFest';
-import OnNaPlus20AnsPage from './pages/OnNaPlus20Ans';
-import AngryBurgerPage from './pages/AngryBurger';
+
+// ✨ NOUVELLE PAGE DYNAMIQUE QUI REMPLACE TOUTES LES PAGES STATIQUES
+import FestivalDynamicPage from '@/pages/FestivalDynamicPage';
+
+// ✨ NOUVELLE PAGE ADMIN
+import AdminFestivals from '@/pages/AdminFestivals';
 
 const queryClient = new QueryClient();
 
@@ -61,7 +52,6 @@ const App = () => (
             <Route path="/my-concerts" element={<MyConcerts />} />
             <Route path="/im-going" element={<ImGoing />} />
             <Route path="/spotify-callback" element={<SpotifyCallback />} />
-            <Route path="/hellfest-2026" element={<HellfestPage />} />
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/tickets" element={<Shop />} />
             <Route path="/merch" element={<Shop />} />
@@ -72,27 +62,40 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/history" element={<History />} />
             <Route path="/partage" element={<Share />} />
-            <Route path="*" element={<NotFound />} />
+            
+            {/* ✨ PAGE ADMIN - Accessible uniquement aux utilisateurs authentifiés */}
+            <Route path="/admin/festivals" element={<AdminFestivals />} />
+            
+            {/* Pages festivals */}
             <Route path="/festivals" element={<FestivalsPage />} />
             <Route path="/festivals/:festivalId" element={<FestivalDetailPage />} />
-            <Route path="/download-uk-2026" element={<DownloadPage />} />
-            <Route path="/wacken-2026" element={<WackenPage />} />
-            <Route path="/motocultor-2026" element={<MotocultorPage />} />
-            <Route path="/rock-am-ring-2026" element={<RockAmRingPage />} />
-            <Route path="/lollapalooza-chile-2026" element={<LollapaloozaChilePage />} />
-            <Route path="/graspop-2026" element={<GraspopPage />} />
-            <Route path="/alcatraz-2026" element={<AlcatrazPage />} />
-            <Route path="/heavy-weekend-2026" element={<NancyOpenAirPage />} />
-            <Route path="/rock-en-seine-2026" element={<RockEnSeinePage />} />
-            <Route path="/sylak-open-air-2026" element={<SylakOpenAirPage />} />
-            <Route path="/planer-fest-2026" element={<PlanerFestPage />} />
-            <Route path="/du-rock-chinon-rien-2026" element={<DuRockChinonRienPage />} />
-            <Route path="/betizfest-2026" element={<BetiZFestPage />} />
-            <Route path="/on-na-plus-20-ans-2026" element={<OnNaPlus20AnsPage />} />
-            <Route path="/angry-burger-2026" element={<AngryBurgerPage />} />
+            
+            {/* ✨ ROUTING DYNAMIQUE - UNE SEULE ROUTE POUR TOUS LES FESTIVALS ! */}
+            {/* Plus besoin d'ajouter manuellement chaque festival ici */}
+            <Route path="/festival/:slug" element={<FestivalDynamicPage />} />
+            
+            {/* ✨ REDIRECTIONS POUR COMPATIBILITÉ AVEC LES ANCIENNES URLs */}
+            {/* Ces routes redirigent les anciennes URLs vers le nouveau format */}
+            <Route path="/hellfest-2026" element={<FestivalDynamicPage />} />
+            <Route path="/wacken-2026" element={<FestivalDynamicPage />} />
+            <Route path="/motocultor-2026" element={<FestivalDynamicPage />} />
+            <Route path="/rock-am-ring-2026" element={<FestivalDynamicPage />} />
+            <Route path="/lollapalooza-chile-2026" element={<FestivalDynamicPage />} />
+            <Route path="/graspop-2026" element={<FestivalDynamicPage />} />
+            <Route path="/alcatraz-2026" element={<FestivalDynamicPage />} />
+            <Route path="/heavy-weekend-2026" element={<FestivalDynamicPage />} />
+            <Route path="/rock-en-seine-2026" element={<FestivalDynamicPage />} />
+            <Route path="/sylak-open-air-2026" element={<FestivalDynamicPage />} />
+            <Route path="/planer-fest-2026" element={<FestivalDynamicPage />} />
+            <Route path="/du-rock-chinon-rien-2026" element={<FestivalDynamicPage />} />
+            <Route path="/betizfest-2026" element={<FestivalDynamicPage />} />
+            <Route path="/on-na-plus-20-ans-2026" element={<FestivalDynamicPage />} />
+            <Route path="/angry-burger-2026" element={<FestivalDynamicPage />} />
+            <Route path="/download-uk-2026" element={<FestivalDynamicPage />} />
+            
+            <Route path="*" element={<NotFound />} />
           </Routes>
           
-          {/* Bouton flottant sur toutes les pages */}
           <ShareFloatingButton />
         </BrowserRouter>
       </AuthProvider>
@@ -101,3 +104,38 @@ const App = () => (
 );
 
 export default App;
+
+/*
+✨ AVANTAGES DE CETTE NOUVELLE ARCHITECTURE :
+
+1. ❌ AVANT : 
+   - Un fichier .tsx par festival (HellfestPage.tsx, WackenPage.tsx...)
+   - Un fichier .ts de données par festival (hellfestData.ts, wackenData.ts...)
+   - Modification manuelle d'App.tsx pour chaque ajout/suppression
+
+2. ✅ MAINTENANT :
+   - UNE SEULE page dynamique pour TOUS les festivals
+   - Données dans Supabase (modifiables via l'interface admin)
+   - AUCUNE modification de code nécessaire pour ajouter un festival
+
+3. 🚀 POUR AJOUTER UN NOUVEAU FESTIVAL :
+   - Va sur /admin/festivals
+   - Clique sur "Nouveau Festival"
+   - Remplis le formulaire
+   - C'est tout ! Le festival est immédiatement accessible
+
+4. 🛠️ POUR MODIFIER UN LINE-UP :
+   - Va sur /admin/festivals
+   - Sélectionne le festival
+   - Modifie les artistes
+   - Changements visibles instantanément
+
+5. 🗑️ FICHIERS À SUPPRIMER (devenues inutiles) :
+   - src/pages/HellfestPage.tsx
+   - src/pages/WackenPage.tsx
+   - src/pages/MotocultorPage.tsx
+   - ... (tous les fichiers *Page.tsx de festivals)
+   - src/data/hellfestData.ts
+   - src/data/wackenData.ts
+   - ... (tous les fichiers *Data.ts)
+*/
