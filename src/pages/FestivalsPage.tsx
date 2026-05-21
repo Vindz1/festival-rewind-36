@@ -197,13 +197,15 @@ export default function FestivalsPage() {
                       onClick={() => handleFestivalClick(festival)}
                       style={{ cursor: "pointer" }}
                     >
-                      {/* Effet pulse pour festivals Live */}
-                      <circle 
-                        r={12 / position.zoom} 
-                        fill="#00ff00" 
-                        opacity={0.3} 
-                        className="animate-ping" 
-                      />
+                      {/* Effet pulse - désactivé sur mobile pour les performances */}
+                      {!isMobile && (
+                        <circle 
+                          r={12 / position.zoom} 
+                          fill="#00ff00" 
+                          opacity={0.3} 
+                          className="animate-ping" 
+                        />
+                      )}
                       {/* Marqueur principal */}
                       <circle 
                         r={6 / position.zoom}
@@ -212,21 +214,21 @@ export default function FestivalsPage() {
                         strokeWidth={2 / position.zoom}
                         className="transition-opacity hover:opacity-80"
                         style={{
-                          filter: 'drop-shadow(0 0 8px #00ff00)'
+                          filter: isMobile ? 'none' : 'drop-shadow(0 0 8px #00ff00)'
                         }}
                       />
-                      {/* Nom du festival - visible si zoom > 6 */}
-                      {position.zoom > 6 && (
+                      {/* Nom du festival - visible plus tôt sur mobile (zoom > 3 vs > 6 desktop) */}
+                      {position.zoom > (isMobile ? 3 : 6) && (
                         <text
                           y={-10 / position.zoom}
-                          fontSize={11 / position.zoom}
+                          fontSize={isMobile ? 14 / position.zoom : 11 / position.zoom}
                           textAnchor="middle"
                           fill="#fff"
                           style={{ 
                             fontFamily: 'system-ui', 
                             fontWeight: 'bold',
                             pointerEvents: 'none',
-                            textShadow: '0 0 3px #000'
+                            textShadow: '0 0 4px #000, 0 0 8px #000'
                           }}
                         >
                           {festival.name}
@@ -278,14 +280,6 @@ export default function FestivalsPage() {
                 </div>
               </div>
             )}
-
-            {/* Légende */}
-            <div className="absolute top-4 right-4 bg-[#1a1a1a]/95 backdrop-blur-sm border border-[#404040] rounded-lg p-3 text-xs z-10">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#00ff00] animate-pulse drop-shadow-[0_0_5px_#00ff00]" />
-                <span>Prog complète</span>
-              </div>
-            </div>
 
             {/* Indicateur zoom */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#1a1a1a]/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-[#404040]">
