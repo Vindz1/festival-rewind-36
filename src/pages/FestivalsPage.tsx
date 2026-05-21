@@ -1,147 +1,142 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Map, List, MapPin, Calendar, Zap, Plus, Minus } from 'lucide-react';
-import { FESTIVALS_2026, Festival } from '@/data/festivalsData';
+import { Map, List, MapPin, Calendar, Zap, Clock, Plus, Minus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
 // Carte HAUTE RÉS avec plus de détails.
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
+// Type Festival aligné sur Supabase (cohérent avec AdminFestivals)
+interface Festival {
+  id: string;
+  name: string;
+  slug: string;
+  year: number;
+  location: string;
+  description: string;
+  image_url: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  order_index: number;
+  latitude?: number;
+  longitude?: number;
+  genres?: string[];
+  headliners?: string[];
+}
+
 export default function FestivalsPage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [hoveredFestival, setHoveredFestival] = useState<Festival | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'date' | 'country' | 'status'>('status');
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'location' | 'status'>('status');
+  const [festivals, setFestivals] = useState<Festival[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // ZOOM sur l'Europe par défaut
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const [position, setPosition] = useState({ 
-    coordinates: [10, 52] as [number, number], // Centré sur l'Europe centrale
-    zoom: isMobile ? 3 : 2.2 // Zoom plus serré sur l'Europe
+    coordinates: [10, 52] as [number, number],
+    zoom: isMobile ? 3 : 2.2
   });
 
-  // FILTRER : Afficher uniquement les festivals "Live" (hasDetailedPage)
-  const visibleFestivals = FESTIVALS_2026.filter(
-    festival => festival.hasDetailedPage
-  );
-
-  // Fonction pour déterminer si un festival est terminé
-  // Logique cohérente avec AdminFestivals : compare end_date avec aujourd'hui
-  const isFestivalPast = (dateStr: string): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Minuit aujourd'hui
-    
-    const getMonthNumber = (monthStr: string): number => {
-      const normalized = monthStr.toLowerCase().trim();
-      const months: Record<string, number> = {
-        'janvier': 0, 'jan': 0, 'février': 1, 'fév': 1, 'fev': 1, 'feb': 1,
-        'mars': 2, 'mar': 2, 'avril': 3, 'avr': 3, 'apr': 3, 'mai': 4, 'may': 4,
-        'juin': 5, 'jun': 5, 'juillet': 6, 'juil': 6, 'jul': 6, 'août': 7, 'aout': 7, 'aug': 7,
-        'septembre': 8, 'sept': 8, 'sep': 8, 'octobre': 9, 'oct': 9,
-        'novembre': 10, 'nov': 10, 'décembre': 11, 'déc': 11, 'dec': 11
-      };
-      return months[normalized] ?? 0;
+  // Charger les festivals depuis Supabase
+  useEffect(() => {
+    const loadFestivals = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('festivals')
+        .select('*')
+        .eq('is_active', true)
+        .order('start_date');
+      
+      if (error) {
+        console.error('Erreur chargement festivals:', error);
+      } else {
+        setFestivals(data || []);
+      }
+      setLoading(false);
     };
     
-    const cleaned = dateStr.toLowerCase().trim();
-    
-    // Extraire le dernier jour (date de fin pour les ranges comme "20-22 juin")
-    const dayMatches = cleaned.match(/(\d+)/g);
-    const day = dayMatches && dayMatches.length > 0 
-      ? parseInt(dayMatches[dayMatches.length - 1]) 
-      : 1;
-    
-    // Extraire le mois
-    const words = cleaned.split(/[\s-]+/);
-    let month = 0;
-    for (const word of words) {
-      const m = getMonthNumber(word);
-      if (m !== undefined) {
-        month = m;
-        break;
-      }
-    }
-    
-    // Extraire l'année
-    const yearMatch = cleaned.match(/(\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : 2026;
-    
-    // Créer la date de fin du festival (23h59 le dernier jour)
-    const festivalEnd = new Date(year, month, day);
+    loadFestivals();
+  }, []);
+
+  // Logique IDENTIQUE à AdminFestivals : festival terminé si end_date < aujourd'hui
+  const isFestivalPast = (endDate: string): boolean => {
+    if (!endDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const festivalEnd = new Date(endDate);
     festivalEnd.setHours(23, 59, 59, 999);
-    
     return festivalEnd < today;
   };
 
-  const handleFestivalClick = (festival: Festival) => {
-    if (festival.hasDetailedPage) {
-      navigate(`/${festival.id}`);
-    } else {
-      navigate(`/festivals/${festival.id}`);
+  // Festivals affichables : actifs ET ayant des coordonnées GPS pour la carte
+  const visibleFestivals = festivals.filter(
+    f => f.latitude != null && f.longitude != null
+  );
+
+  // Formatter une date pour l'affichage
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  // Formatter une plage de dates
+  const formatDateRange = (start: string, end: string): string => {
+    if (!start) return '';
+    const startDate = new Date(start);
+    const endDate = end ? new Date(end) : startDate;
+    
+    const sameMonth = startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear();
+    
+    if (sameMonth) {
+      const month = startDate.toLocaleDateString('fr-FR', { month: 'long' });
+      const year = startDate.getFullYear();
+      if (startDate.getDate() === endDate.getDate()) {
+        return `${startDate.getDate()} ${month} ${year}`;
+      }
+      return `${startDate.getDate()}-${endDate.getDate()} ${month} ${year}`;
     }
+    
+    return `${formatDate(start)} - ${formatDate(end)}`;
+  };
+
+  const handleFestivalClick = (festival: Festival) => {
+    navigate(`/${festival.slug}`);
   };
 
   const getSortedFestivals = (): Festival[] => {
-    const festivals = [...visibleFestivals];
-    
-    const getMonthNumber = (monthStr: string): number => {
-      const normalized = monthStr.toLowerCase().trim();
-      const months: Record<string, number> = {
-        'janvier': 1, 'jan': 1, 'février': 2, 'fév': 2, 'fev': 2, 'feb': 2,
-        'mars': 3, 'mar': 3, 'avril': 4, 'avr': 4, 'apr': 4, 'mai': 5, 'may': 5,
-        'juin': 6, 'jun': 6, 'juillet': 7, 'juil': 7, 'jul': 7, 'août': 8, 'aout': 8, 'aug': 8,
-        'septembre': 9, 'sept': 9, 'sep': 9, 'octobre': 10, 'oct': 10,
-        'novembre': 11, 'nov': 11, 'décembre': 12, 'déc': 12, 'dec': 12
-      };
-      return months[normalized] || 1;
-    };
-    
-    const parseDate = (dateStr: string): number => {
-      const cleaned = dateStr.toLowerCase().trim();
-      const dayMatch = cleaned.match(/(\d+)/);
-      const day = dayMatch ? parseInt(dayMatch[1]) : 1;
-      
-      const words = cleaned.split(/[\s-]+/);
-      let month = 1;
-      for (const word of words) {
-        const m = getMonthNumber(word);
-        if (m > 1 || word === 'janvier' || word === 'jan') {
-          month = m;
-          break;
-        }
-      }
-      
-      const yearMatch = cleaned.match(/(\d{4})/);
-      const year = yearMatch ? parseInt(yearMatch[1]) : 2026;
-      
-      return year * 10000 + month * 100 + day;
-    };
+    const list = [...visibleFestivals];
     
     switch (sortBy) {
       case 'name':
-        return festivals.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+        return list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       case 'date':
-        return festivals.sort((a, b) => parseDate(a.dates) - parseDate(b.dates));
-      case 'country':
-        return festivals.sort((a, b) => {
-          const countryCompare = a.country.localeCompare(b.country, 'fr');
-          if (countryCompare !== 0) return countryCompare;
+        return list.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+      case 'location':
+        return list.sort((a, b) => {
+          const locCompare = a.location.localeCompare(b.location, 'fr');
+          if (locCompare !== 0) return locCompare;
           return a.name.localeCompare(b.name, 'fr');
         });
       case 'status':
-        return festivals.sort((a, b) => {
-          if (a.hasDetailedPage && !b.hasDetailedPage) return -1;
-          if (!a.hasDetailedPage && b.hasDetailedPage) return 1;
-          return parseDate(a.dates) - parseDate(b.dates);
+        return list.sort((a, b) => {
+          const aPast = isFestivalPast(a.end_date);
+          const bPast = isFestivalPast(b.end_date);
+          if (!aPast && bPast) return -1;
+          if (aPast && !bPast) return 1;
+          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
         });
       default:
-        return festivals;
+        return list;
     }
   };
 
-  // ZOOM AUGMENTÉ : max 30x au lieu de 15x
   const handleZoomIn = () => {
     if (position.zoom >= 30) return;
     setPosition((pos) => ({ ...pos, zoom: pos.zoom * 1.4 }));
@@ -196,14 +191,18 @@ export default function FestivalsPage() {
           </div>
         </div>
 
+        {loading && (
+          <div className="text-center text-gray-400 py-12">Chargement des festivals...</div>
+        )}
+
         {/* VIEW: CARTE */}
-        {viewMode === 'map' && (
+        {!loading && viewMode === 'map' && (
           <div className="relative bg-[#2d2d2d] border border-[#404040] rounded-xl overflow-hidden" style={{ height: 'calc(100vh - 300px)', minHeight: '500px' }}>
             <div className="absolute inset-0">
               <ComposableMap
                 projection="geoMercator"
                 projectionConfig={{ 
-                  scale: 180, // Scale augmenté pour plus de détails
+                  scale: 180,
                   center: [10, 50] 
                 }}
                 style={{ width: "100%", height: "100%" }}
@@ -212,7 +211,7 @@ export default function FestivalsPage() {
                   zoom={position.zoom}
                   center={position.coordinates}
                   onMoveEnd={handleMoveEnd}
-                  maxZoom={30} // Max zoom à 30
+                  maxZoom={30}
                   minZoom={1}
                 >
                   {/* Pays */}
@@ -223,7 +222,7 @@ export default function FestivalsPage() {
                           key={geo.rsmKey}
                           geography={geo}
                           fill="#1a1a1a"
-                          stroke="#505050" // Bordures plus claires
+                          stroke="#505050"
                           strokeWidth={0.6 / position.zoom}
                           style={{
                             default: { outline: 'none' },
@@ -235,20 +234,20 @@ export default function FestivalsPage() {
                     }
                   </Geographies>
 
-                  {/* FESTIVALS - Uniquement ceux avec prog complète */}
+                  {/* FESTIVALS */}
                   {visibleFestivals.map(festival => {
-                    const isPast = isFestivalPast(festival.dates);
+                    const isPast = isFestivalPast(festival.end_date);
                     
                     return (
                       <Marker
                         key={festival.id}
-                        coordinates={[festival.coordinates[1], festival.coordinates[0]]}
+                        coordinates={[festival.longitude!, festival.latitude!]}
                         onMouseEnter={() => setHoveredFestival(festival)}
                         onMouseLeave={() => setHoveredFestival(null)}
                         onClick={() => handleFestivalClick(festival)}
                         style={{ cursor: "pointer" }}
                       >
-                        {/* Effet pulse - seulement pour festivals à venir, désactivé sur mobile */}
+                        {/* Effet pulse - uniquement pour festivals à venir, désactivé sur mobile */}
                         {!isMobile && !isPast && (
                           <circle 
                             r={12 / position.zoom} 
@@ -315,10 +314,17 @@ export default function FestivalsPage() {
               <div className="absolute bottom-4 left-4 bg-[#1a1a1a]/95 backdrop-blur-sm border-2 border-[#4d94ff] rounded-xl p-4 shadow-2xl max-w-xs pointer-events-none z-50">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h3 className="text-lg font-bold">{hoveredFestival.name}</h3>
-                  <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                    <Zap className="w-2.5 h-2.5" />
-                    LIVE
-                  </span>
+                  {isFestivalPast(hoveredFestival.end_date) ? (
+                    <span className="bg-gray-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
+                      TERMINÉ
+                    </span>
+                  ) : (
+                    <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                      <Zap className="w-2.5 h-2.5" />
+                      LIVE
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-1 text-sm text-gray-400">
                   <div className="flex items-center gap-2">
@@ -327,7 +333,7 @@ export default function FestivalsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />
-                    {hoveredFestival.dates}
+                    {formatDateRange(hoveredFestival.start_date, hoveredFestival.end_date)}
                   </div>
                 </div>
               </div>
@@ -341,61 +347,76 @@ export default function FestivalsPage() {
         )}
 
         {/* VIEW: LISTE */}
-        {viewMode === 'list' && (
+        {!loading && viewMode === 'list' && (
           <div>
             <div className="flex flex-wrap gap-2 mb-4">
               <button onClick={() => setSortBy('name')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'name' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>A-Z</button>
               <button onClick={() => setSortBy('date')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'date' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Date</button>
-              <button onClick={() => setSortBy('country')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'country' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Pays</button>
+              <button onClick={() => setSortBy('location')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'location' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Lieu</button>
               <button onClick={() => setSortBy('status')} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${sortBy === 'status' ? 'bg-[#4d94ff] text-white' : 'bg-[#2d2d2d] text-gray-400 border border-[#404040] hover:text-white'}`}>Par statut</button>
             </div>
 
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {getSortedFestivals().map(festival => (
-                <div
-                  key={festival.id}
-                  onClick={() => handleFestivalClick(festival)}
-                  className="bg-[#2d2d2d] border border-[#404040] hover:border-[#4d94ff] rounded-xl p-4 sm:p-5 cursor-pointer transition-all group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg sm:text-xl font-bold transition-colors group-hover:text-[#4d94ff]">
-                      {festival.name}
-                    </h3>
-                    <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                      <Zap className="w-2.5 h-2.5" />
-                      LIVE
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-gray-400 mb-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 shrink-0" />
-                      <span>{festival.location}</span>
+              {getSortedFestivals().map(festival => {
+                const isPast = isFestivalPast(festival.end_date);
+                
+                return (
+                  <div
+                    key={festival.id}
+                    onClick={() => handleFestivalClick(festival)}
+                    className={`bg-[#2d2d2d] border rounded-xl p-4 sm:p-5 cursor-pointer transition-all group ${
+                      isPast ? 'border-[#404040] hover:border-gray-500 opacity-70' : 'border-[#404040] hover:border-[#4d94ff]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className={`text-lg sm:text-xl font-bold transition-colors ${isPast ? 'text-gray-400 group-hover:text-gray-300' : 'group-hover:text-[#4d94ff]'}`}>
+                        {festival.name}
+                      </h3>
+                      {isPast ? (
+                        <span className="bg-gray-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          TERMINÉ
+                        </span>
+                      ) : (
+                        <span className="bg-[#00ff00] text-black text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                          <Zap className="w-2.5 h-2.5" />
+                          LIVE
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 shrink-0" />
-                      <span>{festival.dates}</span>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {festival.genre.map(g => (
-                      <span key={g} className="text-xs px-2 py-1 rounded-full bg-[#4d94ff]/10 text-[#4d94ff] border border-[#4d94ff]/20">
-                        {g}
-                      </span>
-                    ))}
-                  </div>
-
-                  {festival.lineup && festival.lineup.length > 0 && (
-                    <div className="pt-3 border-t border-[#404040]">
-                      <p className="text-xs text-gray-500 mb-1">Headliners :</p>
-                      <p className="text-sm font-semibold text-white truncate">
-                        {festival.lineup.slice(0, 3).join(', ')}
-                      </p>
+                    <div className="space-y-2 text-sm text-gray-400 mb-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 shrink-0" />
+                        <span>{festival.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 shrink-0" />
+                        <span>{formatDateRange(festival.start_date, festival.end_date)}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {festival.genres && festival.genres.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {festival.genres.map(g => (
+                          <span key={g} className="text-xs px-2 py-1 rounded-full bg-[#4d94ff]/10 text-[#4d94ff] border border-[#4d94ff]/20">
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {festival.headliners && festival.headliners.length > 0 && (
+                      <div className="pt-3 border-t border-[#404040]">
+                        <p className="text-xs text-gray-500 mb-1">Headliners :</p>
+                        <p className="text-sm font-semibold text-white truncate">
+                          {festival.headliners.slice(0, 3).join(', ')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
