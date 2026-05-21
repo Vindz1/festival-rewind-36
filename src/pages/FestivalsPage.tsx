@@ -27,9 +27,11 @@ export default function FestivalsPage() {
     festival => festival.hasDetailedPage
   );
 
-  // Fonction pour déterminer si un festival est terminé (date actuelle : 21 mai 2026)
+  // Fonction pour déterminer si un festival est terminé
+  // Logique cohérente avec AdminFestivals : compare end_date avec aujourd'hui
   const isFestivalPast = (dateStr: string): boolean => {
-    const currentDate = new Date('2026-05-21');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Minuit aujourd'hui
     
     const getMonthNumber = (monthStr: string): number => {
       const normalized = monthStr.toLowerCase().trim();
@@ -45,7 +47,7 @@ export default function FestivalsPage() {
     
     const cleaned = dateStr.toLowerCase().trim();
     
-    // Extraire le dernier jour (pour les festivals avec range de dates)
+    // Extraire le dernier jour (date de fin pour les ranges comme "20-22 juin")
     const dayMatches = cleaned.match(/(\d+)/g);
     const day = dayMatches && dayMatches.length > 0 
       ? parseInt(dayMatches[dayMatches.length - 1]) 
@@ -66,8 +68,11 @@ export default function FestivalsPage() {
     const yearMatch = cleaned.match(/(\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : 2026;
     
-    const festivalDate = new Date(year, month, day);
-    return festivalDate < currentDate;
+    // Créer la date de fin du festival (23h59 le dernier jour)
+    const festivalEnd = new Date(year, month, day);
+    festivalEnd.setHours(23, 59, 59, 999);
+    
+    return festivalEnd < today;
   };
 
   const handleFestivalClick = (festival: Festival) => {
