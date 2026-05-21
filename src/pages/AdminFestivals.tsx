@@ -121,6 +121,15 @@ const AdminFestivals = () => {
     }
   }, [selectedFestival]);
 
+  // 🆕 LOGIQUE AUTOMATIQUE : Déterminer si un festival est terminé
+  const isFestivalPast = (endDate: string): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Minuit aujourd'hui
+    const festivalEnd = new Date(endDate);
+    festivalEnd.setHours(23, 59, 59, 999); // Fin de journée du festival
+    return festivalEnd < today;
+  };
+
   const loadFestivals = async () => {
     setLoading(true);
     const { data, error } = await supabase.from('festivals').select('*').order('order_index');
@@ -574,9 +583,15 @@ const AdminFestivals = () => {
                         )}
                       </div>
                       {festival.is_active && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-[#00ff00]/20 text-[#00ff00] border border-[#00ff00]/50 font-bold flex items-center gap-1">
-                          <Zap className="w-2.5 h-2.5" /> LIVE
-                        </span>
+                        isFestivalPast(festival.end_date) ? (
+                          <span className="text-xs px-2 py-1 rounded-full bg-gray-600/20 text-gray-400 border border-gray-600/50 font-bold flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" /> TERMINÉ
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-[#00ff00]/20 text-[#00ff00] border border-[#00ff00]/50 font-bold flex items-center gap-1">
+                            <Zap className="w-2.5 h-2.5" /> LIVE
+                          </span>
+                        )
                       )}
                     </div>
                   </CardHeader>
@@ -592,9 +607,15 @@ const AdminFestivals = () => {
               <Card className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#333]">
                 <CardHeader className="relative">
                   {selectedFestival.is_active && (
-                    <div className="absolute top-4 right-4 bg-[#00ff00] text-black px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5">
-                      <Zap className="w-3 h-3" /> LIVE
-                    </div>
+                    isFestivalPast(selectedFestival.end_date) ? (
+                      <div className="absolute top-4 right-4 bg-gray-600 text-white px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" /> TERMINÉ
+                      </div>
+                    ) : (
+                      <div className="absolute top-4 right-4 bg-[#00ff00] text-black px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5">
+                        <Zap className="w-3 h-3" /> LIVE
+                      </div>
+                    )
                   )}
                   
                   <CardTitle className="text-3xl font-black italic uppercase text-white mb-2">
