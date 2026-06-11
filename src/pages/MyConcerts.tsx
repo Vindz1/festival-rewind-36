@@ -45,92 +45,126 @@ export default function MyConcerts() {
     }
   }, [user]);
 
-  // 2. Charger les concerts depuis Setlist.fm (via votre API locale)
+ // 2. Charger les concerts depuis Setlist.fm (avec cache localStorage)
   useEffect(() => {
-    const fetchAllConcerts = async () => {
-      // CHERCHER LE USERNAME DANS TOUTES LES VARIANTES POSSIBLES
-      const username = 
-        localStorage.getItem('setlistfm_username') ||
-        localStorage.getItem('setlist_username') ||
-        localStorage.getItem('setlistUsername') ||
-        searchParams.get('username');
-      
-      console.log('🔍 Username Setlist.fm:', username);
-      
-      // Si pas d'username setlist.fm, on arrête le chargement
-      if (!username) { 
-        console.warn('⚠️ Pas de username Setlist.fm');
-        setLoading(false); 
-        return; 
-      }
+    const username =
+      localStorage.getItem('setlistfm_username') ||
+      localStorage.getItem('setlist_username') ||
+      localStorage.getItem('setlistUsername') ||
+      searchParams.get('username');
 
-      setLoading(true);
+    console.log('🔍 Username Setlist.fm:', username);
+
+    if (!username) {
+      console.warn('⚠️ Pas de username Setlist.fm');
+      setLoading(false);
+      return;
+    }
+
+    const CACHE_KEY_PAST = `cache_concerts_past_${username}`;
+    const CACHE_KEY_FUTURE = `cache_concerts_future_${username}`;
+    const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+    const readCache = (key: string): any[] | null => {
       try {
-        // A. CHARGEMENT "I WAS THERE" (Passés)
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts > CACHE_TTL_MS) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    };
+
+    const writeCache = (key: string, data: any[]) => {
+      try {
+        localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+      } catch (e) {
+        console.warn('Cache localStorage indisponible:', e);
+      }
+    };
+
+    // A. Affichage instantané depuis le cache si dispo
+    const cachedPast = readCache(CACHE_KEY_PAST);
+    const cachedFuture = readCache(CACHE_KEY_FUTURE);
+
+    if (cachedPast) setConcerts(cachedPast);
+    if (cachedFuture) setUpcomingConcerts(cachedFuture);
+    if (cachedPast || cachedFuture) setLoading(false);
+
+    // B. Rafraîchissement réseau (en arrière-plan si cache présent)
+    const fetchAllConcerts = async () => {
+      if (!cachedPast && !cachedFuture) setLoading(true);
+
+      try {
+        // Passés
         console.log('📡 Appel API: /api/search?action=user&username=' + username);
         try {
           const res = await fetch(`/api/search?action=user&username=${username}`);
           console.log('📡 Réponse API status:', res.status);
-          
+
           if (res.ok) {
-          const data = await res.json();
-          console.log('✅ Concerts passés reçus:', data.results?.length || 0);
-          console.log('📊 Premier concert complet:', data.results?.[0]);
-          console.log('📊 Sets du premier:', data.results?.[0]?.sets);
-          
-          // Force la copie complète avec JSON parse/stringify
-          const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
-          setConcerts(concertsWithSets);
-          console.log('✅ Concerts stockés, vérif sets:', concertsWithSets[0]?.sets);
-        } else {
+            const data = await res.json();
+            console.log('✅ Concerts passés reçus:', data.results?.length || 0);
+            const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
+
+            // On n'écrase le cache que si la nouvelle réponse n'est pas pire
+            if (!cachedPast || concertsWithSets.length >= cachedPast.length) {
+              setConcerts(concertsWithSets);
+              writeCache(CACHE_KEY_PAST, concertsWithSets);
+            }
+          } else {
             console.error('❌ Erreur API:', res.status, res.statusText);
-            const errorData = await res.text();
-            console.error('❌ Détails:', errorData);
           }
-        } catch (e) { 
-          console.error("❌ Erreur Past:", e); 
+        } catch (e) {
+          console.error("❌ Erreur Past:", e);
         }
 
-        // B. CHARGEMENT "I'M GOING" (Futurs)
+        // Futurs
         let upcoming: any[] = [];
         console.log('📡 Appel API: /api/upcoming-shows?username=' + username);
         try {
           const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
           console.log('📡 Réponse API upcoming status:', resUpcoming.status);
-          
+
           if (resUpcoming.ok) {
             const data = await resUpcoming.json();
             console.log('✅ Concerts futurs reçus:', data.results?.length || 0);
             upcoming = data.results || [];
           }
-        } catch (e) { 
-          console.error("❌ Erreur Future:", e); 
+        } catch (e) {
+          console.error("❌ Erreur Future:", e);
         }
 
-        // C. MERGE SUPABASE (Si l'utilisateur a ajouté manuellement des concerts futurs)
+        // Merge Supabase
         if (user) {
-          console.log('📡 Vérification Supabase pour user:', user.id);
           const { data: sbData, error } = await supabase
             .from('upcoming_concerts')
             .select('*')
             .eq('user_id', user.id);
-          
-          if (error) {
-            console.error('❌ Erreur Supabase:', error);
-          } else {
-            console.log('✅ Concerts Supabase:', sbData?.length || 0);
-            if (sbData) upcoming = [...upcoming, ...sbData];
+
+          if (!error && sbData) {
+            upcoming = [...upcoming, ...sbData];
           }
         }
 
-        // D. DÉDOUBLONNAGE
-        const uniqueUpcoming = Array.from(new Map(upcoming.map(item => [getArtistName(item), item])).values());
+        // Dédoublonnage
+        const uniqueUpcoming = Array.from(
+          new Map(upcoming.map(item => [getArtistName(item), item])).values()
+        );
         console.log('✅ Concerts futurs après déduplication:', uniqueUpcoming.length);
-        setUpcomingConcerts(uniqueUpcoming);
+
+        if (!cachedFuture || uniqueUpcoming.length >= cachedFuture.length) {
+          setUpcomingConcerts(uniqueUpcoming);
+          writeCache(CACHE_KEY_FUTURE, uniqueUpcoming);
+        }
 
       } catch (error) {
         console.error('❌ Erreur générale:', error);
-        toast.error('Erreur lors du chargement des concerts');
+        if (!cachedPast && !cachedFuture) {
+          toast.error('Erreur lors du chargement des concerts');
+        }
       } finally {
         setLoading(false);
       }
