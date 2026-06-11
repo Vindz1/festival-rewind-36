@@ -109,11 +109,38 @@ export default function MyConcerts() {
             console.log('✅ Concerts passés reçus:', data.results?.length || 0);
             const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
 
-            // On n'écrase le cache que si la nouvelle réponse n'est pas pire
-            if (!cachedPast || concertsWithSets.length >= cachedPast.length) {
-              setConcerts(concertsWithSets);
-              writeCache(CACHE_KEY_PAST, concertsWithSets);
+            // Split par date : ce qui est encore à venir va dans "I'm going"
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const parseSetlistDate = (s: string): Date | null => {
+              if (!s) return null;
+              const parts = s.split('-');
+              if (parts.length !== 3) return null;
+              const [d, m, y] = parts.map(Number);
+              if (!d || !m || !y) return null;
+              return new Date(y, m - 1, d);
+            };
+
+            const trulyPast: any[] = [];
+            const futureFromAttended: any[] = [];
+            for (const c of concertsWithSets) {
+              const dt = parseSetlistDate(c.eventDate);
+              if (dt && dt >= today) {
+                futureFromAttended.push(c);
+              } else {
+                trulyPast.push(c);
+              }
             }
+
+            // Onglet passé : uniquement les vrais passés
+            if (!cachedPast || trulyPast.length >= cachedPast.length) {
+              setConcerts(trulyPast);
+              writeCache(CACHE_KEY_PAST, trulyPast);
+            }
+
+            // On garde les futurs côté variable, on les mergera plus bas avec le scraping
+            (window as any).__futureFromAttended = futureFromAttended;
           } else {
             console.error('❌ Erreur API:', res.status, res.statusText);
           }
@@ -149,7 +176,12 @@ export default function MyConcerts() {
           }
         }
 
-        // Dédoublonnage
+        // Merge avec les futurs récupérés depuis /attended (données plus riches)
+        const futureFromAttended = ((window as any).__futureFromAttended || []) as any[];
+        delete (window as any).__futureFromAttended;
+        upcoming = [...futureFromAttended, ...upcoming];
+
+        // Dédoublonnage par nom d'artiste (priorité aux premiers = données les plus riches)
         const uniqueUpcoming = Array.from(
           new Map(upcoming.map(item => [getArtistName(item), item])).values()
         );
