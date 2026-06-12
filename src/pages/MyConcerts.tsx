@@ -480,25 +480,27 @@ export default function MyConcerts() {
 
             {/* Barre flottante */}
             {selectedConcerts.length > 0 && (
-              <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
-                <div className="max-w-[1200px] mx-auto flex flex-wrap justify-between items-center gap-3 text-white">
-                  <span className="font-bold">
+              <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-3 sm:p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
+                <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3 text-white">
+                  <span className="font-bold text-sm sm:text-base text-center sm:text-left">
                     {selectedConcerts.length} concert(s) sélectionné(s)
                   </span>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <Button
                       variant="outline"
                       onClick={() => setReorderOpen('past')}
-                      className="bg-transparent border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff]/10 hover:text-[#4d94ff]"
+                      className="flex-1 sm:flex-none bg-transparent border-[#4d94ff] text-[#4d94ff] hover:bg-[#4d94ff]/10 hover:text-[#4d94ff]"
                     >
                       <ListOrdered className="mr-2 w-4 h-4" />
                       Réorganiser
                     </Button>
                     <Button
                       onClick={() => handleGenerate(false)}
-                      className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold shadow-lg shadow-blue-500/20"
+                      className="flex-1 sm:flex-none bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold shadow-lg shadow-blue-500/20"
                     >
-                      Générer Playlist <ArrowRight className="ml-2 w-4 h-4" />
+                      <span className="sm:hidden">Générer</span>
+                      <span className="hidden sm:inline">Générer Playlist</span>
+                      <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -586,25 +588,27 @@ export default function MyConcerts() {
             </div>
 
             {selectedUpcoming.length > 0 && (
-              <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
-                <div className="max-w-[1200px] mx-auto flex flex-wrap justify-between items-center gap-3 text-white">
-                  <span className="font-bold">
+              <div className="fixed bottom-0 left-0 right-0 bg-[#2d2d2d] border-t border-[#404040] p-3 sm:p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-full z-40">
+                <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3 text-white">
+                  <span className="font-bold text-sm sm:text-base text-center sm:text-left">
                     {selectedUpcoming.length} concert(s) sélectionné(s)
                   </span>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <Button
                       variant="outline"
                       onClick={() => setReorderOpen('future')}
-                      className="bg-transparent border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00]/10 hover:text-[#00ff00]"
+                      className="flex-1 sm:flex-none bg-transparent border-[#00ff00] text-[#00ff00] hover:bg-[#00ff00]/10 hover:text-[#00ff00]"
                     >
                       <ListOrdered className="mr-2 w-4 h-4" />
                       Réorganiser
                     </Button>
                     <Button
                       onClick={() => handleGenerate(true)}
-                      className="bg-[#00ff00] hover:bg-[#33ff33] text-black font-bold shadow-lg shadow-green-500/20"
+                      className="flex-1 sm:flex-none bg-[#00ff00] hover:bg-[#33ff33] text-black font-bold shadow-lg shadow-green-500/20"
                     >
-                      Préparer Playlist <ArrowRight className="ml-2 w-4 h-4" />
+                      <span className="sm:hidden">Préparer</span>
+                      <span className="hidden sm:inline">Préparer Playlist</span>
+                      <ArrowRight className="ml-2 w-4 h-4" />
                     </Button>
                   </div>
                 </div>
