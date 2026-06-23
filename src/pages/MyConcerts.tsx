@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Music, Calendar, ArrowRight, MapPin, Loader2, CalendarRange, X } from 'lucide-react';
+import { Music, Calendar, ArrowRight, MapPin, Loader2, CalendarRange, X, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,14 @@ export default function MyConcerts() {
   // États de sélection
   const [selectedConcerts, setSelectedConcerts] = useState<Set<string>>(new Set());
   const [selectedUpcoming, setSelectedUpcoming] = useState<Set<string>>(new Set());
+
+  // Infos de chargement (détection des chargements partiels dus au rate-limit Setlist.fm)
+  const [pastLoadInfo, setPastLoadInfo] = useState<{
+    fetched: number;
+    total: number;
+    partial: boolean;
+  } | null>(null);
+  const [reloading, setReloading] = useState(false);
 
   // États des filtres par plage de dates (un par onglet)
   const [pastDateFrom, setPastDateFrom] = useState<string>('');
@@ -69,92 +77,117 @@ export default function MyConcerts() {
     }
   }, [user]);
 
-  // 2. Charger les concerts depuis Setlist.fm (via votre API locale)
-  useEffect(() => {
-    const fetchAllConcerts = async () => {
-      const username =
-        localStorage.getItem('setlistfm_username') ||
-        localStorage.getItem('setlist_username') ||
-        localStorage.getItem('setlistUsername') ||
-        searchParams.get('username');
+  // 2. Charger les concerts depuis Setlist.fm (via votre API locale).
+  // Extrait en fonction nommée pour pouvoir être ré-appelé via le bouton "Recharger".
+  const fetchAllConcerts = async (isReload = false) => {
+    const username =
+      localStorage.getItem('setlistfm_username') ||
+      localStorage.getItem('setlist_username') ||
+      localStorage.getItem('setlistUsername') ||
+      searchParams.get('username');
 
-      console.log('🔍 Username Setlist.fm:', username);
+    console.log('🔍 Username Setlist.fm:', username);
 
-      if (!username) {
-        console.warn('⚠️ Pas de username Setlist.fm');
-        setLoading(false);
-        return;
-      }
+    if (!username) {
+      console.warn('⚠️ Pas de username Setlist.fm');
+      setLoading(false);
+      return;
+    }
 
+    if (isReload) {
+      setReloading(true);
+    } else {
       setLoading(true);
+    }
+
+    try {
+      // A. CHARGEMENT "I WAS THERE" (Passés)
+      console.log('📡 Appel API: /api/search?action=user&username=' + username);
       try {
-        // A. CHARGEMENT "I WAS THERE" (Passés)
-        console.log('📡 Appel API: /api/search?action=user&username=' + username);
-        try {
-          const res = await fetch(`/api/search?action=user&username=${username}`);
-          console.log('📡 Réponse API status:', res.status);
+        const res = await fetch(`/api/search?action=user&username=${username}`);
+        console.log('📡 Réponse API status:', res.status);
 
-          if (res.ok) {
-            const data = await res.json();
-            console.log('✅ Concerts passés reçus:', data.results?.length || 0);
-            const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
-            setConcerts(concertsWithSets);
-          } else {
-            console.error('❌ Erreur API:', res.status, res.statusText);
-            const errorData = await res.text();
-            console.error('❌ Détails:', errorData);
+        if (res.ok) {
+          const data = await res.json();
+          const fetched = data.results?.length || 0;
+          const total = data.total || fetched;
+          const partial = !!data.partial && fetched < total;
+
+          console.log(`✅ Concerts passés reçus: ${fetched} / total annoncé: ${total}${partial ? ' (PARTIEL)' : ''}`);
+
+          const concertsWithSets = JSON.parse(JSON.stringify(data.results || []));
+          setConcerts(concertsWithSets);
+          setPastLoadInfo({ fetched, total, partial });
+
+          // ⚠️ Alerter si chargement partiel (rate-limit Setlist.fm)
+          if (partial) {
+            const missing = total - fetched;
+            toast.warning(
+              `${fetched} concerts chargés sur ${total} — ${missing} n'ont pas pu être récupérés (Setlist.fm a rate-limité). Cliquez sur "Recharger" dans 1 minute.`,
+              { duration: 10000 }
+            );
+          } else if (isReload) {
+            toast.success(`Tous les concerts sont chargés (${fetched}/${total})`);
           }
-        } catch (e) {
-          console.error("❌ Erreur Past:", e);
+        } else {
+          console.error('❌ Erreur API:', res.status, res.statusText);
+          const errorData = await res.text();
+          console.error('❌ Détails:', errorData);
+          if (isReload) toast.error('Erreur lors du rechargement');
         }
-
-        // B. CHARGEMENT "I'M GOING" (Futurs)
-        let upcoming: any[] = [];
-        console.log('📡 Appel API: /api/upcoming-shows?username=' + username);
-        try {
-          const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
-          console.log('📡 Réponse API upcoming status:', resUpcoming.status);
-
-          if (resUpcoming.ok) {
-            const data = await resUpcoming.json();
-            console.log('✅ Concerts futurs reçus:', data.results?.length || 0);
-            upcoming = data.results || [];
-          }
-        } catch (e) {
-          console.error("❌ Erreur Future:", e);
-        }
-
-        // C. MERGE SUPABASE
-        if (user) {
-          console.log('📡 Vérification Supabase pour user:', user.id);
-          const { data: sbData, error } = await supabase
-            .from('upcoming_concerts')
-            .select('*')
-            .eq('user_id', user.id);
-
-          if (error) {
-            console.error('❌ Erreur Supabase:', error);
-          } else {
-            console.log('✅ Concerts Supabase:', sbData?.length || 0);
-            if (sbData) upcoming = [...upcoming, ...sbData];
-          }
-        }
-
-        // D. DÉDOUBLONNAGE
-        const uniqueUpcoming = Array.from(
-          new Map(upcoming.map(item => [getArtistName(item), item])).values()
-        );
-        setUpcomingConcerts(uniqueUpcoming);
-
-      } catch (error) {
-        console.error('❌ Erreur générale:', error);
-        toast.error('Erreur lors du chargement des concerts');
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error('❌ Erreur Past:', e);
       }
-    };
 
-    fetchAllConcerts();
+      // B. CHARGEMENT "I'M GOING" (Futurs)
+      let upcoming: any[] = [];
+      console.log('📡 Appel API: /api/upcoming-shows?username=' + username);
+      try {
+        const resUpcoming = await fetch(`/api/upcoming-shows?username=${username}`);
+        console.log('📡 Réponse API upcoming status:', resUpcoming.status);
+
+        if (resUpcoming.ok) {
+          const data = await resUpcoming.json();
+          console.log('✅ Concerts futurs reçus:', data.results?.length || 0);
+          upcoming = data.results || [];
+        }
+      } catch (e) {
+        console.error('❌ Erreur Future:', e);
+      }
+
+      // C. MERGE SUPABASE
+      if (user) {
+        console.log('📡 Vérification Supabase pour user:', user.id);
+        const { data: sbData, error } = await supabase
+          .from('upcoming_concerts')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('❌ Erreur Supabase:', error);
+        } else {
+          console.log('✅ Concerts Supabase:', sbData?.length || 0);
+          if (sbData) upcoming = [...upcoming, ...sbData];
+        }
+      }
+
+      // D. DÉDOUBLONNAGE
+      const uniqueUpcoming = Array.from(
+        new Map(upcoming.map((item) => [getArtistName(item), item])).values()
+      );
+      setUpcomingConcerts(uniqueUpcoming);
+    } catch (error) {
+      console.error('❌ Erreur générale:', error);
+      toast.error('Erreur lors du chargement des concerts');
+    } finally {
+      setLoading(false);
+      setReloading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllConcerts(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams]);
 
   const toggleSelection = (setIds: Set<string>, setFunc: any, id: string) => {
@@ -358,9 +391,18 @@ export default function MyConcerts() {
               className="px-6 py-3 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#4d94ff] text-[#a0a0a0] data-[state=active]:text-white font-bold uppercase tracking-wider"
             >
               I Was There{' '}
-              <span className="ml-2 bg-[#333] px-2 rounded-full text-xs text-white">
-                {concerts.length}
-              </span>
+              {pastLoadInfo?.partial ? (
+                <span
+                  className="ml-2 bg-red-500/20 text-red-400 border border-red-500/40 px-2 rounded-full text-xs"
+                  title={`Chargement partiel : ${pastLoadInfo.fetched} sur ${pastLoadInfo.total}`}
+                >
+                  {pastLoadInfo.fetched}/{pastLoadInfo.total}
+                </span>
+              ) : (
+                <span className="ml-2 bg-[#333] px-2 rounded-full text-xs text-white">
+                  {concerts.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger
               value="future"
@@ -375,6 +417,38 @@ export default function MyConcerts() {
 
           {/* ONGLET PASSÉ */}
           <TabsContent value="past" className="mt-6">
+            {/* Bannière chargement partiel */}
+            {pastLoadInfo?.partial && (
+              <div className="bg-red-500/10 border border-red-500/40 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-red-400 text-sm">
+                      Chargement partiel — {pastLoadInfo.fetched} concerts sur {pastLoadInfo.total}
+                    </p>
+                    <p className="text-xs text-red-400/80 mt-1">
+                      Setlist.fm a temporairement limité nos requêtes. Attendez 1 minute et cliquez sur Recharger.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => fetchAllConcerts(true)}
+                  disabled={reloading}
+                  className="bg-red-500 hover:bg-red-600 text-white font-bold whitespace-nowrap"
+                >
+                  {reloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Rechargement…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" /> Recharger
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
             {concerts.length > 0 && (
               <DateRangeFilter
                 list={concerts}
