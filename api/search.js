@@ -16,31 +16,57 @@ function formatDateSetlistFm(date) {
   return `${year}${month}${day}`;
 }
 
-// Helper : fetch avec retry sur 429 (rate limit)
-async function fetchWithRetry(url, options, retries = 2) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Fetch une URL Setlist.fm avec retry exponentiel sur 429.
+ * - maxRetries : nombre max de tentatives (défaut 3 = jusqu'à ~7s de backoff au total)
+ * - Renvoie { ok, data, status } : ok=false si toutes les tentatives ont échoué.
+ */
+async function fetchSetlistWithRetry(url, headers, maxRetries = 3) {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const r = await fetch(url, options);
-      if (r.ok) return r;
-      if (r.status === 429 && attempt < retries) {
-        await new Promise(res => setTimeout(res, 500 * (attempt + 1)));
+      const response = await fetch(url, { headers });
+      lastStatus = response.status;
+
+      if (response.ok) {
+        const data = await response.json();
+        return { ok: true, data, status: response.status };
+      }
+
+      // 429 ou 503 = on attend et on retente
+      if (response.status === 429 || response.status === 503) {
+        const backoffMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.warn(`[Setlist.fm] ${response.status} sur ${url} — retry dans ${backoffMs}ms (tentative ${attempt + 1}/${maxRetries})`);
+        await sleep(backoffMs);
         continue;
       }
-      return r;
-    } catch (e) {
-      if (attempt >= retries) throw e;
-      await new Promise(res => setTimeout(res, 500 * (attempt + 1)));
+
+      // Autre code d'erreur (404, 500…) → on ne retry pas
+      return { ok: false, data: null, status: response.status };
+    } catch (err) {
+      console.error(`[Setlist.fm] Exception sur ${url} (tentative ${attempt + 1}):`, err.message);
+      // Retry sur erreur réseau aussi
+      if (attempt < maxRetries - 1) {
+        await sleep(Math.pow(2, attempt) * 1000);
+      }
     }
   }
+
+  console.error(`[Setlist.fm] Échec définitif après ${maxRetries} tentatives : ${url} (dernier statut: ${lastStatus})`);
+  return { ok: false, data: null, status: lastStatus };
 }
 
 export default async function handler(req, res) {
   const { q, action, username, upcoming, type, p } = req.query;
   const SETLIST_FM_API_KEY = process.env.SETLIST_FM_API_KEY || 'votre-clé-api';
-  const SETLIST_HEADERS = { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' };
+  const HEADERS = { 'x-api-key': SETLIST_FM_API_KEY, 'Accept': 'application/json' };
 
   try {
-    // CAS 1 : Recherche Classique (INCHANGÉ)
+    // ========================================================================
+    // CAS 1 : Recherche Classique (inchangé)
+    // ========================================================================
     if (q && !action) {
       const searchType = ['artistName', 'cityName', 'tourName', 'all'].includes(type) ? type : 'all';
       const page = p || 1;
@@ -54,7 +80,7 @@ export default async function handler(req, res) {
         if (upcoming === 'true') {
           apiUrl += `&date=${formatDateSetlistFm(new Date())}`;
         }
-        const response = await fetch(apiUrl, { headers: SETLIST_HEADERS });
+        const response = await fetch(apiUrl, { headers: HEADERS });
         if (response.ok) {
           const data = await response.json();
           return { setlist: data.setlist || [], total: data.total || 0, itemsPerPage: data.itemsPerPage || 20 };
@@ -73,12 +99,14 @@ export default async function handler(req, res) {
         const unique = [];
         const ids = new Set();
         for (const c of results) {
-          if (!ids.has(c.id)) { ids.add(c.id); unique.push(c); }
+          if (!ids.has(c.id)) {
+            ids.add(c.id);
+            unique.push(c);
+          }
         }
 
         unique.sort((a, b) => parseDateSetlistFm(b.eventDate) - parseDateSetlistFm(a.eventDate));
         results = unique;
-
       } else {
         const data = await fetchSetlists(searchType);
         results = data.setlist;
@@ -90,71 +118,117 @@ export default async function handler(req, res) {
         results,
         total,
         itemsPerPage,
-        page: parseInt(page)
+        page: parseInt(page),
       });
     }
 
-    // CAS 2 : User (RÉÉCRIT : parallélisé + retry + cache)
+    // ========================================================================
+    // CAS 2 : User /attended — FIX : pagination batch + retry 429
+    // ========================================================================
     if (action === 'user' && username) {
-      const baseUrl = `https://api.setlist.fm/rest/1.0/user/${username}/attended`;
+      const baseUrl = `https://api.setlist.fm/rest/1.0/user/${encodeURIComponent(username)}/attended`;
+      const BATCH_SIZE = 4; // 4 pages en parallèle, comme le fix de la recherche
+      const DELAY_BETWEEN_BATCHES_MS = 600;
 
-      // Étape 1 : page 1 pour connaître le total
-      const firstResponse = await fetchWithRetry(`${baseUrl}?p=1`, { headers: SETLIST_HEADERS });
+      // ÉTAPE 1 : récupérer la page 1 pour connaître le total réel
+      const firstPage = await fetchSetlistWithRetry(`${baseUrl}?p=1`, HEADERS);
 
-      if (!firstResponse || !firstResponse.ok) {
-        if (firstResponse && firstResponse.status === 404) {
-          return res.status(404).json({ error: 'Utilisateur non trouvé', results: [] });
+      if (!firstPage.ok) {
+        if (firstPage.status === 404) {
+          return res.status(404).json({ error: 'Utilisateur Setlist.fm introuvable' });
         }
-        return res.status(200).json({ results: [], total: 0 });
+        return res.status(firstPage.status || 500).json({
+          error: 'Erreur Setlist.fm lors de la première requête',
+          status: firstPage.status,
+        });
       }
 
-      const firstData = await firstResponse.json();
+      const firstData = firstPage.data;
       const itemsPerPage = firstData.itemsPerPage || 20;
-      const total = firstData.total || 0;
-      const totalPages = total > 0 ? Math.ceil(total / itemsPerPage) : 1;
+      const totalConcerts = firstData.total || 0;
+      const totalPages = Math.ceil(totalConcerts / itemsPerPage);
 
-      let allConcerts = firstData.setlist || [];
+      console.log(`[Setlist.fm/user] ${username} — total annoncé: ${totalConcerts} (${totalPages} page(s))`);
 
-      // Étape 2 : pages restantes en parallèle, par lots de 4
+      let allConcerts = [...(firstData.setlist || [])];
+
+      // ÉTAPE 2 : si plus d'une page, fetch les pages restantes en batches parallèles
       if (totalPages > 1) {
         const remainingPages = [];
-        for (let pg = 2; pg <= totalPages; pg++) remainingPages.push(pg);
+        for (let p = 2; p <= totalPages; p++) {
+          remainingPages.push(p);
+        }
 
-        const BATCH_SIZE = 4;
+        let failedPages = [];
+
+        // Batch loop
         for (let i = 0; i < remainingPages.length; i += BATCH_SIZE) {
           const batch = remainingPages.slice(i, i + BATCH_SIZE);
-          const pageResults = await Promise.all(
-            batch.map(async (pageNum) => {
-              const r = await fetchWithRetry(`${baseUrl}?p=${pageNum}`, { headers: SETLIST_HEADERS });
-              if (!r || !r.ok) return [];
-              const d = await r.json();
-              return d.setlist || [];
-            })
+
+          const batchResults = await Promise.all(
+            batch.map((pageNum) =>
+              fetchSetlistWithRetry(`${baseUrl}?p=${pageNum}`, HEADERS).then((result) => ({
+                pageNum,
+                ...result,
+              }))
+            )
           );
-          for (const concerts of pageResults) {
-            allConcerts = allConcerts.concat(concerts);
+
+          for (const r of batchResults) {
+            if (r.ok && r.data?.setlist) {
+              allConcerts.push(...r.data.setlist);
+            } else {
+              failedPages.push(r.pageNum);
+            }
           }
+
+          // Petite pause entre les batches pour rester poli avec l'API
+          if (i + BATCH_SIZE < remainingPages.length) {
+            await sleep(DELAY_BETWEEN_BATCHES_MS);
+          }
+        }
+
+        if (failedPages.length > 0) {
+          console.warn(
+            `[Setlist.fm/user] ${username} — ${failedPages.length} page(s) en échec définitif:`,
+            failedPages
+          );
         }
       }
 
-      // Dédoublonnage par sécurité
+      // Dédoublonnage par ID (au cas où l'API renvoie des doublons en bordure de page)
       const seen = new Set();
-      const unique = allConcerts.filter(c => {
-        if (!c || !c.id || seen.has(c.id)) return false;
-        seen.add(c.id);
-        return true;
-      });
+      const uniqueConcerts = [];
+      for (const c of allConcerts) {
+        if (c.id && !seen.has(c.id)) {
+          seen.add(c.id);
+          uniqueConcerts.push(c);
+        }
+      }
 
-      // Cache CDN Vercel : 5 min, stale 10 min
-      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-      return res.status(200).json({ results: unique, total: unique.length });
+      const partial = uniqueConcerts.length < totalConcerts;
+
+      console.log(
+        `[Setlist.fm/user] ${username} — récupéré: ${uniqueConcerts.length}/${totalConcerts}${
+          partial ? ' (PARTIEL)' : ''
+        }`
+      );
+
+      return res.status(200).json({
+        results: uniqueConcerts,
+        total: totalConcerts, // ← vrai total de Setlist.fm, pas la longueur du résultat
+        fetched: uniqueConcerts.length, // ← combien on a vraiment récupéré
+        partial, // ← true si on n'a pas tout eu
+      });
     }
 
-    // CAS 3 : Songs (INCHANGÉ)
+    // ========================================================================
+    // CAS 3 : Songs (inchangé)
+    // ========================================================================
     if (action === 'songs') {
       const { setlistId } = req.query;
       const response = await fetch(`https://api.setlist.fm/rest/1.0/setlist/${setlistId}`, {
-        headers: SETLIST_HEADERS
+        headers: HEADERS,
       });
       if (!response.ok) return res.status(response.status).json({ error: 'Introuvable' });
       return res.status(200).json(await response.json());
@@ -162,7 +236,7 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: 'Invalide' });
   } catch (error) {
-    console.error('Erreur API search:', error);
+    console.error('[api/search] Erreur serveur:', error);
     return res.status(500).json({ error: 'Erreur serveur', results: [] });
   }
 }
