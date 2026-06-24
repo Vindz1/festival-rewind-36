@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -17,6 +17,10 @@ import {
   Crown,
   Zap,
   ClipboardPaste,
+  Target,
+  BarChart3,
+  Disc,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
@@ -31,6 +35,7 @@ import {
 interface Track {
   artist: string;
   name: string;
+  source?: 'exact' | 'average' | 'topTracks';
 }
 
 interface ConcertData {
@@ -45,6 +50,20 @@ interface ConcertData {
 
 const TMM_URL = 'https://www.tunemymusic.com/fr/transfer';
 
+// Cache localStorage 30 jours pour les setlists moyennes (réduit les hits Setlist.fm)
+const AVG_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const avgCacheKey = (artist: string, year: string | number | null) =>
+  `setlive_avg_${artist.toLowerCase().replace(/\s+/g, '_')}_${year || 'all'}`;
+
+// Bornes du slider
+const MIN_TOP_TRACKS = 3;
+const MAX_TOP_TRACKS = 10;
+const DEFAULT_TOP_TRACKS = 5;
+
+// Mots-clés "live" pour filtrer les albums/morceaux en priorité dans iTunes
+const LIVE_KEYWORDS = /\b(live|concert|tour|unplugged|en concert|au zenith|en direct)\b/i;
+const YEAR_IN_TITLE = /\b(19|20)\d{2}\b/;
+
 export default function Generate() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,11 +73,23 @@ export default function Generate() {
   const [songs, setSongs] = useState<Track[]>([]);
   const [playlistName, setPlaylistName] = useState('');
   const [mainArtist, setMainArtist] = useState('');
-  const [exported, setExported] = useState(false); // remplace l'ancien "copied"
+  const [exported, setExported] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Analyse...');
   const [errorMsg, setErrorMsg] = useState('');
   const [isPremium, setIsPremium] = useState(false);
+
+  // Slider top-tracks
+  const [topTracksCount, setTopTracksCount] = useState<number>(DEFAULT_TOP_TRACKS);
+  const lastUsedCountRef = useRef<number>(DEFAULT_TOP_TRACKS);
+  const [countDirty, setCountDirty] = useState(false);
+
+  // Stats des sources utilisées (pour afficher un récap)
+  const [sourceStats, setSourceStats] = useState<{ exact: number; average: number; topTracks: number }>({
+    exact: 0,
+    average: 0,
+    topTracks: 0,
+  });
 
   const [quota, setQuota] = useState<ExportQuota>({
     canExport: false,
@@ -69,7 +100,8 @@ export default function Generate() {
   });
 
   useEffect(() => {
-    processGeneration();
+    processGeneration(DEFAULT_TOP_TRACKS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
   useEffect(() => {
@@ -83,142 +115,35 @@ export default function Generate() {
     }
   }, [user]);
 
-  const processGeneration = async () => {
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      const stateData = location.state;
-      const mode = searchParams.get('mode');
-      let dataToUse: ConcertData[] = [];
-      let type: 'festival' | 'past' | 'future' | null = null;
-      let pName = 'Ma Setlist';
+  // Helpers
+  const normalizeString = (str: string) =>
+    str
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ');
 
-      if (stateData?.artists && Array.isArray(stateData.artists)) {
-        type = 'festival';
-        dataToUse = stateData.artists.map((artistName: string) => ({
-          artist: artistName,
-          isFuture: true,
-          id: artistName.toLowerCase().replace(/\s+/g, '-'),
-        }));
-        pName = stateData.eventName || 'Festival Playlist';
-      } else if (localStorage.getItem('playlistData')) {
-        const raw = localStorage.getItem('playlistData');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          type = 'festival';
-          dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
-          pName = parsed.playlistName || 'Ma Sélection';
-        }
-      } else if (mode === 'upcoming') {
-        type = 'future';
-        const futureRaw = localStorage.getItem('selected_upcoming');
-        if (futureRaw) {
-          const parsed = JSON.parse(futureRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: true,
-          }));
-          pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : 'Ma Sélection Future';
-        }
-      } else {
-        type = 'past';
-        const pastRaw = localStorage.getItem('selected_concerts');
-        if (pastRaw) {
-          const parsed = JSON.parse(pastRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: false,
-          }));
-          pName = parsed.length === 1 ? `${dataToUse[0].artist} Live` : 'Mes Concerts (Passés)';
-        }
-      }
-
-      if (!type || dataToUse.length === 0)
-        throw new Error('Aucun concert ou artiste sélectionné.');
-      setPlaylistName(pName);
-
-      const isFutureMode = type === 'festival' || type === 'future';
-      setLoadingMessage(
-        isFutureMode
-          ? `Récupération du Top 10 pour ${dataToUse.length} artiste(s)...`
-          : 'Extraction des setlists réelles...'
-      );
-
-      const finalTracks: Track[] = [];
-      let processedCount = 0;
-      const concertsWithoutSetlist: string[] = [];
-
-      for (const item of dataToUse) {
-        processedCount++;
-        const currentArtist =
-          typeof item.artist === 'string'
-            ? item.artist
-            : item.artist?.name || 'Artiste Inconnu';
-        setLoadingMessage(`${processedCount}/${dataToUse.length} - ${currentArtist}...`);
-        try {
-          if (item.isFuture) {
-            finalTracks.push(...(await fetchItunes(currentArtist, 10)));
-          } else {
-            const tracks = await extractFromSetlist(item, currentArtist);
-            if (tracks.length > 0) finalTracks.push(...tracks);
-            else concertsWithoutSetlist.push(currentArtist);
-          }
-        } catch (err) {
-          console.error(`Erreur pour ${currentArtist}:`, err);
-        }
-      }
-
-      const uniqueTracks = deduplicateTracks(finalTracks);
-      if (uniqueTracks.length === 0) {
-        throw new Error(
-          isFutureMode
-            ? 'Impossible de récupérer les morceaux.'
-            : concertsWithoutSetlist.length > 0
-            ? `Aucune setlist sur Setlist.fm pour : ${concertsWithoutSetlist.join(', ')}`
-            : 'Aucune setlist trouvée.'
-        );
-      }
-      if (!isFutureMode && concertsWithoutSetlist.length > 0) {
-        toast.warning(
-          `${concertsWithoutSetlist.length} concert(s) sans setlist : ${concertsWithoutSetlist.join(
-            ', '
-          )}`,
-          { duration: 5000 }
-        );
-      }
-
-      setSongs(uniqueTracks);
-      setMainArtist(uniqueTracks[0].artist);
-
-      if (user) {
-        try {
-          await saveToHistory({
-            userId: user.id,
-            playlistName: pName,
-            tracks: uniqueTracks.map((t) => ({ artist: t.artist })),
-            sourceType: isFutureMode ? 'upcoming' : 'concert',
-            platform: 'csv',
-          });
-        } catch (err) {
-          console.error('Erreur historique:', err);
-        }
-      }
-
-      localStorage.removeItem('playlistData');
-      localStorage.removeItem('selected_concerts');
-      localStorage.removeItem('selected_upcoming');
-
-      toast.success(`${uniqueTracks.length} morceaux prêts !`);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Une erreur est survenue.');
-      toast.error('Erreur de génération');
-    } finally {
-      setLoading(false);
-    }
+  const deduplicateTracks = (tracks: Track[]) => {
+    const seen = new Set<string>();
+    return tracks.filter((t) => {
+      const key = `${normalizeString(t.artist)}|||${normalizeString(t.name)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   };
 
+  const extractYear = (dateStr?: string): string | null => {
+    if (!dateStr) return null;
+    const m = dateStr.match(/(\d{4})/);
+    return m ? m[1] : null;
+  };
+
+  // ============================================================
+  // PLAN A — extraction de la setlist exacte (déjà fournie par l'API)
+  // ============================================================
   const extractFromSetlist = async (
     concert: ConcertData,
     defaultArtist: string
@@ -263,72 +188,346 @@ export default function Generate() {
     return result;
   };
 
-  const fetchItunes = async (artist: string, limit: number = 10): Promise<Track[]> => {
+  // ============================================================
+  // PLAN A (variante festival passé) — trouve la setlist à une date donnée
+  // ============================================================
+  const findSetlistAtDate = async (
+    artistName: string,
+    date: string, // format dd-MM-yyyy
+    cityName?: string
+  ): Promise<Track[]> => {
+    try {
+      const params = new URLSearchParams({ action: 'findSetlists', artistName, date });
+      if (cityName) params.set('cityName', cityName);
+      const res = await fetch(`/api/search?${params.toString()}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const setlists = data.results || [];
+      for (const sl of setlists) {
+        const tracks = await extractFromSetlist(sl, artistName);
+        if (tracks.length > 0) return tracks;
+      }
+      return [];
+    } catch (err) {
+      console.error(`Erreur findSetlistAtDate(${artistName}, ${date}):`, err);
+      return [];
+    }
+  };
+
+  // ============================================================
+  // PLAN B — setlist moyenne (avec cache localStorage 30j)
+  // ============================================================
+  const fetchAverageSetlist = async (
+    artistName: string,
+    year: string | null
+  ): Promise<Track[]> => {
+    const cacheKey = avgCacheKey(artistName, year);
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { tracks, ts } = JSON.parse(cached);
+        if (Date.now() - ts < AVG_CACHE_TTL_MS && Array.isArray(tracks)) {
+          return tracks;
+        }
+      }
+    } catch {
+      /* cache illisible, on continue */
+    }
+
+    try {
+      const params = new URLSearchParams({ action: 'averageSetlist', artistName });
+      if (year) params.set('year', year);
+      const res = await fetch(`/api/search?${params.toString()}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const tracks: Track[] = data.tracks || [];
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ tracks, ts: Date.now() }));
+      } catch {
+        /* localStorage plein */
+      }
+      return tracks;
+    } catch (err) {
+      console.error(`Erreur fetchAverageSetlist(${artistName}, ${year}):`, err);
+      return [];
+    }
+  };
+
+  // ============================================================
+  // PLAN C — top tracks iTunes avec priorité aux pistes live
+  // ============================================================
+  const fetchTopTracks = async (artist: string, limit: number): Promise<Track[]> => {
     const countries = ['US', 'GB', 'FR'];
-    let allTracks: Track[] = [];
     const normalizedSearchArtist = normalizeString(artist);
+    let allResults: any[] = [];
 
     for (const country of countries) {
       try {
         const response = await fetch(
           `https://itunes.apple.com/search?term=${encodeURIComponent(
             artist
-          )}&entity=song&limit=${Math.max(limit * 5, 50)}&country=${country}`
+          )}&entity=song&limit=150&country=${country}`
         );
         if (!response.ok) continue;
-
         const data = await response.json();
         if (!data.results?.length) continue;
 
-        const newTracks = data.results
+        const scored = data.results
           .map((item: any) => {
-            const n = normalizeString(item.artistName || '');
-            const score =
-              n === normalizedSearchArtist ? 100 : n.includes(normalizedSearchArtist) ? 50 : 0;
-            return { ...item, score };
+            const normalizedItemArtist = normalizeString(item.artistName || '');
+            const artistScore =
+              normalizedItemArtist === normalizedSearchArtist
+                ? 100
+                : normalizedItemArtist.includes(normalizedSearchArtist)
+                ? 50
+                : 0;
+            const albumName = item.collectionName || '';
+            const trackName = item.trackName || '';
+            const isLive =
+              LIVE_KEYWORDS.test(albumName) ||
+              LIVE_KEYWORDS.test(trackName) ||
+              YEAR_IN_TITLE.test(albumName);
+            return { ...item, artistScore, isLive };
           })
-          .filter((item: any) => item.score > 20)
-          .sort((a: any, b: any) => b.score - a.score)
-          .map((item: any) => ({ artist: item.artistName, name: item.trackName }));
+          .filter((item: any) => item.artistScore > 20);
 
-        allTracks = [...allTracks, ...newTracks];
-        const uniqueTracks = deduplicateTracks(allTracks);
-
-        if (uniqueTracks.length >= limit) {
-          return uniqueTracks.slice(0, limit);
-        }
+        allResults = [...allResults, ...scored];
+        const liveSoFar = allResults.filter((r) => r.isLive).length;
+        if (liveSoFar >= limit * 3) break;
       } catch (err) {
         console.error(`Erreur iTunes (${country}) pour ${artist}:`, err);
       }
     }
 
-    return deduplicateTracks(allTracks).slice(0, limit);
+    const liveTracks = allResults
+      .filter((r) => r.isLive)
+      .sort((a, b) => b.artistScore - a.artistScore)
+      .map((item) => ({ artist: item.artistName, name: item.trackName }));
+
+    const studioTracks = allResults
+      .filter((r) => !r.isLive)
+      .sort((a, b) => b.artistScore - a.artistScore)
+      .map((item) => ({ artist: item.artistName, name: item.trackName }));
+
+    const dedupedLive = deduplicateTracks(liveTracks);
+    if (dedupedLive.length >= limit) {
+      return dedupedLive.slice(0, limit);
+    }
+    const remaining = limit - dedupedLive.length;
+    const dedupedStudio = deduplicateTracks(studioTracks).slice(0, remaining);
+    return [...dedupedLive, ...dedupedStudio];
   };
 
-  const normalizeString = (str: string) =>
-    str
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ');
+  // ============================================================
+  // MOTEUR PRINCIPAL — cascade Plan A → B → C par concert
+  // ============================================================
+  const getTracksForItem = async (
+    item: ConcertData,
+    currentArtist: string,
+    opts: {
+      mode: 'past' | 'future' | 'pastFestival';
+      topTracksCount: number;
+      festivalDate?: string;
+      festivalCity?: string;
+      festivalYear?: string;
+    }
+  ): Promise<{ tracks: Track[]; source: 'exact' | 'average' | 'topTracks' }> => {
+    const { mode, topTracksCount: ttc, festivalDate, festivalCity, festivalYear } = opts;
 
-  const deduplicateTracks = (tracks: Track[]) => {
-    const seen = new Set<string>();
-    return tracks.filter((t) => {
-      const key = `${normalizeString(t.artist)}|||${normalizeString(t.name)}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    // Futur pur : top tracks
+    if (mode === 'future') {
+      const tt = await fetchTopTracks(currentArtist, ttc);
+      return { tracks: tt, source: 'topTracks' };
+    }
+
+    // Festival passé : cherche setlist à la date du festival
+    if (mode === 'pastFestival' && festivalDate) {
+      const exact = await findSetlistAtDate(currentArtist, festivalDate, festivalCity);
+      if (exact.length > 0) return { tracks: exact, source: 'exact' };
+
+      const avg = await fetchAverageSetlist(currentArtist, festivalYear || null);
+      if (avg.length > 0) return { tracks: avg, source: 'average' };
+
+      const tt = await fetchTopTracks(currentArtist, ttc);
+      return { tracks: tt, source: 'topTracks' };
+    }
+
+    // Passé classique
+    const exact = await extractFromSetlist(item, currentArtist);
+    if (exact.length > 0) return { tracks: exact, source: 'exact' };
+
+    const year = extractYear(item.eventDate);
+    const avg = await fetchAverageSetlist(currentArtist, year);
+    if (avg.length > 0) return { tracks: avg, source: 'average' };
+
+    const tt = await fetchTopTracks(currentArtist, ttc);
+    return { tracks: tt, source: 'topTracks' };
   };
 
-  /**
-   * Copie la liste dans le presse-papier. Action interne réutilisée par
-   * les deux boutons (export TMM principal + copie seule secondaire).
-   * Retourne true si la copie a réussi.
-   */
+  // ============================================================
+  // PROCESS — orchestre le tout
+  // ============================================================
+  const processGeneration = async (ttc: number) => {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+      setSourceStats({ exact: 0, average: 0, topTracks: 0 });
+
+      const stateData = location.state;
+      const mode = searchParams.get('mode');
+      let dataToUse: ConcertData[] = [];
+      let pName = 'Ma Setlist';
+
+      let runMode: 'past' | 'future' | 'pastFestival' = 'past';
+      let festivalDate: string | undefined;
+      let festivalCity: string | undefined;
+      let festivalYear: string | undefined;
+
+      if (stateData?.artists && Array.isArray(stateData.artists)) {
+        // Cas festival — détection passé/futur via festivalEndDate si présent
+        const endDateRaw = stateData.festivalEndDate || stateData.endDate;
+        const endDate = endDateRaw ? new Date(endDateRaw) : null;
+        const isPastFestival = endDate && !isNaN(endDate.getTime()) && endDate < new Date();
+
+        runMode = isPastFestival ? 'pastFestival' : 'future';
+        if (isPastFestival && endDate) {
+          const startRaw = stateData.festivalStartDate || stateData.startDate || endDateRaw;
+          const startDate = new Date(startRaw);
+          const d = String(startDate.getDate()).padStart(2, '0');
+          const m = String(startDate.getMonth() + 1).padStart(2, '0');
+          const y = startDate.getFullYear();
+          festivalDate = `${d}-${m}-${y}`;
+          festivalYear = String(y);
+          festivalCity = stateData.festivalCity || stateData.cityName;
+          console.log(
+            `[Generate] Festival passé détecté → mode pastFestival (date=${festivalDate}, ville=${festivalCity || 'n/a'})`
+          );
+        }
+
+        dataToUse = stateData.artists.map((artistName: string) => ({
+          artist: artistName,
+          isFuture: runMode === 'future',
+          id: artistName.toLowerCase().replace(/\s+/g, '-'),
+        }));
+        pName = stateData.eventName || 'Festival Playlist';
+      } else if (localStorage.getItem('playlistData')) {
+        const raw = localStorage.getItem('playlistData');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          runMode = 'future';
+          dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
+          pName = parsed.playlistName || 'Ma Sélection';
+        }
+      } else if (mode === 'upcoming') {
+        runMode = 'future';
+        const futureRaw = localStorage.getItem('selected_upcoming');
+        if (futureRaw) {
+          const parsed = JSON.parse(futureRaw);
+          dataToUse = parsed.map((c: any) => ({
+            ...c,
+            artist: c.artist?.name || c.artist,
+            isFuture: true,
+          }));
+          pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : 'Ma Sélection Future';
+        }
+      } else {
+        runMode = 'past';
+        const pastRaw = localStorage.getItem('selected_concerts');
+        if (pastRaw) {
+          const parsed = JSON.parse(pastRaw);
+          dataToUse = parsed.map((c: any) => ({
+            ...c,
+            artist: c.artist?.name || c.artist,
+            isFuture: false,
+          }));
+          pName = parsed.length === 1 ? `${dataToUse[0].artist} Live` : 'Mes Concerts (Passés)';
+        }
+      }
+
+      if (dataToUse.length === 0) throw new Error('Aucun concert ou artiste sélectionné.');
+      setPlaylistName(pName);
+
+      const messages: Record<string, string> = {
+        past: 'Extraction des setlists réelles...',
+        future: `Récupération des morceaux live pour ${dataToUse.length} artiste(s)...`,
+        pastFestival: 'Recherche des setlists du festival...',
+      };
+      setLoadingMessage(messages[runMode]);
+
+      const finalTracks: Track[] = [];
+      const stats = { exact: 0, average: 0, topTracks: 0 };
+      let processedCount = 0;
+
+      for (const item of dataToUse) {
+        processedCount++;
+        const currentArtist =
+          typeof item.artist === 'string'
+            ? item.artist
+            : item.artist?.name || 'Artiste Inconnu';
+        setLoadingMessage(`${processedCount}/${dataToUse.length} - ${currentArtist}...`);
+
+        try {
+          const { tracks, source } = await getTracksForItem(item, currentArtist, {
+            mode: runMode,
+            topTracksCount: ttc,
+            festivalDate,
+            festivalCity,
+            festivalYear,
+          });
+
+          tracks.forEach((t) => finalTracks.push({ ...t, source }));
+          stats[source] += tracks.length;
+        } catch (err) {
+          console.error(`Erreur pour ${currentArtist}:`, err);
+        }
+      }
+
+      const uniqueTracks = deduplicateTracks(finalTracks);
+      if (uniqueTracks.length === 0) {
+        throw new Error('Impossible de récupérer des morceaux pour ces artistes.');
+      }
+
+      setSongs(uniqueTracks);
+      setSourceStats(stats);
+      setMainArtist(uniqueTracks[0].artist);
+      lastUsedCountRef.current = ttc;
+      setCountDirty(false);
+
+      if (user) {
+        try {
+          await saveToHistory({
+            userId: user.id,
+            playlistName: pName,
+            tracks: uniqueTracks.map((t) => ({ artist: t.artist })),
+            sourceType: runMode === 'past' ? 'concert' : 'upcoming',
+            platform: 'csv',
+          });
+        } catch (err) {
+          console.error('Erreur historique:', err);
+        }
+      }
+
+      localStorage.removeItem('playlistData');
+      localStorage.removeItem('selected_concerts');
+      localStorage.removeItem('selected_upcoming');
+
+      toast.success(`${uniqueTracks.length} morceaux prêts`, {
+        description:
+          stats.exact + stats.average > 0
+            ? `🎯 ${stats.exact} exacts · 📊 ${stats.average} moyenne · 🎵 ${stats.topTracks} top tracks`
+            : undefined,
+      });
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Une erreur est survenue.');
+      toast.error('Erreur de génération');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================================================
+  // ACTIONS EXPORT
+  // ============================================================
   const copyTracksToClipboard = async (): Promise<boolean> => {
     try {
       const text = songs.map((s) => `${s.artist} - ${s.name}`).join('\n');
@@ -340,10 +539,6 @@ export default function Generate() {
     }
   };
 
-  /**
-   * Vérifie connexion + quota, puis incrémente le compteur d'exports.
-   * Retourne true si l'export est autorisé.
-   */
   const guardAndTrackExport = async (): Promise<boolean> => {
     if (!user) {
       toast.error('Connectez-vous pour exporter');
@@ -368,25 +563,15 @@ export default function Generate() {
     return true;
   };
 
-  /**
-   * Action principale : copie la liste ET ouvre TuneMyMusic dans un nouvel onglet
-   * en une seule action utilisateur. Affiche un toast explicite avec les 2
-   * dernières étapes à faire côté TMM (cliquer "Texte" puis Ctrl+V).
-   */
   const handleExportToTMM = async () => {
     const allowed = await guardAndTrackExport();
     if (!allowed) return;
-
     const ok = await copyTracksToClipboard();
     if (!ok) {
       toast.error('Erreur lors de la copie. Réessayez.');
       return;
     }
-
-    // Important : window.open doit être appelé de manière synchrone après
-    // l'écriture du presse-papier pour ne pas être bloqué par le navigateur.
     window.open(TMM_URL, '_blank', 'noopener,noreferrer');
-
     setExported(true);
     toast.success('Liste copiée et TuneMyMusic ouvert !', {
       duration: 6000,
@@ -395,14 +580,9 @@ export default function Generate() {
     setTimeout(() => setExported(false), 4000);
   };
 
-  /**
-   * Action secondaire : copie seule (sans ouvrir TMM), au cas où l'utilisateur
-   * a déjà l'onglet ouvert ou veut coller la liste ailleurs.
-   */
   const handleCopyOnly = async () => {
     const allowed = await guardAndTrackExport();
     if (!allowed) return;
-
     const ok = await copyTracksToClipboard();
     if (!ok) {
       toast.error('Erreur lors de la copie');
@@ -431,6 +611,11 @@ export default function Generate() {
     toast.success('Fichier téléchargé !');
   };
 
+  const handleSliderChange = (val: number) => {
+    setTopTracksCount(val);
+    setCountDirty(val !== lastUsedCountRef.current);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center text-white">
@@ -442,9 +627,26 @@ export default function Generate() {
     );
   }
 
-  // --- LOGIQUE DE PROTECTION DE LA LISTE ---
   const canViewFullList = !!user && quota.canExport;
   const visibleSongs = canViewFullList ? songs : songs.slice(0, 3);
+
+  const SourceBadge = ({ source }: { source?: Track['source'] }) => {
+    if (!source) return null;
+    const config = {
+      exact: { icon: Target, color: 'text-green-400 bg-green-500/10', label: 'Setlist exacte' },
+      average: { icon: BarChart3, color: 'text-blue-400 bg-blue-500/10', label: 'Setlist moyenne' },
+      topTracks: { icon: Disc, color: 'text-orange-400 bg-orange-500/10', label: 'Top tracks' },
+    }[source];
+    const Icon = config.icon;
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${config.color}`}
+        title={config.label}
+      >
+        <Icon className="w-2.5 h-2.5" />
+      </span>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white pt-16 flex flex-col font-sans">
@@ -465,7 +667,6 @@ export default function Generate() {
           </div>
         ) : (
           <div className="animate-in fade-in duration-500">
-            {/* TITRE */}
             <div className="text-center pt-4 sm:pt-8 pb-3 sm:pb-6">
               <h1 className="text-3xl sm:text-5xl md:text-8xl font-black italic uppercase mb-2 tracking-tighter leading-none">
                 C'est prêt !
@@ -478,6 +679,27 @@ export default function Generate() {
               </p>
             </div>
 
+            {/* STATS DES SOURCES UTILISÉES */}
+            {(sourceStats.exact > 0 || sourceStats.average > 0 || sourceStats.topTracks > 0) && (
+              <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                {sourceStats.exact > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/30">
+                    <Target className="w-3 h-3" /> {sourceStats.exact} setlist exacte
+                  </span>
+                )}
+                {sourceStats.average > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                    <BarChart3 className="w-3 h-3" /> {sourceStats.average} setlist moyenne
+                  </span>
+                )}
+                {sourceStats.topTracks > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30">
+                    <Disc className="w-3 h-3" /> {sourceStats.topTracks} top tracks live
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* BADGE QUOTA */}
             <div className="mb-4 text-center">
               {!user ? (
@@ -485,10 +707,7 @@ export default function Generate() {
                   <Lock className="w-3 h-3 text-orange-400" />
                   <span className="text-orange-400 font-bold">Non connecté</span>
                   <span className="text-gray-400">•</span>
-                  <button
-                    onClick={() => navigate('/auth')}
-                    className="text-blue-400 underline font-semibold"
-                  >
+                  <button onClick={() => navigate('/auth')} className="text-blue-400 underline font-semibold">
                     Connexion
                   </button>
                 </div>
@@ -499,18 +718,11 @@ export default function Generate() {
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-xs">
-                  <span
-                    className={`font-bold ${
-                      quota.remaining === 0 ? 'text-red-400' : 'text-blue-400'
-                    }`}
-                  >
+                  <span className={`font-bold ${quota.remaining === 0 ? 'text-red-400' : 'text-blue-400'}`}>
                     {quota.remaining}/2 exports restants
                   </span>
                   {quota.remaining === 0 && (
-                    <button
-                      onClick={() => navigate('/subscription')}
-                      className="text-yellow-500 underline font-semibold"
-                    >
+                    <button onClick={() => navigate('/subscription')} className="text-yellow-500 underline font-semibold">
                       → Premium
                     </button>
                   )}
@@ -518,9 +730,43 @@ export default function Generate() {
               )}
             </div>
 
-            {/* ====================================================== */}
-            {/* CTA PRINCIPAL : EXPORT TMM EN 1 CLIC (mobile + desktop) */}
-            {/* ====================================================== */}
+            {/* SLIDER TOP TRACKS — affiché si pertinent */}
+            {(sourceStats.topTracks > 0 || sourceStats.average === 0) && (
+              <div className="mb-6 bg-[#252525] border border-[#333] rounded-xl p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#a0a0a0]">
+                    Top tracks par artiste (en repli)
+                  </label>
+                  <span className="text-lg font-black text-[#4d94ff] tabular-nums">
+                    {topTracksCount}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={MIN_TOP_TRACKS}
+                  max={MAX_TOP_TRACKS}
+                  step={1}
+                  value={topTracksCount}
+                  onChange={(e) => handleSliderChange(parseInt(e.target.value, 10))}
+                  className="w-full accent-[#4d94ff] h-2"
+                />
+                <div className="flex justify-between text-[10px] text-[#666] mt-1">
+                  <span>{MIN_TOP_TRACKS}</span>
+                  <span>{MAX_TOP_TRACKS}</span>
+                </div>
+                {countDirty && (
+                  <Button
+                    onClick={() => processGeneration(topTracksCount)}
+                    className="w-full mt-3 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-xs"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-2" />
+                    Régénérer avec {topTracksCount} morceaux/artiste
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* CTA PRINCIPAL : EXPORT TMM EN 1 CLIC */}
             <div className="mb-6 sm:mb-8">
               <Button
                 onClick={handleExportToTMM}
@@ -556,60 +802,45 @@ export default function Generate() {
               </p>
             </div>
 
-            {/* ====================================================== */}
-            {/* MODE D'EMPLOI VISUEL DES 2 ÉTAPES RESTANTES SUR TMM    */}
-            {/* ====================================================== */}
+            {/* MODE D'EMPLOI VISUEL DES 2 ÉTAPES RESTANTES SUR TMM */}
             <div className="mb-8 bg-[#252525] border border-[#333] rounded-2xl p-4 sm:p-6">
               <p className="text-xs sm:text-sm text-[#a0a0a0] font-bold uppercase tracking-wider mb-4 text-center">
                 Une fois sur TuneMyMusic, plus que 2 étapes :
               </p>
-
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-3 sm:p-5 flex flex-col items-center text-center">
                   <div className="bg-[#4d94ff] text-white w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-sm sm:text-base mb-2 sm:mb-3">
                     1
                   </div>
-                  <div className="mb-2 sm:mb-3">
-                    <Music className="w-6 h-6 sm:w-8 sm:h-8 text-[#4d94ff] mx-auto" />
-                  </div>
+                  <Music className="w-6 h-6 sm:w-8 sm:h-8 text-[#4d94ff] mx-auto mb-2 sm:mb-3" />
                   <p className="text-xs sm:text-sm font-bold text-white leading-tight">
                     Cliquez sur{' '}
-                    <span className="bg-[#4d94ff]/20 text-[#4d94ff] px-1.5 py-0.5 rounded">
-                      Texte
-                    </span>
+                    <span className="bg-[#4d94ff]/20 text-[#4d94ff] px-1.5 py-0.5 rounded">Texte</span>
                   </p>
                   <p className="text-[10px] sm:text-xs text-[#666] mt-1 sm:mt-2">
                     comme source de la playlist
                   </p>
                 </div>
-
                 <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-3 sm:p-5 flex flex-col items-center text-center">
                   <div className="bg-[#00ff00] text-black w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-black text-sm sm:text-base mb-2 sm:mb-3">
                     2
                   </div>
-                  <div className="mb-2 sm:mb-3">
-                    <ClipboardPaste className="w-6 h-6 sm:w-8 sm:h-8 text-[#00ff00] mx-auto" />
-                  </div>
+                  <ClipboardPaste className="w-6 h-6 sm:w-8 sm:h-8 text-[#00ff00] mx-auto mb-2 sm:mb-3" />
                   <p className="text-xs sm:text-sm font-bold text-white leading-tight">
                     Collez avec{' '}
                     <span className="bg-[#00ff00]/20 text-[#00ff00] px-1.5 py-0.5 rounded font-mono">
                       Ctrl+V
                     </span>
                   </p>
-                  <p className="text-[10px] sm:text-xs text-[#666] mt-1 sm:mt-2">
-                    (ou ⌘+V sur Mac)
-                  </p>
+                  <p className="text-[10px] sm:text-xs text-[#666] mt-1 sm:mt-2">(ou ⌘+V sur Mac)</p>
                 </div>
               </div>
-
               <p className="text-center text-[10px] sm:text-xs text-[#666] mt-4 leading-relaxed">
                 Choisissez ensuite votre plateforme (Spotify, Deezer, Apple Music, Qobuz…) et c'est fini.
               </p>
             </div>
 
-            {/* ====================================================== */}
-            {/* ACTIONS SECONDAIRES                                    */}
-            {/* ====================================================== */}
+            {/* ACTIONS SECONDAIRES */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-8 justify-center">
               <Button
                 onClick={handleCopyOnly}
@@ -652,9 +883,7 @@ export default function Generate() {
               )}
             </div>
 
-            {/* ====================================================== */}
-            {/* APERÇU DE LA LISTE                                     */}
-            {/* ====================================================== */}
+            {/* APERÇU DE LA LISTE avec badges */}
             <details className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden mb-6" open>
               <summary className="cursor-pointer p-4 sm:p-6 font-black uppercase text-sm sm:text-lg hover:bg-[#2d2d2d] transition-colors flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -672,13 +901,15 @@ export default function Generate() {
                       {String(idx + 1).padStart(2, '0')}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white truncate text-sm sm:text-base">{song.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-white truncate text-sm sm:text-base">{song.name}</p>
+                        <SourceBadge source={song.source} />
+                      </div>
                       <p className="text-xs sm:text-sm text-[#a0a0a0] truncate">{song.artist}</p>
                     </div>
                   </div>
                 ))}
 
-                {/* EFFET DE MASQUAGE */}
                 {!canViewFullList && songs.length > 3 && (
                   <div className="relative mt-2 overflow-hidden rounded bg-[#1a1a1a] p-3 pointer-events-none select-none">
                     <div className="blur-[3px] opacity-40 space-y-3">
@@ -697,12 +928,9 @@ export default function Generate() {
                         </div>
                       </div>
                     </div>
-
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-t from-[#252525] via-[#252525]/80 to-[#252525]/20 pointer-events-auto">
                       <Button
-                        onClick={() =>
-                          !user ? navigate('/auth') : navigate('/subscription')
-                        }
+                        onClick={() => (!user ? navigate('/auth') : navigate('/subscription'))}
                         className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold shadow-lg shadow-yellow-500/20"
                       >
                         <Lock className="w-4 h-4 mr-2" />
