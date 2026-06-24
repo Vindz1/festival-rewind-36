@@ -58,6 +58,76 @@ async function fetchSetlistWithRetry(url, headers, maxRetries = 3) {
   return { ok: false, data: null, status: lastStatus };
 }
 
+/**
+ * Extrait tous les morceaux d'une setlist Setlist.fm en gérant tous les cas vides.
+ * Filtre les "tape" (musique d'ambiance), "Unknown", etc.
+ */
+function extractSongsFromSetlist(setlist, defaultArtist) {
+  const songs = [];
+  if (!setlist?.sets?.set) return songs;
+  const sets = Array.isArray(setlist.sets.set) ? setlist.sets.set : [setlist.sets.set];
+  for (const s of sets) {
+    if (!s.song) continue;
+    const songArr = Array.isArray(s.song) ? s.song : [s.song];
+    for (const song of songArr) {
+      if (
+        song.tape ||
+        !song.name ||
+        song.name.trim() === '' ||
+        song.name.toLowerCase().includes('unknown')
+      ) continue;
+      songs.push({
+        artist: song.cover?.name || defaultArtist,
+        name: song.name.trim(),
+      });
+    }
+  }
+  return songs;
+}
+
+/**
+ * Agrège plusieurs setlists pour calculer la "setlist moyenne" d'un artiste.
+ * Retourne les morceaux triés par fréquence décroissante.
+ *
+ * Stratégie : on garde les morceaux joués dans au moins MIN_FREQ_RATIO des setlists,
+ * avec un plafond à MAX_SONGS pour rester proche d'une vraie taille de setlist.
+ */
+function aggregateSetlists(setlists, defaultArtist) {
+  const MIN_FREQ_RATIO = 0.3; // un morceau doit apparaître dans ≥30% des setlists
+  const MAX_SONGS = 20; // taille max d'une "average setlist"
+
+  if (setlists.length === 0) return [];
+
+  // Normalisation pour grouper "Heir Apparent" / "heir apparent" / etc.
+  const normalize = (s) =>
+    s.toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^\w\s]/g, '');
+
+  const songCounts = new Map(); // normalized name -> { count, originalName, artist }
+  for (const setlist of setlists) {
+    const songs = extractSongsFromSetlist(setlist, defaultArtist);
+    // Dédoublonne au sein d'une même setlist (rappels, etc.)
+    const uniqueInThis = new Set();
+    for (const song of songs) {
+      const key = normalize(song.name);
+      if (uniqueInThis.has(key)) continue;
+      uniqueInThis.add(key);
+      const existing = songCounts.get(key);
+      if (existing) existing.count++;
+      else songCounts.set(key, { count: 1, originalName: song.name, artist: song.artist });
+    }
+  }
+
+  const minOccurrences = Math.max(2, Math.ceil(setlists.length * MIN_FREQ_RATIO));
+
+  const ranked = Array.from(songCounts.values())
+    .filter((s) => s.count >= minOccurrences)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, MAX_SONGS)
+    .map((s) => ({ artist: s.artist, name: s.originalName }));
+
+  return ranked;
+}
+
 export default async function handler(req, res) {
   const { q, action, username, upcoming, type, p } = req.query;
   const SETLIST_FM_API_KEY = process.env.SETLIST_FM_API_KEY || 'votre-clé-api';
@@ -223,7 +293,121 @@ export default async function handler(req, res) {
     }
 
     // ========================================================================
-    // CAS 3 : Songs (inchangé)
+    // CAS 3 : Find Setlists — recherche multi-critères pour un artiste
+    //   - artistName (requis)
+    //   - year (optionnel)
+    //   - date (optionnel, format dd-MM-yyyy comme Setlist.fm)
+    //   - cityName (optionnel)
+    //   - venueName (optionnel)
+    // Utilisé pour : retrouver la setlist d'un artiste à un festival passé
+    // ========================================================================
+    if (action === 'findSetlists') {
+      const { artistName, year, date, cityName, venueName } = req.query;
+      if (!artistName) return res.status(400).json({ error: 'artistName requis' });
+
+      const params = new URLSearchParams({ artistName, p: '1' });
+      if (year) params.set('year', year);
+      if (date) params.set('date', date);
+      if (cityName) params.set('cityName', cityName);
+      if (venueName) params.set('venueName', venueName);
+
+      const url = `https://api.setlist.fm/rest/1.0/search/setlists?${params.toString()}`;
+      const result = await fetchSetlistWithRetry(url, HEADERS);
+
+      if (!result.ok) {
+        // 404 = aucun résultat, ce n'est pas une erreur applicative
+        if (result.status === 404) {
+          return res.status(200).json({ results: [], total: 0 });
+        }
+        return res.status(result.status || 500).json({
+          error: 'Erreur Setlist.fm',
+          status: result.status,
+        });
+      }
+
+      return res.status(200).json({
+        results: result.data.setlist || [],
+        total: result.data.total || 0,
+      });
+    }
+
+    // ========================================================================
+    // CAS 4 : Average Setlist — la setlist "type" d'un artiste sur une année
+    // Récupère jusqu'à N pages de setlists pour cet artiste/année, agrège,
+    // renvoie les morceaux les plus joués.
+    //   - artistName (requis)
+    //   - year (optionnel mais recommandé)
+    //   - maxPages (optionnel, défaut 5 = jusqu'à 100 setlists analysées)
+    // ========================================================================
+    if (action === 'averageSetlist') {
+      const { artistName, year } = req.query;
+      const maxPages = Math.min(parseInt(req.query.maxPages || '5', 10), 10);
+
+      if (!artistName) return res.status(400).json({ error: 'artistName requis' });
+
+      const baseParams = new URLSearchParams({ artistName });
+      if (year) baseParams.set('year', year);
+
+      const buildUrl = (page) => {
+        const p = new URLSearchParams(baseParams);
+        p.set('p', String(page));
+        return `https://api.setlist.fm/rest/1.0/search/setlists?${p.toString()}`;
+      };
+
+      // Page 1 d'abord pour connaître le total
+      const firstPage = await fetchSetlistWithRetry(buildUrl(1), HEADERS);
+      if (!firstPage.ok) {
+        if (firstPage.status === 404) {
+          return res.status(200).json({ tracks: [], analyzedSetlists: 0, source: 'average' });
+        }
+        return res.status(firstPage.status || 500).json({
+          error: 'Erreur Setlist.fm',
+          status: firstPage.status,
+        });
+      }
+
+      const itemsPerPage = firstPage.data.itemsPerPage || 20;
+      const totalAvailable = firstPage.data.total || 0;
+      const totalPages = Math.min(Math.ceil(totalAvailable / itemsPerPage), maxPages);
+
+      console.log(
+        `[averageSetlist] ${artistName}${year ? ' (' + year + ')' : ''} — ${totalAvailable} setlists disponibles, on en analyse jusqu'à ${maxPages * itemsPerPage}`
+      );
+
+      const allSetlists = [...(firstPage.data.setlist || [])];
+
+      // Pages restantes en parallèle (batch de 4)
+      if (totalPages > 1) {
+        const remainingPages = [];
+        for (let p = 2; p <= totalPages; p++) remainingPages.push(p);
+        const BATCH_SIZE = 4;
+        for (let i = 0; i < remainingPages.length; i += BATCH_SIZE) {
+          const batch = remainingPages.slice(i, i + BATCH_SIZE);
+          const results = await Promise.all(
+            batch.map((p) => fetchSetlistWithRetry(buildUrl(p), HEADERS))
+          );
+          for (const r of results) {
+            if (r.ok && r.data?.setlist) allSetlists.push(...r.data.setlist);
+          }
+          if (i + BATCH_SIZE < remainingPages.length) await sleep(600);
+        }
+      }
+
+      const tracks = aggregateSetlists(allSetlists, artistName);
+
+      console.log(
+        `[averageSetlist] ${artistName} — ${allSetlists.length} setlists analysées → ${tracks.length} morceaux retenus`
+      );
+
+      return res.status(200).json({
+        tracks,
+        analyzedSetlists: allSetlists.length,
+        source: 'average',
+      });
+    }
+
+    // ========================================================================
+    // CAS 5 : Songs (inchangé)
     // ========================================================================
     if (action === 'songs') {
       const { setlistId } = req.query;
