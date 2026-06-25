@@ -60,9 +60,34 @@ const MIN_TOP_TRACKS = 3;
 const MAX_TOP_TRACKS = 10;
 const DEFAULT_TOP_TRACKS = 5;
 
-// Mots-clés "live" pour filtrer les albums/morceaux en priorité dans iTunes
-const LIVE_KEYWORDS = /\b(live|concert|tour|unplugged|en concert|au zenith|en direct)\b/i;
-const YEAR_IN_TITLE = /\b(19|20)\d{2}\b/;
+/**
+ * Détecte si un morceau iTunes est une version live, en se basant sur :
+ *   - le nom du morceau (signal le plus fiable : convention iTunes "(Live ...)")
+ *   - le nom de l'album/collection (live, concert, unplugged...)
+ *   - les patterns combinés année/tour ("Live 1985", "Tour 2018")
+ * On ne se contente PAS de matcher un mot-clé isolé dans l'album, ça génère
+ * trop de faux positifs sur les rééditions studio "Greatest Hits 2010" etc.
+ */
+const isLiveTrack = (trackName: string, collectionName: string): boolean => {
+  const t = trackName || '';
+  const c = collectionName || '';
+
+  // Signal 1 : "(Live ...)" ou " - Live ..." dans le titre du morceau — très fiable
+  if (/[(\[\-]\s*live\b/i.test(t)) return true;
+  if (/\blive\s+(at|from|in|on)\b/i.test(t)) return true;
+
+  // Signal 2 : mots-clés live dans le nom d'album
+  if (/\b(unplugged|en concert|en direct|au zenith)\b/i.test(c)) return true;
+  if (/\blive\b/i.test(c)) return true;
+  if (/\bconcert\b/i.test(c) && !/concerto/i.test(c)) return true;
+
+  // Signal 3 : patterns combinés année + tour/live dans l'album
+  if (/\blive\s+(19|20)\d{2}\b/i.test(c)) return true;
+  if (/\b(19|20)\d{2}\s+tour\b/i.test(c)) return true;
+  if (/\btour\s+(19|20)\d{2}\b/i.test(c)) return true;
+
+  return false;
+};
 
 export default function Generate() {
   const location = useLocation();
@@ -83,6 +108,23 @@ export default function Generate() {
   const [topTracksCount, setTopTracksCount] = useState<number>(DEFAULT_TOP_TRACKS);
   const lastUsedCountRef = useRef<number>(DEFAULT_TOP_TRACKS);
   const [countDirty, setCountDirty] = useState(false);
+
+  // Préférence live à l'export (sauvegardée en localStorage)
+  const [preferLive, setPreferLive] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('setlive_prefer_live');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('setlive_prefer_live', String(preferLive));
+    } catch {
+      /* localStorage bloqué */
+    }
+  }, [preferLive]);
 
   // Stats des sources utilisées (pour afficher un récap)
   const [sourceStats, setSourceStats] = useState<{ exact: number; average: number; topTracks: number }>({
@@ -255,67 +297,110 @@ export default function Generate() {
 
   // ============================================================
   // PLAN C — top tracks iTunes avec priorité aux pistes live
+  // Stratégie en 2 phases :
+  //   Phase 1 : recherche dédiée "Artist live" — iTunes met les live en tête
+  //   Phase 2 (fallback) : recherche générique "Artist" — pour les artistes
+  //              qui n'ont pas (ou peu) de live sur iTunes
   // ============================================================
   const fetchTopTracks = async (artist: string, limit: number): Promise<Track[]> => {
     const countries = ['US', 'GB', 'FR'];
     const normalizedSearchArtist = normalizeString(artist);
-    let allResults: any[] = [];
 
+    const itemArtistMatches = (item: any): boolean => {
+      const n = normalizeString(item.artistName || '');
+      return n === normalizedSearchArtist || n.includes(normalizedSearchArtist);
+    };
+
+    // ---------- PHASE 1 : recherche dédiée "Artist live" ----------
+    const liveCandidates: any[] = [];
     for (const country of countries) {
       try {
-        const response = await fetch(
-          `https://itunes.apple.com/search?term=${encodeURIComponent(
-            artist
-          )}&entity=song&limit=150&country=${country}`
-        );
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(
+          artist + ' live'
+        )}&entity=song&limit=100&country=${country}`;
+        const response = await fetch(url);
         if (!response.ok) continue;
         const data = await response.json();
         if (!data.results?.length) continue;
 
-        const scored = data.results
-          .map((item: any) => {
-            const normalizedItemArtist = normalizeString(item.artistName || '');
-            const artistScore =
-              normalizedItemArtist === normalizedSearchArtist
-                ? 100
-                : normalizedItemArtist.includes(normalizedSearchArtist)
-                ? 50
-                : 0;
-            const albumName = item.collectionName || '';
-            const trackName = item.trackName || '';
-            const isLive =
-              LIVE_KEYWORDS.test(albumName) ||
-              LIVE_KEYWORDS.test(trackName) ||
-              YEAR_IN_TITLE.test(albumName);
-            return { ...item, artistScore, isLive };
-          })
-          .filter((item: any) => item.artistScore > 20);
+        // On garde uniquement les morceaux du bon artiste ET qui sont effectivement live
+        const filtered = data.results.filter(
+          (item: any) =>
+            itemArtistMatches(item) && isLiveTrack(item.trackName, item.collectionName)
+        );
+        liveCandidates.push(...filtered);
 
-        allResults = [...allResults, ...scored];
-        const liveSoFar = allResults.filter((r) => r.isLive).length;
-        if (liveSoFar >= limit * 3) break;
+        // Si on a déjà largement de quoi servir, on arrête de scanner les autres pays
+        if (liveCandidates.length >= limit * 4) break;
       } catch (err) {
-        console.error(`Erreur iTunes (${country}) pour ${artist}:`, err);
+        console.error(`Erreur iTunes live (${country}) pour ${artist}:`, err);
       }
     }
 
-    const liveTracks = allResults
-      .filter((r) => r.isLive)
-      .sort((a, b) => b.artistScore - a.artistScore)
-      .map((item) => ({ artist: item.artistName, name: item.trackName }));
+    const dedupedLive = deduplicateTracks(
+      liveCandidates.map((item: any) => ({
+        artist: item.artistName,
+        name: item.trackName,
+      }))
+    );
 
-    const studioTracks = allResults
-      .filter((r) => !r.isLive)
-      .sort((a, b) => b.artistScore - a.artistScore)
-      .map((item) => ({ artist: item.artistName, name: item.trackName }));
-
-    const dedupedLive = deduplicateTracks(liveTracks);
     if (dedupedLive.length >= limit) {
+      console.log(
+        `[fetchTopTracks] ${artist} : ${dedupedLive.length} live trouvés → on sert ${limit}`
+      );
       return dedupedLive.slice(0, limit);
     }
-    const remaining = limit - dedupedLive.length;
-    const dedupedStudio = deduplicateTracks(studioTracks).slice(0, remaining);
-    return [...dedupedLive, ...dedupedStudio];
+
+    // ---------- PHASE 2 (fallback) : recherche générique "Artist" ----------
+    console.log(
+      `[fetchTopTracks] ${artist} : seulement ${dedupedLive.length} live trouvés, fallback studio`
+    );
+
+    const studioCandidates: any[] = [];
+    for (const country of countries) {
+      try {
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(
+          artist
+        )}&entity=song&limit=100&country=${country}`;
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (!data.results?.length) continue;
+
+        const filtered = data.results.filter((item: any) => itemArtistMatches(item));
+        studioCandidates.push(...filtered);
+
+        if (studioCandidates.length >= limit * 3) break;
+      } catch (err) {
+        console.error(`Erreur iTunes studio (${country}) pour ${artist}:`, err);
+      }
+    }
+
+    // Re-tri : les live qu'on a trouvés en phase 1 restent prioritaires,
+    // puis on complète avec du studio (ou live oublié) dans l'ordre iTunes
+    const dedupedStudio = deduplicateTracks(
+      studioCandidates.map((item: any) => ({
+        artist: item.artistName,
+        name: item.trackName,
+      }))
+    );
+
+    const combined: Track[] = [];
+    const seen = new Set<string>();
+    const pushIfNew = (t: Track) => {
+      const key = `${normalizeString(t.artist)}|||${normalizeString(t.name)}`;
+      if (!seen.has(key) && combined.length < limit) {
+        seen.add(key);
+        combined.push(t);
+      }
+    };
+
+    // 1. Les live trouvés en phase 1 d'abord
+    dedupedLive.forEach(pushIfNew);
+    // 2. Compléter avec du studio
+    dedupedStudio.forEach(pushIfNew);
+
+    return combined;
   };
 
   // ============================================================
@@ -528,9 +613,24 @@ export default function Generate() {
   // ============================================================
   // ACTIONS EXPORT
   // ============================================================
+
+  /**
+   * Formate une ligne d'export en ajoutant éventuellement un hint "(Live)"
+   * pour biaiser TuneMyMusic/Spotify vers les versions live.
+   * On ne double-tague pas les morceaux dont le nom contient déjà "live".
+   */
+  const formatTrackForExport = (track: Track): string => {
+    const base = `${track.artist} - ${track.name}`;
+    if (!preferLive) return base;
+    // Détecte si "live" est déjà présent comme mot (évite le double tag sur
+    // les morceaux issus du Plan C Phase 1 type "Enter Sandman (Live at FOO)")
+    if (/\blive\b/i.test(track.name)) return base;
+    return `${base} (Live)`;
+  };
+
   const copyTracksToClipboard = async (): Promise<boolean> => {
     try {
-      const text = songs.map((s) => `${s.artist} - ${s.name}`).join('\n');
+      const text = songs.map(formatTrackForExport).join('\n');
       await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
@@ -598,7 +698,7 @@ export default function Generate() {
   };
 
   const handleDownload = () => {
-    const text = songs.map((s) => `${s.artist} - ${s.name}`).join('\n');
+    const text = songs.map(formatTrackForExport).join('\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -765,6 +865,28 @@ export default function Generate() {
                 )}
               </div>
             )}
+
+            {/* TOGGLE PRÉFÉRENCE LIVE */}
+            <div className="mb-3 flex items-center justify-center">
+              <label
+                className="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-full bg-[#252525] border border-[#333] hover:border-[#4d94ff] transition-colors group"
+                title={
+                  preferLive
+                    ? 'Le hint "(Live)" est ajouté à chaque morceau pour que Spotify/Deezer/Apple Music préfèrent la version live quand elle existe.'
+                    : 'Export standard : Spotify/Deezer choisiront la version la plus écoutée (souvent studio).'
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={preferLive}
+                  onChange={(e) => setPreferLive(e.target.checked)}
+                  className="accent-[#4d94ff] w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs sm:text-sm font-bold text-[#a0a0a0] group-hover:text-white transition-colors">
+                  🎤 Préférer les versions live
+                </span>
+              </label>
+            </div>
 
             {/* CTA PRINCIPAL : EXPORT TMM EN 1 CLIC */}
             <div className="mb-6 sm:mb-8">
