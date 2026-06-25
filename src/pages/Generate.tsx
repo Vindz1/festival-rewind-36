@@ -109,6 +109,17 @@ export default function Generate() {
   const lastUsedCountRef = useRef<number>(DEFAULT_TOP_TRACKS);
   const [countDirty, setCountDirty] = useState(false);
 
+  // Cache des données source au premier appel — permet à "Régénérer" de fonctionner
+  // sans relire localStorage (qui a été nettoyé en fin de première génération)
+  const sourceContextRef = useRef<{
+    dataToUse: ConcertData[];
+    playlistName: string;
+    runMode: 'past' | 'future' | 'pastFestival';
+    festivalDate?: string;
+    festivalCity?: string;
+    festivalYear?: string;
+  } | null>(null);
+
   // Préférence live à l'export (sauvegardée en localStorage)
   const [preferLive, setPreferLive] = useState<boolean>(() => {
     try {
@@ -142,6 +153,9 @@ export default function Generate() {
   });
 
   useEffect(() => {
+    // Toute nouvelle navigation (location.state change) doit repartir des sources,
+    // pas du cache d'une précédente génération.
+    sourceContextRef.current = null;
     processGeneration(DEFAULT_TOP_TRACKS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -458,78 +472,102 @@ export default function Generate() {
       setErrorMsg('');
       setSourceStats({ exact: 0, average: 0, topTracks: 0 });
 
-      const stateData = location.state;
-      const mode = searchParams.get('mode');
       let dataToUse: ConcertData[] = [];
       let pName = 'Ma Setlist';
-
       let runMode: 'past' | 'future' | 'pastFestival' = 'past';
       let festivalDate: string | undefined;
       let festivalCity: string | undefined;
       let festivalYear: string | undefined;
 
-      if (stateData?.artists && Array.isArray(stateData.artists)) {
-        // Cas festival — détection passé/futur via festivalEndDate si présent
-        const endDateRaw = stateData.festivalEndDate || stateData.endDate;
-        const endDate = endDateRaw ? new Date(endDateRaw) : null;
-        const isPastFestival = endDate && !isNaN(endDate.getTime()) && endDate < new Date();
-
-        runMode = isPastFestival ? 'pastFestival' : 'future';
-        if (isPastFestival && endDate) {
-          const startRaw = stateData.festivalStartDate || stateData.startDate || endDateRaw;
-          const startDate = new Date(startRaw);
-          const d = String(startDate.getDate()).padStart(2, '0');
-          const m = String(startDate.getMonth() + 1).padStart(2, '0');
-          const y = startDate.getFullYear();
-          festivalDate = `${d}-${m}-${y}`;
-          festivalYear = String(y);
-          festivalCity = stateData.festivalCity || stateData.cityName;
-          console.log(
-            `[Generate] Festival passé détecté → mode pastFestival (date=${festivalDate}, ville=${festivalCity || 'n/a'})`
-          );
-        }
-
-        dataToUse = stateData.artists.map((artistName: string) => ({
-          artist: artistName,
-          isFuture: runMode === 'future',
-          id: artistName.toLowerCase().replace(/\s+/g, '-'),
-        }));
-        pName = stateData.eventName || 'Festival Playlist';
-      } else if (localStorage.getItem('playlistData')) {
-        const raw = localStorage.getItem('playlistData');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          runMode = 'future';
-          dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
-          pName = parsed.playlistName || 'Ma Sélection';
-        }
-      } else if (mode === 'upcoming') {
-        runMode = 'future';
-        const futureRaw = localStorage.getItem('selected_upcoming');
-        if (futureRaw) {
-          const parsed = JSON.parse(futureRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: true,
-          }));
-          pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : 'Ma Sélection Future';
-        }
+      // Si on a déjà parsé les sources lors d'une précédente génération,
+      // on les réutilise directement (cas du clic "Régénérer" après changement de slider).
+      if (sourceContextRef.current) {
+        const ctx = sourceContextRef.current;
+        dataToUse = ctx.dataToUse;
+        pName = ctx.playlistName;
+        runMode = ctx.runMode;
+        festivalDate = ctx.festivalDate;
+        festivalCity = ctx.festivalCity;
+        festivalYear = ctx.festivalYear;
       } else {
-        runMode = 'past';
-        const pastRaw = localStorage.getItem('selected_concerts');
-        if (pastRaw) {
-          const parsed = JSON.parse(pastRaw);
-          dataToUse = parsed.map((c: any) => ({
-            ...c,
-            artist: c.artist?.name || c.artist,
-            isFuture: false,
+        // Premier passage : on parse les sources (location.state ou localStorage)
+        const stateData = location.state;
+        const mode = searchParams.get('mode');
+
+        if (stateData?.artists && Array.isArray(stateData.artists)) {
+          // Cas festival — détection passé/futur via festivalEndDate si présent
+          const endDateRaw = stateData.festivalEndDate || stateData.endDate;
+          const endDate = endDateRaw ? new Date(endDateRaw) : null;
+          const isPastFestival = endDate && !isNaN(endDate.getTime()) && endDate < new Date();
+
+          runMode = isPastFestival ? 'pastFestival' : 'future';
+          if (isPastFestival && endDate) {
+            const startRaw = stateData.festivalStartDate || stateData.startDate || endDateRaw;
+            const startDate = new Date(startRaw);
+            const d = String(startDate.getDate()).padStart(2, '0');
+            const m = String(startDate.getMonth() + 1).padStart(2, '0');
+            const y = startDate.getFullYear();
+            festivalDate = `${d}-${m}-${y}`;
+            festivalYear = String(y);
+            festivalCity = stateData.festivalCity || stateData.cityName;
+            console.log(
+              `[Generate] Festival passé détecté → mode pastFestival (date=${festivalDate}, ville=${festivalCity || 'n/a'})`
+            );
+          }
+
+          dataToUse = stateData.artists.map((artistName: string) => ({
+            artist: artistName,
+            isFuture: runMode === 'future',
+            id: artistName.toLowerCase().replace(/\s+/g, '-'),
           }));
-          pName = parsed.length === 1 ? `${dataToUse[0].artist} Live` : 'Mes Concerts (Passés)';
+          pName = stateData.eventName || 'Festival Playlist';
+        } else if (localStorage.getItem('playlistData')) {
+          const raw = localStorage.getItem('playlistData');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            runMode = 'future';
+            dataToUse = parsed.songs.map((s: any) => ({ artist: s.artist, isFuture: true }));
+            pName = parsed.playlistName || 'Ma Sélection';
+          }
+        } else if (mode === 'upcoming') {
+          runMode = 'future';
+          const futureRaw = localStorage.getItem('selected_upcoming');
+          if (futureRaw) {
+            const parsed = JSON.parse(futureRaw);
+            dataToUse = parsed.map((c: any) => ({
+              ...c,
+              artist: c.artist?.name || c.artist,
+              isFuture: true,
+            }));
+            pName = parsed.length === 1 ? `${dataToUse[0].artist} - Warmup` : 'Ma Sélection Future';
+          }
+        } else {
+          runMode = 'past';
+          const pastRaw = localStorage.getItem('selected_concerts');
+          if (pastRaw) {
+            const parsed = JSON.parse(pastRaw);
+            dataToUse = parsed.map((c: any) => ({
+              ...c,
+              artist: c.artist?.name || c.artist,
+              isFuture: false,
+            }));
+            pName = parsed.length === 1 ? `${dataToUse[0].artist} Live` : 'Mes Concerts (Passés)';
+          }
         }
+
+        if (dataToUse.length === 0) throw new Error('Aucun concert ou artiste sélectionné.');
+
+        // Mémorise le contexte pour les futures régénérations
+        sourceContextRef.current = {
+          dataToUse,
+          playlistName: pName,
+          runMode,
+          festivalDate,
+          festivalCity,
+          festivalYear,
+        };
       }
 
-      if (dataToUse.length === 0) throw new Error('Aucun concert ou artiste sélectionné.');
       setPlaylistName(pName);
 
       const messages: Record<string, string> = {
