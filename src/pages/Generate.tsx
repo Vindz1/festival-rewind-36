@@ -630,9 +630,10 @@ export default function Generate() {
         }
       }
 
-      localStorage.removeItem('playlistData');
-      localStorage.removeItem('selected_concerts');
-      localStorage.removeItem('selected_upcoming');
+      // NOTE : on ne vide PLUS localStorage ici. Garder les sources permet à la
+      // régénération de fonctionner même si le cache ref est perdu pour une raison
+      // quelconque (remontage de composant, StrictMode dev, etc.). MyConcerts
+      // écrase ces clés à chaque nouvelle sélection donc pas de pollution durable.
 
       toast.success(`${uniqueTracks.length} morceaux prêts`, {
         description:
@@ -868,41 +869,44 @@ export default function Generate() {
               )}
             </div>
 
-            {/* SLIDER TOP TRACKS — affiché si pertinent */}
-            {(sourceStats.topTracks > 0 || sourceStats.average === 0) && (
-              <div className="mb-6 bg-[#252525] border border-[#333] rounded-xl p-4">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#a0a0a0]">
-                    Top tracks par artiste (en repli)
-                  </label>
-                  <span className="text-lg font-black text-[#4d94ff] tabular-nums">
-                    {topTracksCount}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={MIN_TOP_TRACKS}
-                  max={MAX_TOP_TRACKS}
-                  step={1}
-                  value={topTracksCount}
-                  onChange={(e) => handleSliderChange(parseInt(e.target.value, 10))}
-                  className="w-full accent-[#4d94ff] h-2"
-                />
-                <div className="flex justify-between text-[10px] text-[#666] mt-1">
-                  <span>{MIN_TOP_TRACKS}</span>
-                  <span>{MAX_TOP_TRACKS}</span>
-                </div>
-                {countDirty && (
-                  <Button
-                    onClick={() => processGeneration(topTracksCount)}
-                    className="w-full mt-3 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-xs"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-2" />
-                    Régénérer avec {topTracksCount} morceaux/artiste
-                  </Button>
-                )}
+            {/* SLIDER TOP TRACKS — toujours visible, sert pour le Plan C */}
+            <div className="mb-6 bg-[#252525] border border-[#333] rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#a0a0a0]">
+                  Top tracks par artiste
+                </label>
+                <span className="text-lg font-black text-[#4d94ff] tabular-nums">
+                  {topTracksCount}
+                </span>
               </div>
-            )}
+              <input
+                type="range"
+                min={MIN_TOP_TRACKS}
+                max={MAX_TOP_TRACKS}
+                step={1}
+                value={topTracksCount}
+                onChange={(e) => handleSliderChange(parseInt(e.target.value, 10))}
+                className="w-full accent-[#4d94ff] h-2"
+              />
+              <div className="flex justify-between text-[10px] text-[#666] mt-1">
+                <span>{MIN_TOP_TRACKS}</span>
+                <span>{MAX_TOP_TRACKS}</span>
+              </div>
+              <p className="text-[10px] text-[#666] mt-2 leading-relaxed">
+                {sourceStats.topTracks > 0
+                  ? `Actuellement ${sourceStats.topTracks} top tracks dans la playlist. Modifie pour régénérer avec plus ou moins.`
+                  : `S'applique aux artistes sans setlist disponible (Plan C). Modifie avant de régénérer.`}
+              </p>
+              {countDirty && (
+                <Button
+                  onClick={() => processGeneration(topTracksCount)}
+                  className="w-full mt-3 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold text-xs"
+                >
+                  <RefreshCw className="w-3 h-3 mr-2" />
+                  Régénérer avec {topTracksCount} morceaux/artiste
+                </Button>
+              )}
+            </div>
 
             {/* TOGGLE PRÉFÉRENCE LIVE */}
             <div className="mb-3 flex items-center justify-center">
