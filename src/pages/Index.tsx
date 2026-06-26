@@ -27,7 +27,7 @@ export default function Index() {
   }, [user, authLoading]);
 
   return (
-    <div className="min-h-screen text-white relative bg-[#0a0a0a]">
+    <div className="min-h-screen text-white relative">
       <Header />
 
       {/* ====================================================== */}
