@@ -27,20 +27,21 @@ export default function Index() {
   }, [user, authLoading]);
 
   return (
-    <div className="min-h-screen text-white relative">
+    <div className="min-h-screen text-white relative bg-[#0a0a0a]">
       <Header />
 
       {/* ====================================================== */}
       {/* HERO — image de fond + baseline + formulaire + 2 CTAs   */}
       {/* ====================================================== */}
 
-      {/* Image de fond : absolute h-60vh sur mobile (scroll naturel, pas de saut, dézoom),
-          fixed full-viewport sur desktop (effet parallax conservé) */}
-      <div className="absolute sm:fixed inset-x-0 top-0 h-[60vh] sm:inset-0 sm:h-auto -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
+      {/* Image de fond : FIXED partout (effet ancré). Sur mobile, hauteur limitée à 60vh pour dézoomer
+          le format paysage de l'image. object-[20%_top] décale légèrement vers la gauche du visuel
+          (= image "glisse à droite" du point de vue de l'œil) pour révéler "Vos" qui était coupé. */}
+      <div className="fixed inset-x-0 top-0 h-[60vh] sm:inset-0 sm:h-auto -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
         <img 
           src="/og-image.jpg" 
           alt=""
-          className="w-full h-full object-cover object-top sm:object-center"
+          className="w-full h-full object-cover object-[20%_top] sm:object-center"
         />
       </div>
 
