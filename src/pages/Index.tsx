@@ -27,15 +27,16 @@ export default function Index() {
   }, [user, authLoading]);
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white relative">
       <Header />
 
       {/* ====================================================== */}
       {/* HERO — image de fond + baseline + formulaire + 2 CTAs   */}
       {/* ====================================================== */}
 
-      {/* Image de fond FIXE - object-cover partout, object-top sur mobile pour cadrer le haut de l'image */}
-      <div className="fixed inset-0 -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
+      {/* Image de fond : absolute h-60vh sur mobile (scroll naturel, pas de saut, dézoom),
+          fixed full-viewport sur desktop (effet parallax conservé) */}
+      <div className="absolute sm:fixed inset-x-0 top-0 h-[60vh] sm:inset-0 sm:h-auto -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
         <img 
           src="/og-image.jpg" 
           alt=""
@@ -44,8 +45,9 @@ export default function Index() {
       </div>
 
       <section className="relative min-h-screen flex flex-col justify-end">
-        {/* Shade progressif du bas */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent from-60% via-[#0a0a0a]/80 via-90% to-[#0a0a0a] pointer-events-none" />
+        {/* Shade progressif du bas — démarre à 40% sur mobile pour fondre l'image (h=60vh) avec le noir,
+            et reste à 60% sur desktop comme avant */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent from-40% via-[#0a0a0a]/80 via-70% to-[#0a0a0a] sm:from-60% sm:via-90% pointer-events-none" />
         
         <div className="relative z-10 w-full pb-6 sm:pb-10">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
