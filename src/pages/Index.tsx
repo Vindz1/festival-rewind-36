@@ -35,13 +35,13 @@ export default function Index() {
       {/* ====================================================== */}
 
       {/* Image de fond : FIXED partout (effet ancré). Sur mobile, hauteur limitée à 60vh pour dézoomer
-          le format paysage de l'image. object-[42%_top] décale légèrement vers la gauche du visuel
+          le format paysage de l'image. object-[40%_top] décale légèrement vers la gauche du visuel
           (= image "glisse à droite" du point de vue de l'œil) pour révéler "Vos" qui était coupé. */}
       <div className="fixed inset-x-0 top-0 h-[60vh] sm:inset-0 sm:h-auto -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
         <img 
           src="/og-image.jpg" 
           alt=""
-          className="w-full h-full object-cover object-[42%_top] sm:object-center"
+          className="w-full h-full object-cover object-[40%_top] sm:object-center"
         />
       </div>
 
