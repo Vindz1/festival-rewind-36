@@ -34,12 +34,12 @@ export default function Index() {
       {/* HERO — image de fond + baseline + formulaire + 2 CTAs   */}
       {/* ====================================================== */}
 
-      {/* Image de fond FIXE - CONTAIN sur mobile, COVER sur desktop */}
+      {/* Image de fond FIXE - object-cover partout, object-top sur mobile pour cadrer le haut de l'image */}
       <div className="fixed inset-0 -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
         <img 
           src="/og-image.jpg" 
           alt=""
-          className="w-full h-full object-contain sm:object-cover object-top sm:object-center"
+          className="w-full h-full object-cover object-top sm:object-center"
         />
       </div>
 
