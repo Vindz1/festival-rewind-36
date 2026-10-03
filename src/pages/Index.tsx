@@ -14,7 +14,7 @@ import { saveToHistory } from '@/lib/history';
 import { checkExportQuota, trackExport, type ExportQuota } from '@/lib/subscription';
 import {
   ItemReport, Profile, StudioItem, Track,
-  buildPlaylist, downloadFile, loadProfile, toCsv, toText,
+  accessFor, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
 } from '@/lib/engine';
 
 const EMPTY_PROFILE: Profile = { username: '', pastItems: [], futureItems: [], loading: false, loaded: false, partial: false };
@@ -107,16 +107,28 @@ export default function Index() {
     }
   };
 
-  // ----- export (même règles qu'avant : copie = compte + quota, fichiers libres) -----
+  // ----- droits : anonyme / gratuit / Premium (règles dans engine.ts → accessFor) -----
+  const access = accessFor(user, quota, result?.tracks.length ?? 0);
+  const unlock = () => navigate(user ? '/subscription' : '/auth');
+
+  // ----- export : « Copier » = connecté + quota (consomme 1 export) ; .txt/.csv = Premium -----
   const onExport = async (kind: 'copy' | 'txt' | 'csv') => {
     if (!result) return;
     const slug = result.name.replace(/[^a-z0-9]/gi, '_');
-    if (kind === 'txt') return downloadFile(`${slug}.txt`, toText(result.tracks, preferLive), 'text/plain');
-    if (kind === 'csv') return downloadFile(`${slug}.csv`, toCsv(result.tracks, preferLive), 'text/csv');
+
+    if (kind === 'txt' || kind === 'csv') {
+      if (!access.canFiles) {
+        toast.error('Le téléchargement de fichiers est réservé aux membres Premium.', { action: { label: 'Voir Premium', onClick: () => navigate('/subscription') } });
+        return;
+      }
+      return kind === 'txt'
+        ? downloadFile(`${slug}.txt`, toText(result.tracks, preferLive), 'text/plain')
+        : downloadFile(`${slug}.csv`, toCsv(result.tracks, preferLive), 'text/csv');
+    }
 
     if (!user) { toast.error('Connecte-toi pour copier la liste'); navigate('/auth'); return; }
-    if (quota && !quota.canExport) {
-      toast.error('Quota épuisé : 2 exports par an en version gratuite.', { action: { label: 'Premium', onClick: () => navigate('/subscription') } });
+    if (!access.canCopy) {
+      toast.error('Quota épuisé : 2 exports par an en version gratuite.', { duration: 5000, action: { label: 'Passer Premium', onClick: () => navigate('/subscription') } });
       return;
     }
     try {
@@ -124,15 +136,19 @@ export default function Index() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       const ok = await trackExport(user.id, result.name, result.tracks.length);
-      if (ok && quota && !quota.isPremium) setQuota({ ...quota, remaining: Math.max(0, quota.remaining - 1), used: quota.used + 1, canExport: quota.remaining - 1 > 0 });
-      toast.success('Liste copiée !');
+      if (ok && quota && !quota.isPremium) {
+        const remaining = Math.max(0, quota.remaining - 1);
+        setQuota({ ...quota, remaining, used: quota.used + 1, canExport: remaining > 0 });
+        toast.success(`Liste copiée ! ${remaining} export(s) restant(s)`);
+      } else toast.success('Liste copiée !');
     } catch { toast.error('Impossible de copier la liste'); }
   };
 
-  const quotaText = !user
-    ? 'Connecte-toi pour copier la liste. Les fichiers .txt et .csv sont libres.'
-    : quota?.isPremium ? 'Exports illimités (Premium).'
-    : quota ? `${quota.remaining} export(s) restant(s) sur ta période gratuite.` : '';
+  const quotaText =
+    access.tier === 'anon' ? 'Non connecté : seuls les 3 premiers titres sont visibles. Connecte-toi pour voir et copier la liste.'
+    : access.tier === 'premium' ? 'Premium : copie illimitée, .txt et .csv inclus.'
+    : access.canCopy ? `${quota?.remaining ?? 0}/2 exports restants (année glissante). Le téléchargement .txt/.csv est réservé à Premium.`
+    : 'Quota épuisé (2 exports par an en gratuit) : passe Premium pour voir et exporter toute la liste.';
 
   return (
     <div className="sl-page">
@@ -172,6 +188,7 @@ export default function Index() {
           <Result
             name={result.name} tracks={result.tracks} report={result.report}
             preferLive={preferLive} copied={copied} quotaText={quotaText}
+            access={access} onUnlock={unlock}
             onRemoveTrack={(i) => setResult((r) => (r ? { ...r, tracks: r.tracks.filter((_, k) => k !== i) } : r))}
             onExport={onExport}
           />
