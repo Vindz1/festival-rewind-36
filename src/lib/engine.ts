@@ -340,6 +340,32 @@ export function parseLineup(text: string): string[] {
   return out;
 }
 
+// ---------- droits d'accès (anonyme / gratuit / Premium) ----------
+// Mêmes règles que l'ancien site :
+//  • anonyme  : 3 premiers titres visibles, rien d'exportable
+//  • gratuit  : liste complète + « Copier » tant qu'il reste des exports (2 par année glissante) ; pas de .txt/.csv
+//  • Premium  : tout, sans limite
+// Fail-closed : tant que le quota n'est pas chargé (ou en cas d'erreur), on reste en mode restreint.
+export const PREVIEW_COUNT = 3;
+export interface Access {
+  tier: 'anon' | 'free' | 'premium';
+  canViewFull: boolean;
+  canCopy: boolean;
+  canFiles: boolean;
+  visible: number;
+}
+export function accessFor(user: unknown, quota: { canExport: boolean; isPremium: boolean } | null | undefined, total: number): Access {
+  const tier: Access['tier'] = !user ? 'anon' : quota?.isPremium ? 'premium' : 'free';
+  const canViewFull = !!user && !!quota?.canExport;
+  return {
+    tier,
+    canViewFull,
+    canCopy: canViewFull,
+    canFiles: tier === 'premium' && !!quota?.canExport,
+    visible: canViewFull ? total : Math.min(PREVIEW_COUNT, total),
+  };
+}
+
 // ---------- exports ----------
 const label = (t: Track, live: boolean) => (live ? `${t.name} (Live)` : t.name);
 export const toText = (tracks: Track[], live: boolean) => tracks.map((t) => `${t.artist} - ${label(t, live)}`).join('\n');
