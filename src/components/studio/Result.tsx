@@ -23,7 +23,8 @@ const SRC: Record<Source, { label: string; color: string }> = {
 export default function Result({ name, tracks, report, preferLive, copied, quotaText, onRemoveTrack, onExport }: Props) {
   const counts = (['exact', 'average', 'top'] as Source[]).map((s) => ({ s, n: tracks.filter((t) => t.source === s).length }));
   const artists = new Set(tracks.map((t) => t.artist)).size;
-  const empty = report.filter((r) => r.source === 'none');
+  const empty = report.filter((r) => r.source === 'none' && r.reason !== 'ratelimit');
+  const limited = report.filter((r) => r.reason === 'ratelimit');
   const fallback = report.filter((r) => r.source === 'top' || r.source === 'average');
 
   return (
@@ -47,11 +48,16 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
         ))}
       </div>
 
-      {(empty.length > 0 || fallback.length > 0) && (
+      {(empty.length > 0 || limited.length > 0 || fallback.length > 0) && (
         <div className="mt-4 space-y-2">
           {empty.length > 0 && (
             <p className="rounded-r-lg border-l-4 border-[var(--sl-wine)] bg-[var(--sl-paper-dim)] p-3 text-xs">
               <strong className="text-[var(--sl-wine)]">Aucun titre trouvé pour :</strong> {empty.map((r) => r.label).join(', ')}
+            </p>
+          )}
+          {limited.length > 0 && (
+            <p className="rounded-r-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-3 text-xs">
+              <strong>iTunes a ralenti pour :</strong> {limited.map((r) => r.label).join(', ')}. Relance « Générer la playlist » : les autres sont déjà en mémoire, seuls ceux-ci seront recherchés.
             </p>
           )}
           {fallback.length > 0 && (
