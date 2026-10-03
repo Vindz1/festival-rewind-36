@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Vinyl Collection — Analytics Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js"></script>
+    <style>
+        :root {
+            --ink: #14110D;
+            --ink-soft: #221C15;
+            --paper: #FBF7EF;
+            --paper-dim: #F1E9D8;
+            --floor: #E6DFCD;
+            --groove: #DED2B8;
+            --muted: #8A8272;
+
+            --gold: #C9971C;
+            --gold-bright: #E3B23C;
+            --wine: #7A2530;
+            --wine-bright: #E2717B;
+            --forest: #2F5B3E;
+            --forest-bright: #7FC08D;
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: 'IBM Plex Sans', system-ui, sans-serif; background: var(--floor); color: var(--ink); }
+        .font-display { font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+        .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+        .bg-ink { background: var(--ink); }
+        .bg-ink-soft { background: var(--ink-soft); }
+        .bg-paper { background: var(--paper); }
+        .bg-paper-dim { background: var(--paper-dim); }
+        .bg-groove { background: var(--groove); }
+        .bg-forest { background: var(--forest); }
+        .text-paper { color: var(--paper); }
+        .text-paper-dim { color: var(--paper-dim); }
+        .text-ink { color: var(--ink); }
+        .text-muted { color: var(--muted); }
+        .text-gold { color: var(--gold); }
+        .text-gold-bright { color: var(--gold-bright); }
+        .text-wine { color: var(--wine); }
+        .text-wine-bright { color: var(--wine-bright); }
+        .text-forest { color: var(--forest); }
+        .text-forest-bright { color: var(--forest-bright); }
+        .border-groove { border-color: var(--groove); }
+        .border-gold { border-color: var(--gold); }
+        .border-forest { border-color: var(--forest); }
+        .border-wine { border-color: var(--wine); }
+        .border-ink { border-color: var(--ink); }
+        .bg-gold { background: var(--gold); }
+
+        input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+        ::selection { background: var(--gold); color: var(--ink); }
+
+        .chart-container { position: relative; height: 260px; width: 100%; margin: 0 auto; }
+        .decor-groove circle { stroke: var(--paper); }
+
+        #logConsole::-webkit-scrollbar { width: 6px; }
+        #logConsole::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+
+        @media print {
+            @page { size: landscape; margin: 12mm; }
+            html, body { background: #ffffff !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            #mainContainer { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+            .decor-groove { display: none !important; }
+            #dashboardSection { padding: 0 !important; }
+            .shadow-sm, .shadow-md, .shadow-xl, .shadow-2xl { box-shadow: none !important; border: 1px solid var(--groove) !important; }
+            .chart-container { height: 190px !important; page-break-inside: avoid; }
+            table { page-break-inside: auto; width: 100%; font-size: 8pt !important; border-collapse: collapse; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            thead { display: table-header-group; }
+            th { background: var(--ink) !important; color: var(--paper) !important; border-bottom: 2px solid var(--ink) !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            td { border-bottom: 1px solid var(--groove) !important; padding: 4px 6px !important; }
+            .page-break { page-break-before: always; margin-top: 0 !important; padding-top: 6mm; }
+            .avoid-break { page-break-inside: avoid; margin-bottom: 6mm; }
+            .print-grid-4 { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 0.75rem !important; }
+            .print-grid-2 { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
+            .kpi-hero, .section-tab, #reportHeader { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body class="p-2 md:p-8">
+
+    <div id="mainContainer" class="max-w-[92rem] mx-auto bg-paper rounded-lg shadow-2xl overflow-hidden">
+
+        <header id="reportHeader" class="relative bg-ink text-paper px-6 md:px-12 py-10 md:py-14 overflow-hidden">
+            <svg class="decor-groove absolute -right-14 -top-14 w-64 h-64 opacity-[0.10] pointer-events-none" viewBox="0 0 200 200" fill="none" stroke-width="1">
+                <circle cx="100" cy="100" r="92"/><circle cx="100" cy="100" r="76"/><circle cx="100" cy="100" r="60"/>
+                <circle cx="100" cy="100" r="44"/><circle cx="100" cy="100" r="28"/><circle cx="100" cy="100" r="12"/>
+            </svg>
+            <div class="relative z-10">
+                <span class="font-mono text-[10px] md:text-xs tracking-[0.3em] uppercase text-gold-bright">Évaluation de marché &amp; analyse de collection</span>
+                <h1 class="font-display text-5xl md:text-7xl uppercase mt-2 leading-[0.95]">My Vinyl Collection</h1>
+            </div>
+        </header>
+
+        <div class="p-4 md:p-10">
+
+            <div class="bg-paper-dim p-5 rounded-lg border border-groove mb-8 text-sm no-print" id="helpSection">
+                <h3 class="font-mono font-semibold mb-3 uppercase tracking-widest text-xs text-muted">Avant de commencer</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-paper p-4 rounded border border-groove">
+                        <strong class="block text-gold mb-1 font-mono text-xs uppercase tracking-wide">1. Le token</strong>
+                        Allez sur Discogs.com &gt; Profil &gt; <em>Paramètres</em> &gt; <em>Développeurs</em>. Cliquez sur <strong>« Générer un nouveau jeton d'accès »</strong> et copiez la clé. Il est enregistré dans ce navigateur : à saisir une seule fois.
+                    </div>
+                    <div class="bg-paper p-4 rounded border border-groove">
+                        <strong class="block text-gold mb-1 font-mono text-xs uppercase tracking-wide">2. Le champ « Prix d'achat »</strong>
+                        L'état du disque et de la pochette sont lus automatiquement. Le prix d'achat, en revanche, <strong>n'existe pas par défaut sur Discogs</strong> : il faut avoir créé un champ personnalisé dont le nom contient « prix » ou « achat » dans sa collection (Collection &gt; icône réglages &gt; Champs personnalisés). Sans ce champ, les prix d'achat resteront à 0€.
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-paper-dim p-6 rounded-lg border border-groove mb-8 no-print" id="configSection">
+                <div class="mb-6 bg-paper p-4 rounded border border-groove">
+                    <label class="flex items-center justify-between mb-2">
+                        <span class="font-mono text-xs uppercase tracking-widest text-muted">Clé API Discogs (obligatoire)</span>
+                        <button type="button" id="forgetTokenBtn" class="font-mono text-[10px] text-muted hover:text-wine underline">Oublier le token</button>
+                    </label>
+                    <input type="password" id="tokenInput" class="w-full p-3 border border-groove rounded bg-paper" placeholder="Collez le jeton ici...">
+                    <p class="font-mono text-[10px] text-muted mt-1">Enregistré uniquement dans ce navigateur (localStorage), jamais transmis ailleurs qu'à Discogs.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-paper p-5 rounded border border-groove flex flex-col">
+                        <h3 class="font-mono text-xs uppercase tracking-widest text-muted mb-4 border-b border-groove pb-2">Scanner toute ma collection</h3>
+                        <p class="text-xs text-muted mb-4">Récupère automatiquement tous les vinyles de votre collection Discogs (dossier « All »), avec états et prix d'achat renseignés sur le site.</p>
+                        <div class="flex-grow"></div>
+                        <button id="runBtn" class="w-full bg-ink hover:bg-ink-soft text-paper font-mono font-semibold uppercase tracking-widest py-3 rounded text-xs transition-colors">Lancer le scan complet</button>
+                    </div>
+
+                    <div class="bg-paper p-5 rounded border border-groove">
+                        <h3 class="font-mono text-xs uppercase tracking-widest text-muted mb-4 border-b border-groove pb-2">Estimer un vinyle à l'unité</h3>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <input id="manArtist" placeholder="Artiste" class="p-2 text-xs border border-groove rounded bg-paper">
+                            <input id="manTitle" placeholder="Titre" class="p-2 text-xs border border-groove rounded bg-paper">
+                        </div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <hr class="flex-grow border-groove">
+                            <span class="font-mono text-[9px] text-muted uppercase tracking-widest">Identification exacte par code-barres</span>
+                            <hr class="flex-grow border-groove">
+                        </div>
+                        <input id="manBarcode" placeholder="Code-barres exact (ex: 602537861775)" class="w-full mb-4 p-2 text-xs border border-gold bg-paper-dim rounded">
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select id="manMedia" class="p-2 text-[10px] border border-groove rounded bg-paper font-mono font-semibold uppercase">
+                                <option value="Mint (M)">Disque : Mint (M)</option>
+                                <option value="Near Mint (NM or M-)">Disque : Near Mint (NM)</option>
+                                <option value="Very Good Plus (VG+)" selected>Disque : VG+</option>
+                                <option value="Very Good (VG)">Disque : VG</option>
+                                <option value="Good Plus (G+)">Disque : G+</option>
+                                <option value="Good (G)">Disque : G</option>
+                            </select>
+                            <select id="manSleeve" class="p-2 text-[10px] border border-groove rounded bg-paper font-mono font-semibold uppercase">
+                                <option value="Mint (M)">Poch. : Mint (M)</option>
+                                <option value="Near Mint (NM or M-)">Poch. : Near Mint (NM)</option>
+                                <option value="Very Good Plus (VG+)" selected>Poch. : VG+</option>
+                                <option value="Very Good (VG)">Poch. : VG</option>
+                                <option value="Good Plus (G+)">Poch. : G+</option>
+                                <option value="Good (G)">Poch. : G</option>
+                            </select>
+                        </div>
+                        <input id="manAchat" placeholder="Prix d'achat (optionnel)" type="number" class="w-full mb-4 p-2 text-xs border border-groove rounded bg-paper">
+                        <button id="manBtn" class="w-full bg-gold hover:opacity-90 text-ink font-mono font-semibold uppercase tracking-widest py-3 rounded text-xs transition-opacity">Estimer ce vinyle</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="progressSection" class="hidden mb-10 no-print">
+                <div class="flex flex-col gap-2 mb-2">
+                    <span id="progressText" class="font-mono text-sm font-semibold text-gold uppercase tracking-wide">Interrogation des archives mondiales en cours...</span>
+                    <div class="flex justify-between items-end">
+                        <div class="w-full bg-paper-dim border border-groove h-4 rounded-full overflow-hidden mr-4">
+                            <div id="progressBar" class="bg-gold h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <span id="progressPercent" class="font-display text-xl min-w-[50px] text-right">0%</span>
+                    </div>
+                </div>
+                <div id="logConsole" class="mt-4 bg-ink text-paper-dim p-4 rounded font-mono text-xs h-48 overflow-y-auto leading-relaxed">
+                    Connexion sécurisée aux serveurs Discogs...<br>
+                </div>
+            </div>
+
+            <div id="barcodePickerSection" class="hidden mb-10 no-print">
+                <div class="bg-paper-dim border border-groove rounded-lg p-6">
+                    <h3 class="font-mono text-xs uppercase tracking-widest text-muted mb-1">⚠ Ce code-barres correspond à plusieurs pressages</h3>
+                    <p class="text-xs text-muted mb-4">Discogs partage parfois un même code-barres entre plusieurs éditions différentes (réimpressions, pays, distributeurs). Choisis celle qui correspond exactement à ton exemplaire :</p>
+                    <div id="barcodeCandidatesList" class="space-y-2"></div>
+                    <button onclick="cancelBarcodePicker()" class="mt-4 font-mono text-[10px] text-muted hover:text-wine underline">Annuler</button>
+                </div>
+            </div>
+
+            <div id="dashboardSection" class="hidden space-y-10">
+
+                <div class="flex flex-wrap justify-between items-center gap-4 no-print mb-4 border-b border-groove pb-4">
+                    <span id="genDate" class="font-mono text-[10px] text-muted uppercase tracking-widest"></span>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="startNewScan()" class="bg-paper-dim hover:bg-wine hover:text-paper border border-wine text-wine font-mono text-xs font-semibold uppercase tracking-widest py-3 px-6 rounded-lg transition-colors">↺ Nouveau scan</button>
+                        <button onclick="addAnotherVinyl()" class="bg-paper-dim hover:bg-groove border border-groove text-ink font-mono text-xs font-semibold uppercase tracking-widest py-3 px-6 rounded-lg transition-colors">+ Ajouter un vinyle</button>
+                        <button onclick="exportToCSV()" class="bg-forest hover:opacity-90 text-paper font-mono text-xs font-semibold uppercase tracking-widest py-3 px-6 rounded-lg transition-opacity">Télécharger le CSV</button>
+                        <button onclick="triggerPrint()" id="exportBtn" class="bg-ink hover:bg-ink-soft text-paper font-mono text-xs font-semibold uppercase tracking-widest py-3 px-6 rounded-lg transition-colors">Télécharger le PDF</button>
+                    </div>
+                </div>
+
+                <div class="bg-paper-dim border-l-4 border-gold p-4 rounded-r-lg avoid-break">
+                    <h4 class="font-mono text-xs uppercase tracking-widest text-muted mb-2">Méthodologie de calcul des cotes</h4>
+                    <p class="text-xs leading-relaxed">
+                        <strong>1. Base Argus :</strong> valeur médiane issue de l'historique des ventes mondiales Discogs.<br>
+                        <strong>2. Ajustement :</strong> le standard du marché est le <em>Very Good Plus (VG+)</em>. Un <em>Mint (M)</em> vaut 150% de cette base, un <em>Good (G)</em> 40%, etc.<br>
+                        <strong>3. Règle d'or :</strong> le disque représente <strong>70%</strong> de la cote, la pochette <strong>30%</strong>. Le calcul croise ces deux pondérations.<br>
+                        <strong>4. Indice de confiance</strong> (<span class="text-forest">●</span>/<span class="text-gold">●</span>/<span class="text-wine">●</span> sous chaque cote) : indicateur heuristique, pas une probabilité statistique — Discogs ne fournit ni le nombre de ventes ayant servi à une suggestion de prix, ni le prix moyen des ventes récentes (visible sur le site, pas exposé par l'API). Basé principalement sur l'écart entre la cote et le prix le plus bas actuellement en vente sur cette release précise, ajusté par la liquidité du marché. Un point rouge signale une cote à vérifier manuellement sur Discogs plutôt qu'à prendre pour argent comptant.
+                    </p>
+                </div>
+
+                <div id="confidenceWarning" class="hidden bg-paper-dim border-l-4 border-wine p-4 rounded-r-lg avoid-break">
+                    <p class="text-xs leading-relaxed">
+                        <span class="text-wine font-semibold">⚠ <span id="confidenceWarningCount"></span> disque(s)</span> ont une cote basée sur un marché fin ou des données incertaines (point rouge, confiance &lt; 40%). Ces valeurs pèsent dans le total mais méritent une vérification manuelle sur la page Discogs de la release concernée avant d'en tirer des conclusions.
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-3 avoid-break">
+                    <span class="section-tab bg-ink text-gold-bright font-mono text-[11px] uppercase tracking-[0.25em] px-3 py-1.5 rounded">Face A</span>
+                    <span class="font-display text-2xl uppercase">Vue d'ensemble</span>
+                    <span class="flex-grow border-t border-groove"></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 print-grid-4 gap-4 avoid-break">
+                    <div class="kpi-hero bg-ink text-paper p-5 rounded-lg border-l-4 border-gold">
+                        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-gold-bright">Valeur marché globale</p>
+                        <p id="totalEstimGlobal" class="font-display text-3xl md:text-4xl mt-2">0 €</p>
+                        <p class="font-mono text-[9px] text-paper/50 mt-2">Ajustée selon l'état exact</p>
+                    </div>
+                    <div class="bg-paper border border-groove p-5 rounded-lg border-l-4 border-groove">
+                        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">Achats renseignés</p>
+                        <p id="totalAchat" class="font-display text-3xl mt-2">0 €</p>
+                        <p class="font-mono text-[9px] text-muted mt-2">Somme des dépenses tracées</p>
+                    </div>
+                    <div id="pvCard" class="bg-paper border border-groove p-5 rounded-lg border-l-4 border-forest">
+                        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">Gain financier</p>
+                        <p id="totalPv" class="font-display text-3xl mt-2">0 €</p>
+                        <p class="font-mono text-[9px] text-muted mt-2">Plus-value sur les achats</p>
+                    </div>
+                    <div id="roiCard" class="bg-paper border border-groove p-5 rounded-lg border-l-4 border-gold">
+                        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">Rentabilité (ROI)</p>
+                        <p id="totalRoi" class="font-display text-3xl mt-2">0 %</p>
+                        <p class="font-mono text-[9px] text-muted mt-2">Croissance de l'investissement</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 print-grid-2 gap-6 avoid-break">
+                    <div class="bg-paper p-4 border border-groove rounded-lg">
+                        <h3 class="font-mono text-[10px] uppercase tracking-[0.2em] mb-4 text-center text-muted">Pressages par année</h3>
+                        <div class="chart-container"><canvas id="yearsChart"></canvas></div>
+                    </div>
+                    <div class="bg-paper p-4 border border-groove rounded-lg">
+                        <h3 class="font-mono text-[10px] uppercase tracking-[0.2em] mb-4 text-center text-muted">Écarts de pressage <br/><span class="text-[9px]">(année initiale / exemplaire)</span></h3>
+                        <div class="chart-container"><canvas id="ecartChart"></canvas></div>
+                    </div>
+                    <div class="bg-paper p-4 border border-groove rounded-lg">
+                        <h3 class="font-mono text-[10px] uppercase tracking-[0.2em] mb-4 text-center text-muted">Ajouts par mois <br/><span class="text-[9px]">en nombre</span></h3>
+                        <div class="chart-container"><canvas id="purchasesCountChart"></canvas></div>
+                    </div>
+                    <div class="bg-paper p-4 border border-groove rounded-lg">
+                        <h3 class="font-mono text-[10px] uppercase tracking-[0.2em] mb-4 text-center text-muted">Valeur ajoutée par mois <br/><span class="text-[9px]">en euros, cote marché</span></h3>
+                        <div class="chart-container"><canvas id="purchasesValueChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 avoid-break mt-4">
+                    <span class="section-tab bg-ink text-gold-bright font-mono text-[11px] uppercase tracking-[0.25em] px-3 py-1.5 rounded">Face B</span>
+                    <span class="font-display text-2xl uppercase">Temps forts</span>
+                    <span class="flex-grow border-t border-groove"></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 print-grid-2 gap-6 avoid-break">
+                    <section>
+                        <h3 class="bg-ink text-paper px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] rounded-t-lg">Les trésors — top valeur</h3>
+                        <div id="tableValeur" class="border border-groove border-t-0 rounded-b-lg overflow-hidden"></div>
+                    </section>
+                    <section>
+                        <h3 class="bg-gold text-ink px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] rounded-t-lg">Les belles pioches — top plus-values</h3>
+                        <div id="tableProfitCash" class="border border-groove border-t-0 rounded-b-lg overflow-hidden"></div>
+                    </section>
+                </div>
+
+                <section class="page-break">
+                    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <h2 class="font-display text-2xl uppercase border-b-4 border-ink pb-2 flex-grow">Tracklist complète — inventaire &amp; cotes marché</h2>
+                        <div class="no-print flex flex-col items-end gap-1.5">
+                            <input type="text" oninput="filterInventory(this.value)" placeholder="Filtrer (artiste, titre, pays, label, état...)" class="p-2 text-xs border border-groove rounded bg-paper w-72">
+                            <div class="flex gap-1.5">
+                                <button id="confFilter_all" onclick="setConfFilter('all')" class="ring-2 ring-ink font-mono text-[9px] uppercase tracking-wide px-2.5 py-1 rounded bg-paper border border-groove">Tous</button>
+                                <button id="confFilter_high" onclick="setConfFilter('high')" class="font-mono text-[9px] uppercase tracking-wide px-2.5 py-1 rounded bg-paper border border-groove text-forest">● Fiable</button>
+                                <button id="confFilter_mid" onclick="setConfFilter('mid')" class="font-mono text-[9px] uppercase tracking-wide px-2.5 py-1 rounded bg-paper border border-groove text-gold">● À vérifier</button>
+                                <button id="confFilter_low" onclick="setConfFilter('low')" class="font-mono text-[9px] uppercase tracking-wide px-2.5 py-1 rounded bg-paper border border-groove text-wine">● Peu fiable</button>
+                            </div>
+                            <span id="inventoryCount" class="font-mono text-[9px] text-muted"></span>
+                        </div>
+                    </div>
+                    <p class="font-mono text-[9px] text-muted mb-2 no-print">Clique sur un en-tête de colonne pour trier. Clique sur une cote pour l'ajuster manuellement.</p>
+                    <div id="tableInventaire" class="border border-groove rounded-lg overflow-hidden"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const runBtn = document.getElementById('runBtn');
+        const manBtn = document.getElementById('manBtn');
+        const tokenInput = document.getElementById('tokenInput');
+        const forgetTokenBtn = document.getElementById('forgetTokenBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressText = document.getElementById('progressText');
+        const logConsole = document.getElementById('logConsole');
+        const dashboardSection = document.getElementById('dashboardSection');
+
+        let allResults = [];
+        let validFinancialResults = [];
+        let globalCharts = [];
+        let currentUsername = '';
+        let inventorySortKey = 'artist';
+        let inventorySortDir = 'asc';
+        let inventoryFilterText = '';
+        let inventoryConfFilter = 'all';
+
+        const conditionAbbreviations = {
+            "Mint (M)": "M", "Near Mint (NM or M-)": "NM", "Very Good Plus (VG+)": "VG+",
+            "Very Good (VG)": "VG", "Good Plus (G+)": "G+", "Good (G)": "G",
+            "Fair (F)": "F", "Poor (P)": "P", "Inconnu": "N/C"
+        };
+
+        const gradingCurve = {
+            "Mint (M)": 1.5, "Near Mint (NM or M-)": 1.2, "Very Good Plus (VG+)": 1.0,
+            "Very Good (VG)": 0.8, "Good Plus (G+)": 0.6, "Good (G)": 0.4,
+            "Fair (F)": 0.2, "Poor (P)": 0.1
+        };
+
+        const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+
+        // --- Persistance du token (local au navigateur, jamais envoyé ailleurs qu'à Discogs) ---
+        const savedToken = localStorage.getItem('discogs_token');
+        if (savedToken) tokenInput.value = savedToken;
+        tokenInput.addEventListener('change', () => {
+            const t = tokenInput.value.trim();
+            if (t) localStorage.setItem('discogs_token', t);
+        });
+        forgetTokenBtn.addEventListener('click', () => {
+            localStorage.removeItem('discogs_token');
+            tokenInput.value = '';
+        });
+
+        function getAbbr(fullCond) { return conditionAbbreviations[fullCond] || fullCond; }
+
+        function log(msg) {
+            logConsole.innerHTML += `<div>${msg}</div>`;
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let consecutiveNetworkFailures = 0;
+
+        function extractYearMonth(dateStr) {
+            if (!dateStr) return "N/A";
+            const match = String(dateStr).match(/^(\d{4}-\d{2})/);
+            return match ? match[1] : "N/A";
+        }
+
+        function addAnotherVinyl() {
+            dashboardSection.classList.add('hidden');
+            document.getElementById('configSection').classList.remove('hidden');
+        }
+
+        function startNewScan() {
+            if (allResults.length > 0) {
+                if (!confirm(`Cela efface les ${allResults.length} disque(s) actuellement affiché(s) pour repartir de zéro (utile pour scanner un autre compte). Continuer ?`)) {
+                    return;
+                }
+            }
+            allResults = [];
+            validFinancialResults = [];
+            inventorySortKey = 'artist';
+            inventorySortDir = 'asc';
+            inventoryFilterText = '';
+            logConsole.innerHTML = 'Connexion sécurisée aux serveurs Discogs...<br>';
+            progressBar.style.width = '0%';
+            progressPercent.innerText = '0%';
+            dashboardSection.classList.add('hidden');
+            document.getElementById('helpSection').classList.remove('hidden');
+            document.getElementById('configSection').classList.remove('hidden');
+        }
+
+        // Appel réseau résilient : 429 -> attend Retry-After ; 5xx -> réessaie avec backoff exponentiel ;
+        // erreur réseau (ex. "Failed to fetch") -> réessaie avec backoff, et marque une pause de sécurité
+        // si plusieurs échecs s'enchaînent (signe d'un blocage anti-abus temporaire) ; 4xx -> abandon direct
+        // (réessayer ne changera rien), mais le détail exact est toujours affiché dans les logs.
+        async function fetchWithRetry(url, token, retries = 6) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    let res = await fetch(url, {
+                        headers: { "Authorization": `Discogs token=${token}`, "User-Agent": "VinylExpertWeb/17.0" }
+                    });
+
+                    if (res.status === 429) {
+                        let retryAfter = parseInt(res.headers.get('Retry-After'));
+                        let waitMs = (!isNaN(retryAfter) && retryAfter > 0) ? (retryAfter * 1000 + 1000) : 61000;
+                        log(`<span class="text-gold-bright">⚠ Limite API atteinte. Pause de sécurité (${Math.round(waitMs/1000)}s)...</span>`);
+                        await sleep(waitMs);
+                        continue;
+                    }
+
+                    if (res.status >= 500) {
+                        let waitMs = Math.min(2000 * Math.pow(2, i), 20000);
+                        log(`<span class="text-gold-bright">⚠ Discogs indisponible (HTTP ${res.status}) — nouvelle tentative dans ${Math.round(waitMs/1000)}s...</span>`);
+                        await sleep(waitMs);
+                        continue;
+                    }
+
+                    if (res.ok) { consecutiveNetworkFailures = 0; return await res.json(); }
+
+                    let bodyText = '';
+                    try { bodyText = await res.text(); } catch(e) {}
+                    let shortUrl = url.replace('https://api.discogs.com', '');
+                    log(`<span class="text-wine-bright">⚠ Erreur HTTP ${res.status} sur ${shortUrl} — ${bodyText.substring(0, 150)}</span>`);
+                    console.error('Discogs API error', res.status, url, bodyText);
+                    return null;
+
+                } catch (e) {
+                    if (i === retries - 1) {
+                        consecutiveNetworkFailures++;
+                        log(`<span class="text-wine-bright">⚠ Erreur réseau sur ${url.replace('https://api.discogs.com','')} : ${e.message}</span>`);
+                        console.error('Discogs fetch error', e, url);
+                        if (consecutiveNetworkFailures >= 4) {
+                            log(`<span class="text-gold-bright">⚠ Plusieurs échecs réseau d'affilée — pause de sécurité (20s) avant de continuer...</span>`);
+                            await sleep(20000);
+                            consecutiveNetworkFailures = 0;
+                        }
+                        return null;
+                    }
+                    let waitMs = Math.min(1500 * Math.pow(2, i), 20000);
+                    await sleep(waitMs);
+                }
+            }
+            return null;
+        }
+
+        // --- Logique commune d'estimation (mutualisée entre le scan complet et le mode manuel) ---
+        // price_suggestions et releases/{id} sont indépendants : on les lance en parallèle pour gagner
+        // un aller-retour réseau sur les 3 appels nécessaires par disque (~30% plus rapide). Seul le
+        // master (dépendant de master_url) reste séquentiel. La cause des blocages précédents était deux
+        // scans tournant en même temps sur le même token, pas cette parallélisation en elle-même.
+        async function estimateRelease(releaseId, token) {
+            let hadError = false;
+
+            let [dataSugg, dataRel] = await Promise.all([
+                fetchWithRetry(`https://api.discogs.com/marketplace/price_suggestions/${releaseId}`, token),
+                fetchWithRetry(`https://api.discogs.com/releases/${releaseId}`, token)
+            ]);
+            if (dataSugg === null) hadError = true;
+            if (dataRel === null) hadError = true;
+            await sleep(800);
+
+            let baselineValue = 0;
+            let usedDirectVGPlus = false;
+            if (dataSugg) {
+                if (dataSugg["Very Good Plus (VG+)"] && dataSugg["Very Good Plus (VG+)"].value > 0) {
+                    baselineValue = dataSugg["Very Good Plus (VG+)"].value;
+                    usedDirectVGPlus = true;
+                } else {
+                    // Ordre de repli par proximité avec VG+ (pas par ordre de qualité brute) : diviser un
+                    // prix Mint ou Poor — états extrêmes, souvent basés sur très peu de ventes — par un
+                    // facteur éloigné de 1 amplifie fortement le moindre écart. NM et VG, adjacents à VG+,
+                    // donnent une base bien plus stable quand ils sont disponibles.
+                    const fallbackOrder = ["Near Mint (NM or M-)", "Very Good (VG)", "Mint (M)",
+                                            "Good Plus (G+)", "Good (G)", "Fair (F)", "Poor (P)"];
+                    for (let key of fallbackOrder) {
+                        if (dataSugg[key] && dataSugg[key].value > 0) {
+                            baselineValue = dataSugg[key].value / gradingCurve[key];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let pressingYear = (dataRel && dataRel.year) ? dataRel.year : "N/A";
+            let initialYear = pressingYear;
+
+            if (dataRel && dataRel.master_url) {
+                let dataMaster = await fetchWithRetry(dataRel.master_url, token);
+                if (dataMaster === null) hadError = true;
+                if (dataMaster && dataMaster.year) initialYear = dataMaster.year;
+                await sleep(800);
+            }
+
+            return { baselineValue, dataRel, pressingYear, initialYear, hadError, usedDirectVGPlus };
+        }
+
+        function computeValuation(mediaCond, sleeveCond, baselineValue, dataRel, confidence) {
+            let mediaScore = gradingCurve[mediaCond] || 0.8;
+            let sleeveScore = gradingCurve[sleeveCond] || 0.8;
+            let combinedMultiplier = (mediaScore * 0.7) + (sleeveScore * 0.3);
+
+            // Quand la confiance est basse (donc le ratio suggestion/prix-plancher déjà jugé anormal) ET
+            // qu'on dispose d'un prix plancher fiable (pas symbolique, voir computeConfidence), on ancre
+            // la base VG+ sur ce prix plancher réel plutôt que de suivre une suggestion déjà jugée peu
+            // fiable. Le prix le plus bas en vente correspond le plus souvent à un exemplaire en état
+            // modeste (Fair), pas à un VG+ : on utilise donc la même courbe de correction état que pour
+            // les replis de suggestion, plutôt qu'un multiplicateur arbitraire déconnecté de la grille.
+            if (confidence !== undefined && confidence < 40 && baselineValue > 0 && dataRel && dataRel.lowest_price && dataRel.lowest_price >= 3) {
+                let conservativeBaseline = dataRel.lowest_price / gradingCurve["Fair (F)"];
+                if (baselineValue > conservativeBaseline) baselineValue = conservativeBaseline;
+            }
+
+            let val = baselineValue > 0 ? baselineValue * combinedMultiplier : 0;
+            if (val === 0 && dataRel && dataRel.lowest_price) {
+                val = (dataRel.lowest_price / 0.6) * combinedMultiplier;
+            }
+            return val;
+        }
+
+        function computeEcart(initialYear, pressingYear) {
+            let ecart = "N/A";
+            if (initialYear !== "N/A" && pressingYear !== "N/A" && initialYear > 0 && pressingYear > 0) {
+                let diff = parseInt(pressingYear) - parseInt(initialYear);
+                if (!isNaN(diff) && diff >= 0) ecart = diff;
+            }
+            return ecart;
+        }
+
+        // Indice de confiance heuristique (0-100%), PAS une probabilité statistique réelle. Discogs ne
+        // fournit ni le nombre de ventes ayant servi à price_suggestions, ni le prix moyen/historique des
+        // ventes (cette donnée existe sur discogs.com mais n'est pas exposée par l'API publique — vérifié).
+        // Signal dominant : l'écart entre la cote calculée et le prix le plus bas actuellement en vente sur
+        // cette release précise — le seul point de comparaison directement lié à un vrai prix de marché
+        // actuel. Un grand nombre de possesseurs ou d'exemplaires en vente NE garantit PAS un prix juste
+        // (un disque très répandu peut quand même avoir une suggestion de prix aberrante) : ces signaux ne
+        // servent donc qu'à ajuster à la marge, jamais à compenser un écart de prix important.
+        function computeConfidence(usedDirectVGPlus, baselineValue, dataRel) {
+            let score;
+
+            // Un prix plancher symbolique (quelques centimes, courant sur les références très communes où
+            // des vendeurs bradent et se rattrapent sur le port) n'est pas une référence fiable : diviser
+            // par un nombre proche de zéro gonfle artificiellement le ratio et pénaliserait à tort des
+            // disques parfaitement ordinaires. On n'utilise ce signal qu'au-delà d'un seuil minimal.
+            if (baselineValue > 0 && dataRel && dataRel.lowest_price && dataRel.lowest_price >= 3) {
+                let ratio = baselineValue / dataRel.lowest_price;
+                if (ratio <= 1.5) score = 85;
+                else if (ratio <= 2.5) score = 68;
+                else if (ratio <= 4) score = 48;
+                else if (ratio <= 8) score = 28;
+                else score = 12;
+            } else {
+                score = 55; // pas de référence de prix plancher fiable disponible
+            }
+
+            let forSale = (dataRel && dataRel.num_for_sale) ? dataRel.num_for_sale : 0;
+            score += Math.min(forSale, 8);
+
+            let have = (dataRel && dataRel.community && dataRel.community.have) ? dataRel.community.have : 0;
+            score += Math.min(have, 200) / 200 * 8;
+
+            score += usedDirectVGPlus ? 4 : -8;
+
+            return Math.max(5, Math.min(96, Math.round(score)));
+        }
+
+        // --- MODE MANUEL ---
+        manBtn.addEventListener('click', async () => {
+            const token = tokenInput.value.trim();
+            if (!token) return alert("Veuillez renseigner votre Clé API Discogs en haut.");
+
+            const artist = document.getElementById('manArtist').value.trim();
+            const title = document.getElementById('manTitle').value.trim();
+            const barcode = document.getElementById('manBarcode').value.trim();
+
+            if (!barcode && (!artist || !title)) {
+                return alert("Veuillez renseigner soit l'Artiste et le Titre, soit le Code-barres.");
+            }
+
+            let mediaCond = document.getElementById('manMedia').value;
+            let sleeveCond = document.getElementById('manSleeve').value;
+            let pAchat = parseFloat(document.getElementById('manAchat').value || 0);
+
+            document.getElementById('configSection').classList.add('hidden');
+            document.getElementById('helpSection').classList.add('hidden');
+            progressSection.classList.remove('hidden');
+
+            progressBar.style.width = '20%';
+            progressPercent.innerText = '20%';
+
+            let searchUrl = '';
+            if (barcode) {
+                progressText.innerText = `Recherche par code-barres : ${barcode}...`;
+                log(`Recherche stricte avec le code-barres : <strong>${barcode}</strong>`);
+                searchUrl = `https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&type=release`;
+            } else {
+                let titleFull = `${artist} - ${title}`;
+                progressText.innerText = `Recherche libre de ${titleFull}...`;
+                log(`Recherche de la meilleure correspondance pour : <strong>${titleFull}</strong>`);
+                let searchQuery = encodeURIComponent(artist + " " + title);
+                searchUrl = `https://api.discogs.com/database/search?q=${searchQuery}&type=release`;
+            }
+
+            let searchData = await fetchWithRetry(searchUrl, token);
+
+            if (!searchData || !searchData.results || searchData.results.length === 0) {
+                alert("Vinyle introuvable sur Discogs avec ces informations.");
+                document.getElementById('configSection').classList.remove('hidden');
+                progressSection.classList.add('hidden');
+                return;
+            }
+
+            const ctx = { mediaCond, sleeveCond, pAchat, artist, title, barcode, token };
+
+            // Un même code-barres peut être partagé par plusieurs releases Discogs distinctes (pays,
+            // réimpressions...). Prendre le premier résultat en silence peut renvoyer un tout autre
+            // pressage que celui possédé — on laisse choisir plutôt que de deviner.
+            if (barcode && searchData.results.length > 1) {
+                log(`<span class="text-gold-bright">⚠ ${searchData.results.length} pressages différents partagent ce code-barres — sélection manuelle nécessaire.</span>`);
+                renderBarcodeCandidates(searchData.results, ctx);
+                return;
+            }
+
+            progressBar.style.width = '50%';
+            progressPercent.innerText = '50%';
+            await processManualRelease(searchData.results[0], ctx);
+        });
+
+        function renderBarcodeCandidates(results, ctx) {
+            progressSection.classList.add('hidden');
+            window._pendingBarcodeResults = results;
+            window._pendingBarcodeCtx = ctx;
+
+            const list = document.getElementById('barcodeCandidatesList');
+            list.innerHTML = '';
+            results.slice(0, 10).forEach((r, idx) => {
+                let country = r.country || '?';
+                let year = r.year || '?';
+                let label = (r.label && r.label[0]) ? r.label[0] : '';
+                let catno = r.catno || '';
+                let btn = document.createElement('button');
+                btn.className = 'w-full text-left bg-paper border border-groove rounded p-3 hover:border-gold transition-colors block';
+                btn.innerHTML = `<span class="block font-semibold text-sm">${r.title || 'Sans titre'}</span>
+                    <span class="block font-mono text-[10px] text-muted mt-0.5">${country} · ${year} · ${label} ${catno}</span>`;
+                btn.onclick = () => selectBarcodeCandidate(idx);
+                list.appendChild(btn);
+            });
+            document.getElementById('barcodePickerSection').classList.remove('hidden');
+        }
+
+        async function selectBarcodeCandidate(idx) {
+            let release = window._pendingBarcodeResults[idx];
+            let ctx = window._pendingBarcodeCtx;
+            document.getElementById('barcodePickerSection').classList.add('hidden');
+            progressSection.classList.remove('hidden');
+            progressBar.style.width = '50%';
+            progressPercent.innerText = '50%';
+            log(`Pressage choisi : <strong>${release.title || ''}</strong> (${release.country || '?'}, ${release.year || '?'})`);
+            await processManualRelease(release, ctx);
+        }
+
+        function cancelBarcodePicker() {
+            document.getElementById('barcodePickerSection').classList.add('hidden');
+            document.getElementById('configSection').classList.remove('hidden');
+        }
+
+        async function processManualRelease(release, ctx) {
+            const { mediaCond, sleeveCond, pAchat, artist, title, barcode, token } = ctx;
+
+            let releaseId = release.id;
+            let format = release.formats ? release.formats[0] : "Autre";
+            let releaseYear = release.year ? release.year.toString() : "N/A";
+            let displayCond = `${getAbbr(mediaCond)} / ${getAbbr(sleeveCond)}`;
+            let addedMonthRaw = new Date().toISOString().substring(0, 7);
+
+            let finalArtist = artist;
+            let finalTitle = title;
+            if (barcode && (!artist || !title)) {
+                let parts = release.title.split(' - ');
+                if (parts.length >= 2) {
+                    finalArtist = parts[0];
+                    finalTitle = parts.slice(1).join(' - ');
+                } else {
+                    finalArtist = "Inconnu";
+                    finalTitle = release.title;
+                }
+            }
+            let titleFull = `${finalArtist} - ${finalTitle}`;
+
+            let { baselineValue, dataRel, pressingYear, initialYear, hadError, usedDirectVGPlus } = await estimateRelease(releaseId, token);
+            if (pressingYear === "N/A") { pressingYear = releaseYear; initialYear = releaseYear; }
+
+            let confidence = computeConfidence(usedDirectVGPlus, baselineValue, dataRel);
+            let val = computeValuation(mediaCond, sleeveCond, baselineValue, dataRel, confidence);
+            let ecart = computeEcart(initialYear, pressingYear);
+
+            log(`[Manuel] <strong>${titleFull}</strong> <span class="text-muted">(${displayCond})</span> ➔ <strong class="${val > 0 ? 'text-forest-bright' : 'text-muted'}">${val > 0 ? val.toFixed(2)+'€' : 'N/C'}</strong>`);
+            if (hadError) {
+                log(`<span class="text-gold-bright">⚠ Une partie des données n'a pas pu être récupérée — la cote peut être incomplète.</span>`);
+            }
+
+            let itemData = {
+                id: releaseId, artist: finalArtist, title: finalTitle,
+                format: format, condition: displayCond, mediaCond: mediaCond, sleeveCond: sleeveCond,
+                initialYear: initialYear, pressingYear: pressingYear, ecart: ecart, addedMonthRaw: addedMonthRaw,
+                country: (dataRel && dataRel.country) ? dataRel.country : "",
+                label: (dataRel && dataRel.labels && dataRel.labels[0]) ? dataRel.labels[0].name : "",
+                thumb: release.thumb || release.cover_image || "",
+                confidence: confidence,
+                achat: pAchat, marche: val, pv: val - pAchat, roi: pAchat > 0 ? ((val - pAchat) / pAchat) * 100 : 0
+            };
+
+            if (!allResults.find(r => r.id === releaseId)) {
+                allResults.push(itemData);
+                if (pAchat > 0 && val > 0) validFinancialResults.push(itemData);
+            }
+
+            progressBar.style.width = '100%';
+            progressPercent.innerText = '100%';
+            generateDashboard();
+
+            document.getElementById('manArtist').value = '';
+            document.getElementById('manTitle').value = '';
+            document.getElementById('manBarcode').value = '';
+            document.getElementById('manAchat').value = '';
+        }
+
+        // --- MODE SCAN COMPLET DE LA COLLECTION (via l'API, sans CSV) ---
+
+        async function fetchCollectionFieldIds(username, token) {
+            let data = await fetchWithRetry(`https://api.discogs.com/users/${encodeURIComponent(username)}/collection/fields`, token);
+            let mediaFieldId = 1, sleeveFieldId = 2, priceFieldId = null;
+            if (data && data.fields) {
+                data.fields.forEach(f => {
+                    let n = (f.name || "").toLowerCase();
+                    if (n.includes("media")) mediaFieldId = f.id;
+                    else if (n.includes("sleeve") || n.includes("pochette")) sleeveFieldId = f.id;
+                    else if (n.includes("achat") || n.includes("prix") || n.includes("price")) priceFieldId = f.id;
+                });
+            }
+            return { mediaFieldId, sleeveFieldId, priceFieldId };
+        }
+
+        function formatArtists(artists) {
+            if (!artists || artists.length === 0) return "Inconnu";
+            return artists.map((a, idx) => {
+                let name = (a.name || "").replace(/\s*\(\d+\)$/, '');
+                let join = (idx < artists.length - 1 && a.join) ? ` ${a.join} ` : '';
+                return name + join;
+            }).join('').trim() || "Inconnu";
+        }
+
+        function getNoteValue(notes, fieldId) {
+            if (!notes || fieldId == null) return null;
+            let n = notes.find(x => x.field_id === fieldId);
+            return (n && n.value) ? n.value : null;
+        }
+
+        async function fetchCollectionPages(username, token, startPage, releases) {
+            let page = startPage;
+            let totalPages = 1;
+            do {
+                progressText.innerText = `Récupération de la collection (page ${page}${totalPages > 1 ? '/' + totalPages : ''})...`;
+                let url = `https://api.discogs.com/users/${encodeURIComponent(username)}/collection/folders/0/releases?page=${page}&per_page=100`;
+                let data = await fetchWithRetry(url, token);
+                if (!data) return { ok: false, failedPage: page, totalPages };
+                releases.push(...(data.releases || []));
+                totalPages = data.pagination ? data.pagination.pages : 1;
+                page++;
+                await sleep(800);
+            } while (page <= totalPages);
+            return { ok: true, totalPages };
+        }
+
+        async function fetchFullCollection(username, token) {
+            let releases = [];
+            let result = await fetchCollectionPages(username, token, 1, releases);
+
+            if (!result.ok) {
+                log(`<span class="text-gold-bright">⚠ Page ${result.failedPage} indisponible — nouvelle tentative dans 10s...</span>`);
+                await sleep(10000);
+                result = await fetchCollectionPages(username, token, result.failedPage, releases);
+            }
+
+            if (!result.ok) {
+                log(`<span class="text-wine-bright">⚠ COLLECTION INCOMPLÈTE : impossible de récupérer la page ${result.failedPage}/${result.totalPages}. ${releases.length} vinyle(s) récupéré(s) sur un total probablement plus élevé. Relancez le scan un peu plus tard pour compléter.</span>`);
+            }
+
+            return { releases, incomplete: !result.ok };
+        }
+
+        runBtn.addEventListener('click', async () => {
+            const token = tokenInput.value.trim();
+            if (!token) return alert("Veuillez renseigner votre Clé API Discogs en haut.");
+
+            document.getElementById('configSection').classList.add('hidden');
+            document.getElementById('helpSection').classList.add('hidden');
+            progressSection.classList.remove('hidden');
+
+            try {
+                progressText.innerText = "Identification du compte Discogs...";
+                let identity = await fetchWithRetry('https://api.discogs.com/oauth/identity', token);
+                if (!identity || !identity.username) {
+                    alert("Impossible d'identifier le compte avec ce token. Regardez le détail dans les logs ci-dessus.");
+                    document.getElementById('configSection').classList.remove('hidden');
+                    return;
+                }
+                const username = identity.username;
+                log(`Compte identifié : <strong>${username}</strong>`);
+                currentUsername = username;
+
+                const { mediaFieldId, sleeveFieldId, priceFieldId } = await fetchCollectionFieldIds(username, token);
+                if (!priceFieldId) {
+                    log(`<span class="text-gold-bright">⚠ Aucun champ personnalisé "Prix d'achat" trouvé — les prix d'achat seront à 0€.</span>`);
+                }
+
+                log("Téléchargement de la liste de la collection...");
+                const collectionResult = await fetchFullCollection(username, token);
+                const releases = collectionResult.releases;
+                const total = releases.length;
+                log(`${total} vinyle(s) récupéré(s)${collectionResult.incomplete ? ' — <strong class="text-wine-bright">liste incomplète, voir l\'avertissement ci-dessus</strong>' : ' dans la collection.'}`);
+
+                if (total === 0) {
+                    alert("Aucun vinyle n'a pu être récupéré. Regardez le détail dans les logs ci-dessus (ou la console du navigateur, F12).");
+                    document.getElementById('configSection').classList.remove('hidden');
+                    return;
+                }
+
+                let retryQueue = [];
+
+                for (let i = 0; i < total; i++) {
+                    const item = releases[i];
+                    const bi = item.basic_information || {};
+                    const releaseId = bi.id;
+                    if (!releaseId) continue;
+
+                    let artist = formatArtists(bi.artists);
+                    let title = bi.title || "Inconnu";
+                    let format = (bi.formats && bi.formats[0]) ? bi.formats[0].name : "Autre";
+                    let mediaCond = (getNoteValue(item.notes, mediaFieldId) || "Inconnu").trim();
+                    let sleeveCond = (getNoteValue(item.notes, sleeveFieldId) || "Inconnu").trim();
+                    let rawAchat = getNoteValue(item.notes, priceFieldId);
+                    let pAchat = rawAchat ? parseFloat(String(rawAchat).replace(',', '.')) : 0;
+                    if (isNaN(pAchat)) pAchat = 0;
+                    let displayCond = `${getAbbr(mediaCond)} / ${getAbbr(sleeveCond)}`;
+                    let addedMonthRaw = extractYearMonth(item.date_added);
+                    let titleFull = `${artist} - ${title}`;
+                    progressText.innerText = titleFull;
+
+                    let { baselineValue, dataRel, pressingYear, initialYear, hadError, usedDirectVGPlus } = await estimateRelease(releaseId, token);
+                    if (pressingYear === "N/A" && bi.year) { pressingYear = bi.year; initialYear = bi.year; }
+                    let confidence = computeConfidence(usedDirectVGPlus, baselineValue, dataRel);
+                    let val = computeValuation(mediaCond, sleeveCond, baselineValue, dataRel, confidence);
+                    let ecart = computeEcart(initialYear, pressingYear);
+
+                    log(`<span class="text-muted">[${i+1}/${total}]</span> <strong>${titleFull}</strong> <span class="text-muted">(${displayCond})</span> ➔ <strong class="${val > 0 ? 'text-forest-bright' : 'text-muted'}">${val > 0 ? val.toFixed(2)+'€' : 'N/C'}</strong>`);
+
+                    let itemData = {
+                        id: releaseId, artist: artist, title: title,
+                        format: format, condition: displayCond, mediaCond: mediaCond, sleeveCond: sleeveCond,
+                        initialYear: initialYear, pressingYear: pressingYear, ecart: ecart, addedMonthRaw: addedMonthRaw,
+                        country: (dataRel && dataRel.country) ? dataRel.country : "",
+                        label: (dataRel && dataRel.labels && dataRel.labels[0]) ? dataRel.labels[0].name : "",
+                        thumb: bi.thumb || bi.cover_image || "",
+                        confidence: confidence,
+                        achat: pAchat, marche: val, pv: val - pAchat, roi: pAchat > 0 ? ((val - pAchat) / pAchat) * 100 : 0
+                    };
+
+                    let idx = allResults.findIndex(r => r.id === releaseId);
+                    if (idx === -1) {
+                        allResults.push(itemData);
+                        idx = allResults.length - 1;
+                        if (pAchat > 0 && val > 0) validFinancialResults.push(itemData);
+                    } else {
+                        allResults[idx] = itemData;
+                    }
+
+                    if (hadError) {
+                        retryQueue.push({ index: idx, releaseId, mediaCond, sleeveCond, achat: pAchat });
+                    }
+
+                    let percent = Math.round(((i + 1) / total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressPercent.innerText = percent + '%';
+                }
+
+                if (retryQueue.length > 0) {
+                    log(`<span class="text-gold-bright">↻ Deuxième passe sur ${retryQueue.length} disque(s) ayant rencontré une erreur réseau...</span>`);
+                    await sleep(3000);
+                    for (let j = 0; j < retryQueue.length; j++) {
+                        const r = retryQueue[j];
+                        progressText.innerText = `Deuxième passe (${j+1}/${retryQueue.length})...`;
+                        let { baselineValue, dataRel, pressingYear, initialYear, hadError, usedDirectVGPlus } = await estimateRelease(r.releaseId, token);
+                        let existingConfidence = computeConfidence(usedDirectVGPlus, baselineValue, dataRel);
+                        let val = computeValuation(r.mediaCond, r.sleeveCond, baselineValue, dataRel, existingConfidence);
+                        let ecart = computeEcart(initialYear, pressingYear);
+                        let existing = allResults[r.index];
+                        existing.pressingYear = pressingYear;
+                        existing.initialYear = initialYear;
+                        existing.ecart = ecart;
+                        existing.country = (dataRel && dataRel.country) ? dataRel.country : existing.country;
+                        existing.label = (dataRel && dataRel.labels && dataRel.labels[0]) ? dataRel.labels[0].name : existing.label;
+                        existing.confidence = existingConfidence;
+                        existing.marche = val;
+                        existing.pv = val - r.achat;
+                        existing.roi = r.achat > 0 ? ((val - r.achat) / r.achat) * 100 : 0;
+
+                        if (r.achat > 0 && val > 0 && !validFinancialResults.includes(existing)) {
+                            validFinancialResults.push(existing);
+                        }
+
+                        if (hadError) {
+                            log(`<span class="text-wine-bright">✕ Toujours en échec : ${existing.artist} - ${existing.title}</span>`);
+                        } else {
+                            log(`<span class="text-forest-bright">✓ Récupéré : ${existing.artist} - ${existing.title} ➔ ${val > 0 ? val.toFixed(2)+'€' : 'N/C'}</span>`);
+                        }
+                    }
+                }
+
+                generateDashboard();
+
+            } catch (err) {
+                console.error('Erreur inattendue pendant le scan de la collection', err);
+                log(`<span class="text-wine-bright">⚠ Erreur inattendue : ${err.message}</span>`);
+                alert("Une erreur inattendue est survenue pendant le scan. Détail dans les logs et dans la console du navigateur (F12).");
+                document.getElementById('configSection').classList.remove('hidden');
+            }
+        });
+
+        function createTable(containerId, data, columns, opts) {
+            if (data.length === 0) { document.getElementById(containerId).innerHTML = '<p class="p-4 text-xs text-muted italic">Aucun résultat ne correspond au filtre.</p>'; return; }
+            let html = `<table class="w-full text-left bg-paper text-xs">
+                <thead><tr>`;
+
+            columns.forEach(col => {
+                let arrow = '';
+                let cursor = '';
+                let onclick = '';
+                if (opts && opts.sortable && col.sortable !== false) {
+                    cursor = 'cursor-pointer select-none hover:opacity-80';
+                    onclick = ` onclick="sortInventoryBy('${col.sortKey || col.key}')"`;
+                    if (opts.currentSortKey === (col.sortKey || col.key)) {
+                        arrow = opts.currentSortDir === 'asc' ? ' ▲' : ' ▼';
+                    }
+                }
+                html += `<th class="p-2 font-mono uppercase tracking-wide text-${col.align || 'left'} w-${col.width || 'auto'} bg-ink text-paper ${cursor}"${onclick}>${col.label}${arrow}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
+
+            data.forEach((item, idx) => {
+                let bg = idx % 2 === 0 ? "bg-paper" : "bg-paper-dim";
+                html += `<tr class="${bg}">`;
+
+                columns.forEach(col => {
+                    let val = item[col.key];
+                    let formatVal = val;
+                    let classTxt = "";
+
+                    if (col.type === 'thumb') {
+                        formatVal = val
+                            ? `<img src="${val}" loading="lazy" class="w-8 h-8 object-cover rounded border border-groove block" onerror="this.style.visibility='hidden'">`
+                            : `<div class="w-8 h-8 rounded bg-paper-dim border border-groove"></div>`;
+                    }
+
+                    if (col.type === 'currency') formatVal = val > 0 ? `<span class="font-mono">${val.toFixed(2)} €</span>` : '<span class="text-muted italic">N/C</span>';
+
+                    if (col.type === 'currencyConf') {
+                        let displayVal = val > 0 ? `${val.toFixed(2)} €` : 'N/C';
+                        let badge = '';
+                        if (item.manuallyEdited) {
+                            badge = `<br><span class="text-gold font-mono text-[8px]">✎ ajusté manuellement</span>`;
+                        } else if (item.confidence !== undefined && val > 0) {
+                            let confColor = item.confidence >= 70 ? 'text-forest' : (item.confidence >= 40 ? 'text-gold' : 'text-wine');
+                            badge = `<br><span class="${confColor} font-mono text-[8px]">● ${item.confidence}%</span>`;
+                        }
+                        if (opts && opts.editable) {
+                            let valClass = val > 0 ? 'font-mono' : 'text-muted italic font-mono';
+                            formatVal = `<span class="${valClass} cursor-pointer hover:text-gold underline decoration-dotted decoration-groove" title="Cliquer pour ajuster manuellement" onclick="startEditCote('${item.id}')">${displayVal}</span>${badge}`;
+                        } else {
+                            let cls = val > 0 ? 'font-mono' : 'text-muted italic';
+                            formatVal = `<span class="${cls}">${displayVal}</span>${badge}`;
+                        }
+                    }
+
+                    if (col.type === 'pvFull') {
+                        if (item.marche > 0 && item.achat > 0) {
+                            let sign = item.pv > 0 ? '+' : '';
+                            let color = item.pv > 0 ? 'text-forest' : 'text-wine';
+                            let confBadge = '';
+                            if (item.manuallyEdited) {
+                                confBadge = `<br><span class="text-gold text-[8px]">✎ ajusté</span>`;
+                            } else if (item.confidence !== undefined) {
+                                let confColor = item.confidence >= 70 ? 'text-forest' : (item.confidence >= 40 ? 'text-gold' : 'text-wine');
+                                confBadge = `<br><span class="${confColor} text-[8px]">● ${item.confidence}%</span>`;
+                            }
+                            formatVal = `<span class="${color} font-mono font-semibold leading-tight block">${sign}${item.pv.toFixed(2)} €<br><span class="text-[9px]">(${sign}${item.roi.toFixed(0)}%)</span>${confBadge}</span>`;
+                        } else { formatVal = '-'; }
+                    }
+
+                    if (col.key === 'titleFull') {
+                        let origin = [item.country, item.label].filter(Boolean).join(' · ');
+                        let yearLine = item.pressingYear && item.pressingYear !== 'N/A' ? item.pressingYear : '';
+                        let subLine = [origin, yearLine].filter(Boolean).join(' · ');
+                        formatVal = `<strong class="block">${item.artist}</strong><span class="text-muted">${item.title}</span>${subLine ? `<br><span class="text-muted font-mono text-[9px]">${subLine}</span>` : ''}`;
+                    }
+                    if (col.key === 'title' && (item.country || item.label)) {
+                        let origin = [item.country, item.label].filter(Boolean).join(' · ');
+                        formatVal = `${val}<br><span class="text-muted font-mono text-[9px]">${origin}</span>`;
+                    }
+                    if (col.key === 'condition') formatVal = `<span class="font-mono font-semibold text-muted text-[10px] whitespace-nowrap">${val}</span>`;
+                    if (col.key === 'ecart' && val !== "N/A") formatVal = `<span class="font-mono">+${val} an(s)</span>`;
+                    if ((col.key === 'initialYear' || col.key === 'pressingYear') && val !== "N/A") formatVal = `<span class="font-mono">${val}</span>`;
+
+                    let pad = col.type === 'thumb' ? 'p-1' : 'p-2';
+                    html += `<td class="${pad} text-${col.align || 'left'} ${classTxt}">${formatVal}</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += `</tbody></table>`;
+            document.getElementById(containerId).innerHTML = html;
+        }
+
+        // Logique de tri/filtre partagée : utilisée à la fois pour le rendu écran et pour la génération
+        // du PDF, afin que l'export reflète toujours exactement l'ordre et le filtre affichés à l'écran.
+        function getSortValue(item, key) {
+            switch (key) {
+                case 'initialYear':
+                case 'pressingYear':
+                    return (item[key] === 'N/A' || item[key] === undefined) ? -1 : parseInt(item[key]);
+                case 'ecart':
+                    return item.ecart === 'N/A' ? -1 : item.ecart;
+                case 'pvFull':
+                    return item.pv;
+                case 'condition':
+                    return (item.condition || '').toLowerCase();
+                default:
+                    return (typeof item[key] === 'number') ? item[key] : (item[key] || '').toString().toLowerCase();
+            }
+        }
+
+        // Une ligne est "non calculable" pour une colonne donnée quand la valeur affichée est un "-" ou
+        // "N/C" plutôt qu'un vrai nombre. Ces lignes doivent toujours se regrouper en fin de liste, quel
+        // que soit le sens du tri (asc/desc) — sinon leur valeur numérique de repli (souvent 0 ou N/A -> -1)
+        // s'intercale au milieu de valeurs réelles, ce qui n'a pas de sens pour l'utilisateur.
+        function isSortValueMissing(item, key) {
+            switch (key) {
+                case 'pvFull': return !(item.marche > 0 && item.achat > 0);
+                case 'marche': return !(item.marche > 0);
+                case 'achat': return !(item.achat > 0);
+                case 'initialYear':
+                case 'pressingYear': return item[key] === 'N/A' || item[key] === undefined;
+                case 'ecart': return item.ecart === 'N/A';
+                default: return false;
+            }
+        }
+
+        function confTier(conf) {
+            if (conf === undefined) return null;
+            if (conf >= 70) return 'high';
+            if (conf >= 40) return 'mid';
+            return 'low';
+        }
+
+        function getFilteredSortedInventory() {
+            let arr = allResults;
+            if (inventoryFilterText) {
+                let needle = inventoryFilterText.toLowerCase();
+                arr = arr.filter(r => {
+                    let hay = `${r.artist} ${r.title} ${r.country || ''} ${r.label || ''} ${r.condition || ''}`.toLowerCase();
+                    return hay.includes(needle);
+                });
+            }
+            if (inventoryConfFilter !== 'all') {
+                arr = arr.filter(r => r.marche > 0 && !r.manuallyEdited && confTier(r.confidence) === inventoryConfFilter);
+            }
+            arr = [...arr].sort((a, b) => {
+                let aMissing = isSortValueMissing(a, inventorySortKey);
+                let bMissing = isSortValueMissing(b, inventorySortKey);
+                if (aMissing !== bMissing) return aMissing ? 1 : -1;
+                if (aMissing && bMissing) return 0;
+                let va = getSortValue(a, inventorySortKey);
+                let vb = getSortValue(b, inventorySortKey);
+                let cmp = (va > vb) ? 1 : (va < vb ? -1 : 0);
+                return inventorySortDir === 'asc' ? cmp : -cmp;
+            });
+            return arr;
+        }
+
+        function setConfFilter(tier) {
+            inventoryConfFilter = tier;
+            ['all', 'high', 'mid', 'low'].forEach(t => {
+                let btn = document.getElementById('confFilter_' + t);
+                if (!btn) return;
+                btn.classList.toggle('ring-2', t === tier);
+                btn.classList.toggle('ring-ink', t === tier);
+            });
+            renderInventoryTable();
+        }
+
+        function sortInventoryBy(key) {
+            if (inventorySortKey === key) {
+                inventorySortDir = inventorySortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                inventorySortKey = key;
+                inventorySortDir = (key === 'artist') ? 'asc' : 'desc';
+            }
+            renderInventoryTable();
+        }
+
+        function filterInventory(text) {
+            inventoryFilterText = text;
+            renderInventoryTable();
+        }
+
+        function renderInventoryTable() {
+            const invCols = [
+                { label: '', key: 'thumb', type: 'thumb', width: '10', sortable: false },
+                { label: 'Artiste', key: 'artist', width: '1/6' },
+                { label: 'Titre', key: 'title', width: '1/6' },
+                { label: 'Sortie init.', key: 'initialYear', align: 'center', width: '1/12' },
+                { label: 'Exemplaire', key: 'pressingYear', align: 'center', width: '1/12' },
+                { label: 'Écart', key: 'ecart', align: 'center', width: '1/12' },
+                { label: 'État (D/P)', key: 'condition', align: 'center', width: '1/12' },
+                { label: 'Achat', key: 'achat', type: 'currency', align: 'right', width: '1/12' },
+                { label: 'Cote est.', key: 'marche', type: 'currencyConf', align: 'right', width: '1/12' },
+                { label: 'Plus-value', key: 'pvFull', type: 'pvFull', align: 'right', width: '1/12' }
+            ];
+            const filtered = getFilteredSortedInventory();
+            const countLabel = document.getElementById('inventoryCount');
+            if (countLabel) {
+                countLabel.innerText = (inventoryFilterText || inventoryConfFilter !== 'all')
+                    ? `${filtered.length} / ${allResults.length} vinyle(s) affiché(s)`
+                    : `${allResults.length} vinyle(s)`;
+            }
+            createTable('tableInventaire', filtered, invCols, { sortable: true, editable: true, currentSortKey: inventorySortKey, currentSortDir: inventorySortDir });
+        }
+
+        // Ajustement manuel d'une cote jugée erronée. Recalcule plus-value/ROI pour ce disque et
+        // rafraîchit tout ce qui en dépend (KPIs globaux, graphiques, Trésors/Pioches, export PDF).
+        function startEditCote(id) {
+            let item = allResults.find(r => String(r.id) === String(id));
+            if (!item) return;
+            let current = item.marche > 0 ? item.marche.toFixed(2) : '';
+            let input = prompt(`Nouvelle cote pour "${item.artist} - ${item.title}" (en €, laisser vide pour annuler) :`, current);
+            if (input === null || input.trim() === '') return;
+            let newVal = parseFloat(input.replace(',', '.'));
+            if (isNaN(newVal) || newVal < 0) {
+                alert("Valeur invalide.");
+                return;
+            }
+            item.marche = newVal;
+            item.manuallyEdited = true;
+            item.pv = newVal - item.achat;
+            item.roi = item.achat > 0 ? ((newVal - item.achat) / item.achat) * 100 : 0;
+
+            let idx = validFinancialResults.indexOf(item);
+            let shouldBeIn = item.achat > 0 && newVal > 0;
+            if (shouldBeIn && idx === -1) validFinancialResults.push(item);
+            if (!shouldBeIn && idx !== -1) validFinancialResults.splice(idx, 1);
+
+            generateDashboard();
+        }
+
+        function generateDashboard() {
+            progressSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
+
+            document.getElementById('genDate').innerText = 'Généré le ' + new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+
+            let lowConfidenceCount = allResults.filter(r => r.marche > 0 && r.confidence !== undefined && r.confidence < 40).length;
+            let confWarning = document.getElementById('confidenceWarning');
+            if (lowConfidenceCount > 0) {
+                document.getElementById('confidenceWarningCount').innerText = lowConfidenceCount;
+                confWarning.classList.remove('hidden');
+            } else {
+                confWarning.classList.add('hidden');
+            }
+
+            let totEstimGlobal = allResults.reduce((s, i) => s + i.marche, 0);
+            document.getElementById('totalEstimGlobal').innerText = totEstimGlobal.toFixed(2) + " €";
+
+            let totAchat = validFinancialResults.reduce((s, i) => s + i.achat, 0);
+            let totPv = validFinancialResults.reduce((s, i) => s + i.marche, 0) - totAchat;
+            let totRoi = totAchat > 0 ? (totPv / totAchat) * 100 : 0;
+
+            document.getElementById('totalAchat').innerText = totAchat.toFixed(2) + " €";
+            let pvEl = document.getElementById('totalPv');
+            pvEl.innerText = (totPv >= 0 ? "+" : "") + totPv.toFixed(2) + " €";
+            pvEl.classList.remove('text-forest', 'text-wine');
+            pvEl.classList.add(totPv >= 0 ? 'text-forest' : 'text-wine');
+
+            let roiEl = document.getElementById('totalRoi');
+            roiEl.innerText = (totRoi >= 0 ? "+" : "") + totRoi.toFixed(1) + " %";
+            roiEl.classList.remove('text-forest', 'text-wine');
+            roiEl.classList.add(totRoi >= 0 ? 'text-forest' : 'text-wine');
+
+            globalCharts.forEach(c => c.destroy());
+            globalCharts = [];
+
+            Chart.defaults.font.size = 10;
+            Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+            Chart.defaults.maintainAspectRatio = false;
+            Chart.defaults.animation = false;
+
+            let yearsCount = {};
+            allResults.forEach(r => { if (r.pressingYear !== "N/A" && r.pressingYear > 0) yearsCount[r.pressingYear] = (yearsCount[r.pressingYear] || 0) + 1; });
+            let yKeys = Object.keys(yearsCount).sort();
+            globalCharts.push(new Chart(document.getElementById('yearsChart'), {
+                type: 'bar',
+                data: { labels: yKeys, datasets: [{ label: 'Quantité', data: yKeys.map(k => yearsCount[k]), backgroundColor: '#C9971C' }] },
+                options: { plugins: { legend: { display: false } } }
+            }));
+
+            let ecartCount = {};
+            allResults.forEach(r => { if (r.ecart !== "N/A") ecartCount[r.ecart] = (ecartCount[r.ecart] || 0) + 1; });
+            let eKeys = Object.keys(ecartCount).sort((a,b) => parseInt(a) - parseInt(b));
+            let eLabels = eKeys.map(k => k === "0" ? "Original" : `+${k} an(s)`);
+            globalCharts.push(new Chart(document.getElementById('ecartChart'), {
+                type: 'bar',
+                data: { labels: eLabels, datasets: [{ label: 'Vinyles', data: eKeys.map(k => ecartCount[k]), backgroundColor: '#7A2530' }] },
+                options: { plugins: { legend: { display: false } } }
+            }));
+
+            let monthCount = {};
+            let monthValue = {};
+            allResults.forEach(r => {
+                if (r.addedMonthRaw !== "N/A") {
+                    monthCount[r.addedMonthRaw] = (monthCount[r.addedMonthRaw] || 0) + 1;
+                    monthValue[r.addedMonthRaw] = (monthValue[r.addedMonthRaw] || 0) + r.marche;
+                }
+            });
+            let mKeys = Object.keys(monthCount).sort();
+            let mLabels = mKeys.map(k => {
+                let parts = k.split('-');
+                return `${monthNames[parseInt(parts[1], 10) - 1]} ${parts[0]}`;
+            });
+
+            globalCharts.push(new Chart(document.getElementById('purchasesCountChart'), {
+                type: 'bar',
+                data: { labels: mLabels, datasets: [{ label: 'Vinyles ajoutés', data: mKeys.map(k => monthCount[k]), backgroundColor: '#14110D' }] },
+                options: { plugins: { legend: { display: false } } }
+            }));
+
+            globalCharts.push(new Chart(document.getElementById('purchasesValueChart'), {
+                type: 'bar',
+                data: { labels: mLabels, datasets: [{ label: 'Valeur ajoutée (€)', data: mKeys.map(k => monthValue[k].toFixed(2)), backgroundColor: '#2F5B3E' }] },
+                options: { plugins: { legend: { display: false } } }
+            }));
+
+            const topCols = [
+                { label: 'Artiste / Titre', key: 'titleFull', width: '2/5' },
+                { label: 'État (D/P)', key: 'condition', width: '1/6' },
+                { label: 'Cote', key: 'marche', type: 'currencyConf', align: 'right', width: 'auto' }
+            ];
+            createTable('tableValeur', [...allResults].sort((a,b) => b.marche - a.marche).slice(0, 15), topCols);
+
+            const profitCols = [
+                { label: 'Artiste / Titre', key: 'titleFull', width: '2/5' },
+                { label: 'Achat', key: 'achat', type: 'currency', align: 'right', width: '1/5' },
+                { label: 'Évolution', key: 'pvFull', type: 'pvFull', align: 'right', width: 'auto' }
+            ];
+            createTable('tableProfitCash', [...validFinancialResults].sort((a,b) => b.pv - a.pv).slice(0, 15), profitCols);
+
+            renderInventoryTable();
+        }
+
+        function buildExportFilename() {
+            let now = new Date();
+            let pad = n => String(n).padStart(2, '0');
+            let stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}h${pad(now.getMinutes())}`;
+            let who = (currentUsername || 'Collection').replace(/[^a-zA-Z0-9_-]/g, '_');
+            return `My_Vinyl_Collection_${who}_${stamp}`;
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Artiste;Titre;Format;Année Initiale;Année Exemplaire;Écart;Mois Ajout;État Disque;État Pochette;Prix Achat;Cote Actuelle;Plus-value Euro;Plus-value Pourcent\n";
+
+            allResults.forEach(r => {
+                let row = `"${r.artist}";"${r.title}";"${r.format}";"${r.initialYear}";"${r.pressingYear}";"${r.ecart}";"${r.addedMonthRaw}";"${r.mediaCond}";"${r.sleeveCond}";${r.achat.toFixed(2).replace('.',',')};${r.marche.toFixed(2).replace('.',',')};${r.pv.toFixed(2).replace('.',',')};${r.roi.toFixed(2).replace('.',',')}`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", buildExportFilename() + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- Génération du PDF côté client (pdfmake) : plus de dépendance à l'impression du navigateur ---
+
+        // Le CDN d'images de Discogs ne renvoie pas d'en-tête CORS permissif : toute lecture directe des
+        // pixels via canvas échoue systématiquement (vérifié : 0/233 en pratique), bien que l'image
+        // s'affiche normalement à l'écran (l'affichage seul ne déclenche jamais CORS, contrairement à la
+        // lecture des pixels). On passe donc par images.weserv.nl, un proxy d'images CORS établi qui
+        // redimensionne aussi l'image côté serveur (alourdit un peu le temps de génération du PDF, allège
+        // le fichier final). Échoue silencieusement (résout null) en cas de souci réseau ou de timeout —
+        // une pochette manquante ne doit jamais faire échouer tout le PDF, juste laisser cette case vide.
+        function loadImageAsBase64(url, maxSize) {
+            return new Promise((resolve) => {
+                if (!url) return resolve(null);
+                const clean = url.replace(/^https?:\/\//, '');
+                const proxied = `https://images.weserv.nl/?url=${encodeURIComponent(clean)}&w=${maxSize}&h=${maxSize}&fit=cover&q=70`;
+                const controller = new AbortController();
+                const timeout = setTimeout(() => { controller.abort(); resolve(null); }, 10000);
+                fetch(proxied, { signal: controller.signal })
+                    .then(res => { if (!res.ok) throw new Error('http ' + res.status); return res.blob(); })
+                    .then(blob => {
+                        clearTimeout(timeout);
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(() => { clearTimeout(timeout); resolve(null); });
+            });
+        }
+
+        async function mapWithConcurrency(items, limit, fn) {
+            const results = new Array(items.length);
+            let idx = 0;
+            async function worker() {
+                while (idx < items.length) {
+                    const cur = idx++;
+                    results[cur] = await fn(items[cur], cur);
+                }
+            }
+            const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+            await Promise.all(workers);
+            return results;
+        }
+
+        async function buildThumbMap(items, onProgress) {
+            const thumbMap = {};
+            let done = 0;
+            const withThumb = items.filter(it => it.thumb);
+            await mapWithConcurrency(withThumb, 8, async (item) => {
+                thumbMap[item.id] = await loadImageAsBase64(item.thumb, 60);
+                done++;
+                if (onProgress) onProgress(done, withThumb.length);
+            });
+            return thumbMap;
+        }
+
+        function buildPdfDocDefinition(thumbMap) {
+            thumbMap = thumbMap || {};
+            const chartIds = ['yearsChart', 'ecartChart', 'purchasesCountChart', 'purchasesValueChart'];
+            const chartImgs = {};
+            chartIds.forEach(id => {
+                const c = document.getElementById(id);
+                chartImgs[id] = c ? c.toDataURL('image/png', 1.0) : null;
+            });
+
+            let totEstimGlobal = allResults.reduce((s, i) => s + i.marche, 0);
+            let totAchat = validFinancialResults.reduce((s, i) => s + i.achat, 0);
+            let totPv = validFinancialResults.reduce((s, i) => s + i.marche, 0) - totAchat;
+            let totRoi = totAchat > 0 ? (totPv / totAchat) * 100 : 0;
+
+            const INK = '#14110D', PAPER = '#FBF7EF', PAPER_DIM = '#F1E9D8', GROOVE = '#DED2B8',
+                  MUTED = '#8A8272', GOLD = '#C9971C', GOLD_BRIGHT = '#E3B23C', WINE = '#7A2530',
+                  FOREST = '#2F5B3E', PAPER_MUTED = '#B9AE96';
+
+            function headerBand() {
+                return {
+                    table: { widths: ['*'], body: [[{
+                        stack: [
+                            { text: "ÉVALUATION DE MARCHÉ & ANALYSE DE COLLECTION", color: GOLD_BRIGHT, bold: true, fontSize: 9, characterSpacing: 1 },
+                            { text: "MY VINYL COLLECTION", color: PAPER, bold: true, fontSize: 26, margin: [0, 4, 0, 0] },
+                            { text: `Généré le ${new Date().toLocaleString('fr-FR')} · Compte : ${currentUsername || '-'}`, color: PAPER_MUTED, fontSize: 7, margin: [0, 4, 0, 0] }
+                        ], margin: [12, 12, 12, 12]
+                    }]] },
+                    layout: { fillColor: () => INK, hLineWidth: () => 0, vLineWidth: () => 0 }
+                };
+            }
+
+            function methodologyBox() {
+                return {
+                    table: { widths: ['*'], body: [[{
+                        text: [
+                            { text: "1. Base Argus : ", bold: true }, "valeur médiane issue de l'historique des ventes mondiales Discogs.\n",
+                            { text: "2. Ajustement : ", bold: true }, "le standard du marché est le Very Good Plus (VG+). Un Mint (M) vaut 150% de cette base, un Good (G) 40%, etc.\n",
+                            { text: "3. Règle d'or : ", bold: true }, "le disque représente 70% de la cote, la pochette 30%.\n",
+                            { text: "4. Indice de confiance : ", bold: true }, "indicateur heuristique (pas une probabilité statistique) basé principalement sur l'écart entre la cote et le prix le plus bas actuellement en vente sur cette release précise. En dessous de 40%, la cote est automatiquement ramenée vers une estimation plus prudente ancrée sur ce prix plancher."
+                        ], fontSize: 8, margin: [12, 8, 12, 8]
+                    }]] },
+                    layout: { fillColor: () => PAPER_DIM, hLineWidth: () => 0, vLineWidth: (i) => i === 0 ? 3 : 0, vLineColor: () => GOLD }
+                };
+            }
+
+            function faceTab(short, long) {
+                return [
+                    { columns: [
+                        { width: 68, table: { widths: ['*'], body: [[{ text: short, color: GOLD_BRIGHT, bold: true, fontSize: 8.5, margin: [6, 5, 6, 5] }]] }, layout: { fillColor: () => INK, hLineWidth: () => 0, vLineWidth: () => 0 } },
+                        { width: '*', text: long, fontSize: 15, bold: true, margin: [10, 5, 0, 0] }
+                    ]},
+                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 785, y2: 0, lineWidth: 0.75, lineColor: GROOVE }], margin: [0, 6, 0, 10] }
+                ];
+            }
+
+            function kpiCard(label, value, caption, hero) {
+                return {
+                    table: { widths: ['*'], body: [[{
+                        stack: [
+                            { text: label, fontSize: 6.5, bold: true, color: hero ? GOLD_BRIGHT : MUTED },
+                            { text: value, fontSize: hero ? 19 : 15, bold: true, color: hero ? PAPER : INK, margin: [0, 3, 0, 0] },
+                            { text: caption, fontSize: 5.8, color: hero ? PAPER_MUTED : MUTED, margin: [0, 2, 0, 0] }
+                        ], margin: [9, 9, 9, 9]
+                    }]] },
+                    layout: { fillColor: () => hero ? INK : '#FFFFFF', hLineWidth: () => 0.6, vLineWidth: (i) => i === 0 ? 2.5 : 0.6, hLineColor: () => GROOVE, vLineColor: (i) => i === 0 ? (hero ? GOLD : GROOVE) : GROOVE }
+                };
+            }
+
+            function kpiRow() {
+                return { columns: [
+                    kpiCard('VALEUR MARCHÉ GLOBALE', totEstimGlobal.toFixed(2) + ' €', "Ajustée selon l'état exact", true),
+                    { width: 8, text: '' },
+                    kpiCard('ACHATS RENSEIGNÉS', totAchat.toFixed(2) + ' €', 'Somme des dépenses tracées', false),
+                    { width: 8, text: '' },
+                    kpiCard('GAIN FINANCIER', (totPv >= 0 ? '+' : '') + totPv.toFixed(2) + ' €', 'Plus-value sur les achats', false),
+                    { width: 8, text: '' },
+                    kpiCard('RENTABILITÉ (ROI)', (totRoi >= 0 ? '+' : '') + totRoi.toFixed(1) + ' %', "Croissance de l'investissement", false),
+                ]};
+            }
+
+            function zebraLayout(headerColor) {
+                return {
+                    hLineWidth: (i) => (i <= 1 ? 1 : 0.4),
+                    vLineWidth: () => 0,
+                    hLineColor: (i) => i <= 1 ? INK : GROOVE,
+                    fillColor: (rowIndex) => rowIndex === 0 ? headerColor : (rowIndex % 2 === 0 ? PAPER_DIM : null),
+                    paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3
+                };
+            }
+
+            function pvCell(item) {
+                if (!(item.marche > 0 && item.achat > 0)) return { text: '-', fontSize: 6.5, italics: true, color: MUTED, alignment: 'right' };
+                let sign = item.pv > 0 ? '+' : '';
+                let color = item.pv > 0 ? FOREST : WINE;
+                let stack = [{ text: [`${sign}${item.pv.toFixed(2)} €\n`, { text: `(${sign}${item.roi.toFixed(0)}%)`, fontSize: 5.6 }], color, bold: true, fontSize: 7 }];
+                if (item.manuallyEdited) {
+                    stack.push({ text: 'ajusté manuellement', fontSize: 5, color: GOLD, bold: true, margin: [0, 1, 0, 0] });
+                } else if (item.confidence !== undefined) {
+                    let confColor = item.confidence >= 70 ? FOREST : (item.confidence >= 40 ? GOLD : WINE);
+                    stack.push({ text: `confiance ${item.confidence}%`, fontSize: 5, color: confColor, bold: true, margin: [0, 1, 0, 0] });
+                }
+                return { stack, alignment: 'right' };
+            }
+
+            function coteCell(item, fontSize) {
+                if (!(item.marche > 0)) return { text: 'N/C', fontSize: fontSize || 6.4, italics: true, color: MUTED, alignment: 'right' };
+                let stack = [{ text: `${item.marche.toFixed(2)} €`, fontSize: fontSize || 6.4, alignment: 'right', color: INK }];
+                if (item.manuallyEdited) {
+                    stack.push({ text: 'ajusté manuellement', fontSize: 5.2, alignment: 'right', color: GOLD, bold: true, margin: [0, 1, 0, 0] });
+                } else if (item.confidence !== undefined) {
+                    let dotColor = item.confidence >= 70 ? FOREST : (item.confidence >= 40 ? GOLD : WINE);
+                    stack.push({ text: `confiance ${item.confidence}%`, fontSize: 5.2, alignment: 'right', color: dotColor, bold: true, margin: [0, 1, 0, 0] });
+                }
+                return { stack, alignment: 'right' };
+            }
+
+            function titleOriginCell(r) {
+                let origin = [r.country, r.label, (r.pressingYear && r.pressingYear !== 'N/A') ? r.pressingYear : null].filter(Boolean).join(' · ');
+                let stack = [{ text: r.artist, bold: true, fontSize: 7.2 }, { text: r.title, fontSize: 6.4, color: MUTED }];
+                if (origin) stack.push({ text: origin, fontSize: 5, color: MUTED, italics: true, margin: [0, 1, 0, 0] });
+                return { stack };
+            }
+
+            const tresors = [...allResults].sort((a, b) => b.marche - a.marche).slice(0, 15);
+            const pioches = [...validFinancialResults].sort((a, b) => b.pv - a.pv).slice(0, 15);
+
+            const tresorsBody = [
+                [{ text: '', color: PAPER, fontSize: 6.8 },
+                 { text: 'ARTISTE / TITRE', color: PAPER, bold: true, fontSize: 6.8 },
+                 { text: 'ÉTAT', color: PAPER, bold: true, fontSize: 6.8, alignment: 'center' },
+                 { text: 'COTE', color: PAPER, bold: true, fontSize: 6.8, alignment: 'right' }],
+                ...tresors.map(r => [
+                    thumbCell(r),
+                    titleOriginCell(r),
+                    { text: r.condition, fontSize: 6.4, alignment: 'center' },
+                    coteCell(r, 7)
+                ])
+            ];
+
+            const piochesBody = [
+                [{ text: '', color: INK, fontSize: 6.8 },
+                 { text: 'ARTISTE / TITRE', color: INK, bold: true, fontSize: 6.8 },
+                 { text: 'ACHAT', color: INK, bold: true, fontSize: 6.8, alignment: 'right' },
+                 { text: 'ÉVOLUTION', color: INK, bold: true, fontSize: 6.8, alignment: 'right' }],
+                ...pioches.map(r => [
+                    thumbCell(r),
+                    titleOriginCell(r),
+                    { text: r.achat.toFixed(2) + ' €', fontSize: 7, alignment: 'right' },
+                    pvCell(r)
+                ])
+            ];
+
+            const inventory = getFilteredSortedInventory();
+            function thumbCell(r) {
+                let data = thumbMap[r.id];
+                return data ? { image: data, width: 16, height: 16 } : { text: '' };
+            }
+
+            const invHeaderLabels = ['', 'ARTISTE', 'TITRE', 'SORTIE INIT.', 'EXEMPL.', 'ÉCART', 'ÉTAT', 'ACHAT', 'COTE EST.', 'PLUS-VALUE'];
+            const invHeader = invHeaderLabels.map((h, i) => ({
+                text: h, color: PAPER, bold: true, fontSize: 6.6, alignment: i < 3 ? 'left' : (i >= 7 ? 'right' : 'center')
+            }));
+            const invBody = [invHeader, ...inventory.map(r => {
+                let origin = [r.country, r.label].filter(Boolean).join(' · ');
+                let titleCell = origin ? [r.title, { text: '\n' + origin, fontSize: 5.2, color: MUTED, italics: true }] : r.title;
+                return [
+                    thumbCell(r),
+                    { text: r.artist, bold: true, fontSize: 6.8 },
+                    { text: titleCell, fontSize: 6.8 },
+                    { text: r.initialYear, fontSize: 6.4, alignment: 'center' },
+                    { text: r.pressingYear, fontSize: 6.4, alignment: 'center' },
+                    { text: r.ecart !== 'N/A' ? `+${r.ecart}a` : 'N/A', fontSize: 6.4, alignment: 'center' },
+                    { text: r.condition, fontSize: 6.4, alignment: 'center' },
+                    { text: r.achat > 0 ? r.achat.toFixed(2) + ' €' : 'N/C', fontSize: 6.4, alignment: 'right', color: r.achat > 0 ? INK : MUTED, italics: r.achat <= 0 },
+                    coteCell(r, 6.4),
+                    pvCell(r)
+                ];
+            })];
+
+            return {
+                pageSize: 'A4', pageOrientation: 'landscape',
+                pageMargins: [28, 28, 28, 34],
+                defaultStyle: { font: 'Roboto', fontSize: 8, color: INK },
+                footer: (currentPage, pageCount) => ({
+                    margin: [28, 8, 28, 0],
+                    columns: [
+                        { text: `My Vinyl Collection — ${currentUsername || 'Collection'} — ${new Date().toLocaleDateString('fr-FR')}`, fontSize: 6.5, color: MUTED },
+                        { text: `Page ${currentPage} / ${pageCount}`, alignment: 'right', fontSize: 6.5, color: MUTED }
+                    ]
+                }),
+                content: [
+                    headerBand(),
+                    { text: '', margin: [0, 8, 0, 0] },
+                    methodologyBox(),
+                    { text: '', margin: [0, 10, 0, 0] },
+                    ...faceTab('FACE A', "Vue d'ensemble"),
+                    kpiRow(),
+                    { text: '', pageBreak: 'after' },
+                    { text: 'GRAPHIQUES', color: '#8A8272', bold: true, fontSize: 8, characterSpacing: 1, margin: [0, 0, 0, 10] },
+                    { columns: [
+                        { width: '*', stack: [
+                            { text: 'PRESSAGES PAR ANNÉE', fontSize: 6.5, color: MUTED, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+                            chartImgs.yearsChart ? { image: chartImgs.yearsChart, fit: [365, 210], alignment: 'center' } : { text: '' }
+                        ]},
+                        { width: '*', stack: [
+                            { text: 'ÉCARTS DE PRESSAGE (ANNÉE INITIALE / EXEMPLAIRE)', fontSize: 6.5, color: MUTED, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+                            chartImgs.ecartChart ? { image: chartImgs.ecartChart, fit: [365, 210], alignment: 'center' } : { text: '' }
+                        ]}
+                    ]},
+                    { columns: [
+                        { width: '*', stack: [
+                            { text: 'AJOUTS PAR MOIS (EN NOMBRE)', fontSize: 6.5, color: MUTED, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+                            chartImgs.purchasesCountChart ? { image: chartImgs.purchasesCountChart, fit: [365, 210], alignment: 'center' } : { text: '' }
+                        ]},
+                        { width: '*', stack: [
+                            { text: 'VALEUR AJOUTÉE PAR MOIS (EN EUROS, COTE MARCHÉ)', fontSize: 6.5, color: MUTED, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+                            chartImgs.purchasesValueChart ? { image: chartImgs.purchasesValueChart, fit: [365, 210], alignment: 'center' } : { text: '' }
+                        ]}
+                    ], margin: [0, 14, 0, 0] },
+                    { text: '', pageBreak: 'after' },
+                    ...faceTab('FACE B', 'Temps forts'),
+                    { columns: [
+                        { width: '*', table: { headerRows: 1, widths: [16, '*', 32, 45], body: tresorsBody }, layout: zebraLayout(INK) },
+                        { width: '*', table: { headerRows: 1, widths: [16, '*', 40, 55], body: piochesBody }, layout: zebraLayout(GOLD), margin: [10, 0, 0, 0] }
+                    ]},
+                    { text: '', pageBreak: 'after' },
+                    { text: 'TRACKLIST COMPLÈTE — INVENTAIRE & COTES MARCHÉ' + (inventoryFilterText ? ` (filtré : "${inventoryFilterText}" — ${inventory.length}/${allResults.length})` : ''), fontSize: 15, bold: true, margin: [0, 0, 0, 8] },
+                    { table: { headerRows: 1, widths: [20, '13%', '22%', '7%', '7%', '6%', '8%', '8%', '8%', '10%'], body: invBody, dontBreakRows: true }, layout: zebraLayout(INK) }
+                ]
+            };
+        }
+
+        async function triggerPrint() {
+            if (allResults.length === 0) {
+                alert("Aucune donnée à exporter pour l'instant.");
+                return;
+            }
+            if (typeof pdfMake === 'undefined') {
+                alert("Le générateur PDF n'a pas pu se charger (connexion internet ?). Réessayez, ou utilisez l'impression du navigateur en secours.");
+                return;
+            }
+            const btn = document.getElementById('exportBtn');
+            const originalLabel = btn.innerText;
+            btn.disabled = true;
+            try {
+                btn.innerText = 'Récupération des pochettes...';
+                const thumbMap = await buildThumbMap(allResults, (done, total) => {
+                    btn.innerText = `Pochettes ${done}/${total}...`;
+                });
+                btn.innerText = 'Génération du PDF...';
+                const docDefinition = buildPdfDocDefinition(thumbMap);
+                pdfMake.createPdf(docDefinition).download(buildExportFilename() + '.pdf');
+            } catch (e) {
+                console.error('Erreur génération PDF', e);
+                alert("Erreur lors de la génération du PDF : " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalLabel;
+            }
+        }
+    </script>
+</body>
+</html>
