@@ -14,7 +14,7 @@ export function Footer() {
           </p>
         </div>
         <nav className="sl-mono grid grid-cols-2 gap-x-10 gap-y-2 text-[11px] uppercase tracking-[0.15em] text-[var(--sl-paper)]/70">
-          <Link to="/festivals" className="hover:text-[var(--sl-gold-bright)]">Festivals</Link>
+          <Link to="/" className="hover:text-[var(--sl-gold-bright)]">Créer une playlist</Link>
           <Link to="/history" className="hover:text-[var(--sl-gold-bright)]">Mes playlists</Link>
           <Link to="/collection" className="hover:text-[var(--sl-gold-bright)]">Collection</Link>
           <Link to="/subscription" className="hover:text-[var(--sl-gold-bright)]">Premium</Link>
