@@ -1,7 +1,7 @@
 // src/components/studio/Result.tsx — résultat + export
-import { Check, Copy, Download, ExternalLink, X } from 'lucide-react';
+import { Check, Copy, Crown, Download, ExternalLink, Lock, X } from 'lucide-react';
 import { FaceTitle } from '@/components/vinyl/Ui';
-import { ItemReport, Source, Track } from '@/lib/engine';
+import { Access, ItemReport, Source, Track } from '@/lib/engine';
 
 interface Props {
   name: string;
@@ -10,6 +10,8 @@ interface Props {
   preferLive: boolean;
   copied: boolean;
   quotaText: string;
+  access: Access;
+  onUnlock: () => void;
   onRemoveTrack: (i: number) => void;
   onExport: (kind: 'copy' | 'txt' | 'csv') => void;
 }
@@ -20,7 +22,8 @@ const SRC: Record<Source, { label: string; color: string }> = {
   top: { label: 'Top titres', color: 'var(--sl-wine)' },
 };
 
-export default function Result({ name, tracks, report, preferLive, copied, quotaText, onRemoveTrack, onExport }: Props) {
+export default function Result({ name, tracks, report, preferLive, copied, quotaText, access, onUnlock, onRemoveTrack, onExport }: Props) {
+  const hidden = tracks.length - access.visible;
   const counts = (['exact', 'average', 'top'] as Source[]).map((s) => ({ s, n: tracks.filter((t) => t.source === s).length }));
   const artists = new Set(tracks.map((t) => t.artist)).size;
   const empty = report.filter((r) => r.source === 'none' && r.reason !== 'ratelimit');
@@ -73,9 +76,15 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
           <p className="sl-label mb-1">1 · Récupérer la liste</p>
           <p className="mb-4 text-xs text-[var(--sl-muted)]">{quotaText}</p>
           <div className="flex flex-wrap gap-2">
-            <button className="sl-btn sl-btn-ink" onClick={() => onExport('copy')}>{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied ? 'Copié !' : 'Copier'}</button>
-            <button className="sl-btn sl-btn-line" onClick={() => onExport('txt')}><Download className="h-3.5 w-3.5" /> .txt</button>
-            <button className="sl-btn sl-btn-line" onClick={() => onExport('csv')}><Download className="h-3.5 w-3.5" /> .csv</button>
+            <button className="sl-btn sl-btn-ink" onClick={() => onExport('copy')}>
+              {copied ? <Check className="h-3.5 w-3.5" /> : access.canCopy ? <Copy className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />} {copied ? 'Copié !' : 'Copier'}
+            </button>
+            <button className={`sl-btn ${access.canFiles ? 'sl-btn-line' : 'sl-btn-line opacity-60'}`} onClick={() => onExport('txt')} title={access.canFiles ? '' : 'Réservé aux membres Premium'}>
+              {access.canFiles ? <Download className="h-3.5 w-3.5" /> : <Crown className="h-3.5 w-3.5 text-[var(--sl-gold)]" />} .txt
+            </button>
+            <button className={`sl-btn ${access.canFiles ? 'sl-btn-line' : 'sl-btn-line opacity-60'}`} onClick={() => onExport('csv')} title={access.canFiles ? '' : 'Réservé aux membres Premium'}>
+              {access.canFiles ? <Download className="h-3.5 w-3.5" /> : <Crown className="h-3.5 w-3.5 text-[var(--sl-gold)]" />} .csv
+            </button>
           </div>
         </div>
         <div className="sl-card-dim p-5">
@@ -98,7 +107,7 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
               </tr>
             </thead>
             <tbody>
-              {tracks.map((t, i) => (
+              {tracks.slice(0, access.visible).map((t, i) => (
                 <tr key={`${t.artist}-${t.name}-${i}`} className="border-b border-[var(--sl-groove)] hover:bg-[var(--sl-paper-dim)]">
                   <td className="sl-mono px-3 py-2 text-right text-[11px] text-[var(--sl-muted)]">{i + 1}</td>
                   <td className="px-3 py-2 font-semibold">{preferLive ? `${t.name} (Live)` : t.name}<span className="block text-xs font-normal text-[var(--sl-muted)] sm:hidden">{t.artist}</span></td>
@@ -111,6 +120,18 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
                   <td className="px-2"><button aria-label="Retirer ce titre" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => onRemoveTrack(i)}><X className="h-4 w-4" /></button></td>
                 </tr>
               ))}
+              {hidden > 0 && (
+                <tr>
+                  <td colSpan={5} className="bg-[var(--sl-paper-dim)] px-4 py-6 text-center">
+                    <p className="sl-mono mb-3 text-[11px] uppercase tracking-widest text-[var(--sl-muted)]">
+                      <Lock className="mr-1.5 inline h-3.5 w-3.5" />{hidden} titre(s) masqué(s)
+                    </p>
+                    <button className="sl-btn sl-btn-gold" onClick={onUnlock}>
+                      {access.tier === 'anon' ? `Se connecter pour voir les ${tracks.length} titres` : `Débloquer les ${tracks.length} titres`}
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
