@@ -29,7 +29,7 @@ export interface Profile {
   partial: boolean;
 }
 
-export interface ItemReport { uid: string; label: string; source: Source | 'none'; count: number }
+export interface ItemReport { uid: string; label: string; source: Source | 'none'; count: number; reason?: 'ratelimit' | 'notfound' }
 
 // ---------- utilitaires ----------
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -177,41 +177,96 @@ async function exactTracks(it: StudioItem): Promise<Track[]> {
   return tracksFromSets(sets, it.artist).map((t) => ({ ...t, source: 'exact' as const }));
 }
 
+// File d'attente série : un seul calcul de setlist moyenne à la fois (Setlist.fm limite à ~2 requêtes/s)
+let avgChain: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const p = avgChain.then(fn, fn);
+  avgChain = p.catch(() => undefined);
+  return p;
+}
+
 async function averageTracks(it: StudioItem): Promise<Track[]> {
   const key = `sl_avg_v2:${it.mbid || norm(it.artist)}`;
   let data = cacheGet<any>(key, 30 * 24 * 3600 * 1000);
   if (!data) {
-    data = await getJson(`/api/search?action=average&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null);
+    data = await serial(() =>
+      getJson(`/api/search?action=average&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
+    );
     if (data?.songs?.length) cacheSet(key, data);
   }
   return (data?.songs || []).map((s: any) => ({ artist: s.artist || it.artist, name: s.name, source: 'average' as const }));
 }
 
-async function itunesFetch(artist: string, country: string): Promise<any[]> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await fetch(`https://itunes.apple.com/search?term=${enc(artist)}&entity=song&limit=50&country=${country}`);
-      if (r.status === 403 || r.status === 429) { await sleep(1200); continue; }
-      if (!r.ok) return [];
-      return (await r.json()).results || [];
-    } catch { return []; }
-  }
-  return [];
+// ---------- iTunes : débit maîtrisé ----------
+// Apple documente environ 20 appels/minute et par adresse IP. On espace donc chaque appel (≈ 18/min),
+// on met en cache le résultat 30 jours, et sur erreur 403/429 on met TOUT en pause avant de réessayer.
+let ITUNES_GAP = 3200;
+let ITUNES_COOLDOWN = 20000;
+/** Réglage pour les tests uniquement. */
+export const __tuneItunes = (gap: number, cooldown: number) => { ITUNES_GAP = gap; ITUNES_COOLDOWN = cooldown; };
+
+let itunesChain: Promise<void> = Promise.resolve();
+let itunesLast = 0;
+let itunesCooldownUntil = 0;
+
+function itunesSlot(): Promise<void> {
+  const slot = itunesChain.then(async () => {
+    const now = Date.now();
+    const wait = Math.max(itunesLast + ITUNES_GAP - now, itunesCooldownUntil - now, 0);
+    if (wait > 0) await sleep(wait);
+    itunesLast = Date.now();
+  });
+  itunesChain = slot.catch(() => undefined);
+  return slot;
 }
 
-async function topTracks(artist: string, limit: number): Promise<Track[]> {
+async function itunesFetch(artist: string, country: string, notice?: (m: string) => void): Promise<{ ok: boolean; results: any[] }> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await itunesSlot();
+    try {
+      const r = await fetch(`https://itunes.apple.com/search?term=${enc(artist)}&entity=song&limit=50&country=${country}`);
+      if (r.status === 403 || r.status === 429) {
+        itunesCooldownUntil = Date.now() + ITUNES_COOLDOWN;
+        notice?.(`iTunes limite le débit : pause de ${Math.round(ITUNES_COOLDOWN / 1000)} s…`);
+        continue;
+      }
+      if (!r.ok) return { ok: false, results: [] };
+      return { ok: true, results: (await r.json()).results || [] };
+    } catch {
+      return { ok: false, results: [] };
+    }
+  }
+  return { ok: false, results: [] };
+}
+
+interface TopEntry { want: number; tracks: Track[]; at: number }
+
+async function topTracks(artist: string, limit: number, notice?: (m: string) => void): Promise<{ tracks: Track[]; failed: boolean }> {
+  const key = `sl_top_v3:${norm(artist)}`;
+  const cached = cacheGet<TopEntry>(key, 30 * 24 * 3600 * 1000);
+  // Une réponse vide n'est gardée que 3 jours (l'artiste peut apparaître plus tard dans iTunes)
+  const fresh = cached && (cached.tracks.length > 0 || Date.now() - cached.at < 3 * 24 * 3600 * 1000);
+  if (cached && fresh && (cached.tracks.length >= limit || cached.want >= limit)) {
+    return { tracks: cached.tracks.slice(0, limit), failed: false };
+  }
+
+  const want = Math.max(limit, 8);
   const wanted = norm(artist);
   const out: Track[] = [];
+  let failed = false;
   for (const country of ['FR', 'US', 'GB']) {
-    const results = await itunesFetch(artist, country);
+    const { ok, results } = await itunesFetch(artist, country, notice);
+    if (!ok) { failed = true; break; }
     results.forEach((r: any) => {
       const n = norm(r.artistName || '');
-      const ok = n === wanted || ` ${n} `.includes(` ${wanted} `);
-      if (ok && r.trackName) out.push({ artist: r.artistName, name: r.trackName, source: 'top' });
+      if ((n === wanted || ` ${n} `.includes(` ${wanted} `)) && r.trackName) out.push({ artist: r.artistName, name: r.trackName, source: 'top' });
     });
-    if (dedupe(out).length >= limit) break;
+    if (dedupe(out).length >= want) break;
   }
-  return dedupe(out).slice(0, limit);
+  const tracks = dedupe(out).slice(0, want);
+  // On ne met en cache que les réponses fiables (jamais un échec réseau / limite de débit)
+  if (!failed || tracks.length) cacheSet(key, { want, tracks, at: Date.now() } as TopEntry);
+  return { tracks: tracks.slice(0, limit), failed: failed && !tracks.length };
 }
 
 // ---------- génération ----------
@@ -221,7 +276,7 @@ export async function buildPlaylist(
   onProgress?: (msg: string) => void
 ): Promise<{ tracks: Track[]; report: ItemReport[] }> {
   // Au-delà de 15 artistes sans setlist, on saute la setlist moyenne (trop d'appels Setlist.fm)
-  const allowAverage = items.filter((i) => i.origin !== 'festival' && i.kind === 'artist').length <= 15;
+  const allowAverage = items.filter((i) => i.kind === 'artist').length <= 15;
   const results: Track[][] = new Array(items.length);
   const report: ItemReport[] = new Array(items.length);
   let next = 0;
@@ -234,28 +289,55 @@ export async function buildPlaylist(
       const it = items[i];
       let tracks: Track[] = [];
       let source: Source | 'none' = 'none';
+      let reason: ItemReport['reason'];
       try {
         if (it.kind === 'concert') {
           tracks = await exactTracks(it);
           if (tracks.length) source = 'exact';
         }
-        if (!tracks.length && it.origin !== 'festival' && allowAverage) {
+        if (!tracks.length && allowAverage) {
           tracks = await averageTracks(it);
           if (tracks.length) source = 'average';
         }
         if (!tracks.length) {
-          tracks = await topTracks(it.artist, opts.topCount);
+          const top = await topTracks(it.artist, opts.topCount, onProgress);
+          tracks = top.tracks;
           if (tracks.length) source = 'top';
+          else reason = top.failed ? 'ratelimit' : 'notfound';
         }
-      } catch { /* l'item sera signalé « aucun titre » */ }
+      } catch { reason = 'notfound'; }
       results[i] = tracks;
-      report[i] = { uid: it.uid, label: it.artist, source, count: tracks.length };
+      report[i] = { uid: it.uid, label: it.artist, source, count: tracks.length, reason };
       done += 1;
       onProgress?.(`${done}/${items.length} — ${it.artist}`);
     }
   }
   await Promise.all(Array.from({ length: Math.min(3, items.length) }, worker));
   return { tracks: dedupe(results.flat()), report };
+}
+
+// ---------- affiche collée (concerts à venir / festival) ----------
+// Accepte une liste copiée depuis un site de festival : un artiste par ligne, ou séparés par des virgules / puces.
+export function parseLineup(text: string): string[] {
+  let parts = text.split(/\r?\n/);
+  if (parts.length === 1) parts = text.split(/[,;•·|]/);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (let raw of parts) {
+    let s = raw
+      .replace(/^[\s\-–—*•·>\d]+[.)]?\s+(?=\S)/, '')      // puces et numéros en début de ligne
+      .replace(/\s+[-–—@]\s*\d{1,2}[h:.]\d{0,2}.*$/, '')   // « — 21:00 », « - 21h30 »
+      .replace(/\s+\d{1,2}[h:]\d{2}\s*$/, '')
+      .trim();
+    if (!s || s.length > 60 || s.length < 2) continue;
+    if (/^(jour|day|vendredi|samedi|dimanche|jeudi|mercredi|friday|saturday|sunday|thursday|stage|scène|main stage)\b/i.test(s)) continue;
+    const k = norm(s);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+    if (out.length >= 150) break;
+  }
+  return out;
 }
 
 // ---------- exports ----------
