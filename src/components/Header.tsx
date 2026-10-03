@@ -41,6 +41,9 @@ export function Header() {
 
         <nav className="hidden items-center gap-7 md:flex">
           {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={link}>{n.label}</NavLink>)}
+          {user && !isPremium && (
+            <NavLink to="/subscription" className={link}><Crown className="mr-1.5 inline h-3.5 w-3.5 text-[var(--sl-gold-bright)]" />Premium</NavLink>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -65,6 +68,9 @@ export function Header() {
               {n.label}
             </NavLink>
           ))}
+          {user && !isPremium && (
+            <NavLink to="/subscription" onClick={() => setOpen(false)} className={(s) => `${link(s)} border-b-0 py-3`}>Premium</NavLink>
+          )}
         </nav>
       )}
     </div>
