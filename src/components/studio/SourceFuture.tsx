@@ -1,9 +1,9 @@
 // src/components/studio/SourceFuture.tsx — Face A : concerts à venir (concert virtuel)
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Empty, PickRow, Spinner } from '@/components/vinyl/Ui';
-import { Profile, StudioItem, artistItem, fmtDate, searchArtists } from '@/lib/engine';
+import { toast } from 'sonner';
+import { Profile, StudioItem, artistItem, fmtDate, parseLineup, searchArtists } from '@/lib/engine';
 
 interface Props {
   onAdd: (items: StudioItem[]) => void;
@@ -19,6 +19,8 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
   const [date, setDate] = useState('');
   const [sugg, setSugg] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lineup, setLineup] = useState('');
+  const parsed = parseLineup(lineup);
 
   useEffect(() => {
     if (q.trim().length < 2) { setSugg([]); return; }
@@ -34,6 +36,11 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
     onAdd([artistItem(name, mbid, date || undefined, 'future')]);
     setQ('');
     setSugg([]);
+  };
+  const addLineup = () => {
+    if (!parsed.length) return toast.error('Colle d’abord une liste d’artistes');
+    onAdd(parsed.map((n) => artistItem(n, undefined, date || undefined, 'future')));
+    setLineup('');
   };
   const toggle = (it: StudioItem) => (has(it.uid) ? onRemove(it.uid) : onAdd([it]));
 
@@ -91,13 +98,25 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
         )}
       </div>
 
-      <Link to="/festivals" className="sl-card-dim mt-6 flex items-center justify-between p-4 transition-colors hover:bg-[var(--sl-groove)]">
-        <span>
-          <span className="sl-display block text-xl">Un festival ?</span>
-          <span className="text-xs text-[var(--sl-muted)]">Pars de l’affiche et choisis les groupes que tu veux voir.</span>
-        </span>
-        <span className="sl-mono text-lg">→</span>
-      </Link>
+      <div className="sl-card-dim mt-6 p-4">
+        <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
+        <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
+          Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les jours, heures et doublons sont ignorés.
+        </p>
+        <textarea
+          className="sl-input min-h-[120px] font-mono text-xs"
+          value={lineup}
+          onChange={(e) => setLineup(e.target.value)}
+          placeholder={'Gojira\nMastodon\nAlcest\n…'}
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <span className="sl-label">{parsed.length ? `${parsed.length} artiste(s) reconnus` : 'Aucun artiste reconnu'}</span>
+          <button className="sl-btn sl-btn-gold" onClick={addLineup} disabled={!parsed.length}>Ajouter à ma playlist</button>
+        </div>
+        {parsed.length > 15 && (
+          <p className="mt-2 text-[11px] text-[var(--sl-muted)]">Au-delà de 15 artistes, Setlive prend leurs titres les plus connus (plus rapide) au lieu de leur setlist habituelle.</p>
+        )}
+      </div>
     </div>
   );
 }
