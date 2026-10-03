@@ -1,6 +1,6 @@
 // src/pages/Index.tsx — le Studio : choisir → ajuster → exporter, sur une seule page
-import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -14,7 +14,7 @@ import { saveToHistory } from '@/lib/history';
 import { checkExportQuota, trackExport, type ExportQuota } from '@/lib/subscription';
 import {
   ItemReport, Profile, StudioItem, Track,
-  artistItem, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
+  buildPlaylist, downloadFile, loadProfile, toCsv, toText,
 } from '@/lib/engine';
 
 const EMPTY_PROFILE: Profile = { username: '', pastItems: [], futureItems: [], loading: false, loaded: false, partial: false };
@@ -27,7 +27,6 @@ function defaultName(items: StudioItem[]) {
 export default function Index() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'future' ? 'future' : 'past';
 
@@ -41,18 +40,6 @@ export default function Index() {
   const [copied, setCopied] = useState(false);
   const [quota, setQuota] = useState<ExportQuota | null>(null);
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
-
-  // Arrivée depuis une page festival : { artists, eventName }
-  const imported = useRef(false);
-  useEffect(() => {
-    const st: any = location.state;
-    if (imported.current || !st?.artists?.length) return;
-    imported.current = true;
-    setItems(st.artists.map((a: string) => artistItem(a, undefined, undefined, 'festival')));
-    if (st.eventName) setName(st.eventName);
-    toast.success(`${st.artists.length} artiste(s) ajoutés depuis ${st.eventName || 'le festival'}`);
-    navigate('.', { replace: true, state: null });
-  }, [location.state, navigate]);
 
   useEffect(() => {
     if (!user) { setQuota(null); return; }
