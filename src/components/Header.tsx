@@ -8,7 +8,6 @@ import { GoogleTranslate } from '@/components/GoogleTranslate';
 
 const NAV = [
   { to: '/', label: 'Créer', end: true },
-  { to: '/festivals', label: 'Festivals', end: false },
   { to: '/history', label: 'Mes playlists', end: false },
   { to: '/collection', label: 'Collection', end: false },
 ];
