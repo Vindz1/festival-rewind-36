@@ -51,7 +51,7 @@ export default function Success() {
               <div className="sl-card-dim p-4 text-left">
                 <p className="sl-label mb-3">Tes avantages actifs</p>
                 <ul className="space-y-2 text-sm">
-                  {['Exports illimités', 'Fichiers .txt et .csv', 'Historique complet', 'Support prioritaire'].map((a) => (
+                  {['Exports illimités', 'Fichiers .txt et .csv', 'Historique complet', 'Collection de vinyles complète', 'Support prioritaire'].map((a) => (
                     <li key={a} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[var(--sl-gold)]" /> {a}</li>
                   ))}
                 </ul>
