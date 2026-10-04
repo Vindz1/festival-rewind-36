@@ -29,7 +29,12 @@ export default function History() {
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) { navigate('/auth'); return; }
+    if (!user) {
+      // La session peut encore être en cours de chargement (ouverture directe, rafraîchissement) :
+      // on laisse un court délai avant de renvoyer vers la connexion.
+      const t = setTimeout(() => navigate('/auth'), 2500);
+      return () => clearTimeout(t);
+    }
     (async () => {
       setLoading(true);
       try {
