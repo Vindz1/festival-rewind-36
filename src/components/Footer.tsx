@@ -1,5 +1,6 @@
 // src/components/Footer.tsx
 import { Link } from 'react-router-dom';
+import { resetConsent } from '@/lib/analytics';
 
 export function Footer() {
   return (
@@ -14,13 +15,14 @@ export function Footer() {
           </p>
         </div>
         <nav className="sl-mono grid grid-cols-2 gap-x-10 gap-y-2 text-[11px] uppercase tracking-[0.15em] text-[var(--sl-paper)]/70">
-          <Link to="/" className="hover:text-[var(--sl-gold-bright)]">Créer une playlist</Link>
-          <Link to="/history" className="hover:text-[var(--sl-gold-bright)]">Mes playlists</Link>
+          <Link to="/" className="hover:text-[var(--sl-gold-bright)]">Studio</Link>
+          <Link to="/history" className="hover:text-[var(--sl-gold-bright)]">Back in Time</Link>
           <Link to="/collection" className="hover:text-[var(--sl-gold-bright)]">Collection</Link>
           <Link to="/subscription" className="hover:text-[var(--sl-gold-bright)]">Premium</Link>
           <Link to="/partage" className="hover:text-[var(--sl-gold-bright)]">Partager</Link>
           <Link to="/legal" className="hover:text-[var(--sl-gold-bright)]">Mentions légales</Link>
           <a href="mailto:setlive@proton.me" className="hover:text-[var(--sl-gold-bright)]">Contact</a>
+          <button type="button" onClick={resetConsent} className="text-left uppercase tracking-[0.15em] hover:text-[var(--sl-gold-bright)]">Gérer les cookies</button>
         </nav>
       </div>
     </footer>
