@@ -75,7 +75,7 @@ export default function History() {
 
             {!isPremium && (
               <div className="sl-card-dim mt-6 flex flex-col gap-3 border-l-4 !border-l-[var(--sl-gold)] p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm">Premium : exports illimités, historique complet et zéro pub.</p>
+                <p className="text-sm">Premium : exports illimités, fichiers .txt/.csv et historique complet.</p>
                 <Link to="/subscription" className="sl-btn sl-btn-gold">Voir les offres</Link>
               </div>
             )}
