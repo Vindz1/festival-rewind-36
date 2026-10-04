@@ -72,3 +72,20 @@ export function PickRow({ title, sub, meta, added, onClick }: { title: string; s
     </div>
   );
 }
+
+// Mode d'emploi en étapes numérotées (orientation des nouveaux visiteurs)
+export function Steps({ items }: { items: { title: string; text: string }[] }) {
+  return (
+    <ol className="mb-8 grid gap-3 md:grid-cols-3">
+      {items.map((s, i) => (
+        <li key={s.title} className="sl-card-dim flex gap-3 p-4">
+          <span className="sl-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--sl-ink)] text-xl text-[var(--sl-gold-bright)]">{i + 1}</span>
+          <span>
+            <span className="sl-display block text-xl leading-none">{s.title}</span>
+            <span className="mt-1 block text-xs leading-relaxed text-[var(--sl-muted)]">{s.text}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
