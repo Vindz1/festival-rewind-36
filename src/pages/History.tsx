@@ -1,17 +1,19 @@
-// src/pages/History.tsx — « Mes playlists » : playlists générées + exports
+// src/pages/History.tsx — « Back in Time » : playlists générées + exports, avec réouverture de la liste
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Empty, FaceTitle, Frame, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
 import { supabase } from '@/supabaseClient';
 import { checkExportQuota } from '@/lib/subscription';
+import { readStored, type StoredTrack } from '@/lib/playlists';
+import PlaylistDetail from '@/components/PlaylistDetail';
 
-interface PlaylistRow { id: string; playlist_name: string; track_count: number; top_artists: string[]; source_type: 'concert' | 'upcoming'; created_at: string }
-interface ExportRow { id: string; playlist_name: string; track_count: number; created_at: string }
+interface PlaylistRow { id: string; playlist_name: string; track_count: number; top_artists: string[]; source_type: 'concert' | 'upcoming'; created_at: string; tracks?: unknown }
+interface ExportRow { id: string; playlist_name: string; track_count: number; created_at: string; tracks?: unknown }
 
 const when = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -24,6 +26,7 @@ export default function History() {
   const [isPremium, setIsPremium] = useState(false);
   const [quota, setQuota] = useState({ remaining: 0, used: 0 });
   const [tab, setTab] = useState<'playlists' | 'exports'>('playlists');
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
@@ -54,6 +57,16 @@ export default function History() {
     toast.success('Playlist supprimée');
   };
 
+  // Bouton « Ouvrir » (liste conservée) ou mention (export fait avant que la liste soit enregistrée)
+  const OpenToggle = ({ k, tracks }: { k: string; tracks: StoredTrack[] | null }) =>
+    tracks ? (
+      <button className="sl-btn sl-btn-line sl-btn-sm shrink-0" onClick={() => setOpenKey(openKey === k ? null : k)} aria-expanded={openKey === k}>
+        {openKey === k ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} {openKey === k ? 'Fermer' : 'Ouvrir'}
+      </button>
+    ) : (
+      <span className="sl-mono hidden shrink-0 text-[10px] uppercase tracking-wide text-[var(--sl-muted)] sm:block" title="Cette playlist a été créée avant l’enregistrement des listes de titres">liste non conservée</span>
+    );
+
   const Kpi = ({ label, value, hero }: { label: string; value: string | number; hero?: boolean }) => (
     <div className={hero ? 'rounded-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-ink)] p-4 text-[var(--sl-paper)]' : 'sl-card border-l-4 !border-l-[var(--sl-groove)] p-4'}>
       <p className={hero ? 'sl-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sl-gold-bright)]' : 'sl-label'}>{label}</p>
@@ -67,7 +80,7 @@ export default function History() {
       <Frame
         kicker="Historique"
         title="Back in Time"
-        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Le journal de tes playlists : chaque playlist créée dans le Studio est gardée ici, avec la liste de tes exports. Retrouve ce que tu as déjà fait (historique complet avec Premium).</p>}
+        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Le journal de tes playlists : chaque playlist créée dans le Studio est gardée ici, avec la liste de tes exports. Ouvre-en une pour la recopier ou l’envoyer vers TuneMyMusic (historique complet avec Premium).</p>}
       >
         {loading ? <div className="flex justify-center py-16"><Spinner className="h-6 w-6" /></div> : (
           <>
@@ -98,20 +111,28 @@ export default function History() {
                     <div className="sl-card"><Empty title="Aucune playlist" text="Crée ta première playlist depuis le Studio." /></div>
                   ) : (
                     <div className="sl-card overflow-hidden">
-                      {playlists.map((p) => (
-                        <div key={p.id} className="sl-row">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">{p.playlist_name}</p>
-                            <p className="truncate text-xs text-[var(--sl-muted)]">
-                              {when(p.created_at)} · {p.track_count} titres{p.top_artists?.length ? ` · ${p.top_artists.slice(0, 3).join(', ')}` : ''}
-                            </p>
+                      {playlists.map((p) => {
+                        const tracks = readStored(p.tracks);
+                        const k = `p:${p.id}`;
+                        return (
+                          <div key={p.id} className="border-b border-[var(--sl-groove)] last:border-b-0">
+                            <div className="sl-row !border-b-0">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold">{p.playlist_name}</p>
+                                <p className="truncate text-xs text-[var(--sl-muted)]">
+                                  {when(p.created_at)} · {p.track_count} titres{p.top_artists?.length ? ` · ${p.top_artists.slice(0, 3).join(', ')}` : ''}
+                                </p>
+                              </div>
+                              <span className="sl-mono hidden text-[10px] uppercase tracking-wide sm:block" style={{ color: p.source_type === 'concert' ? 'var(--sl-forest)' : 'var(--sl-gold)' }}>
+                                ● {p.source_type === 'concert' ? 'Concert passé' : 'À venir'}
+                              </span>
+                              <OpenToggle k={k} tracks={tracks} />
+                              <button aria-label="Supprimer" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                            {tracks && openKey === k && <PlaylistDetail title={p.playlist_name} tracks={tracks} canFiles={isPremium} />}
                           </div>
-                          <span className="sl-mono hidden text-[10px] uppercase tracking-wide sm:block" style={{ color: p.source_type === 'concert' ? 'var(--sl-forest)' : 'var(--sl-gold)' }}>
-                            ● {p.source_type === 'concert' ? 'Concert passé' : 'À venir'}
-                          </span>
-                          <button aria-label="Supprimer" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => remove(p.id)}><Trash2 className="h-4 w-4" /></button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )
                 ) : (
@@ -129,17 +150,28 @@ export default function History() {
                 !exportsList.length ? (
                   <div className="sl-card"><Empty title="Aucun export" text="Tes copies de listes apparaîtront ici." /></div>
                 ) : (
-                  <div className="sl-card overflow-hidden">
-                    {exportsList.map((e) => (
-                      <div key={e.id} className="sl-row">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{e.playlist_name}</p>
-                          <p className="text-xs text-[var(--sl-muted)]">{when(e.created_at)}</p>
-                        </div>
-                        <span className="sl-mono text-[10px] uppercase tracking-wide text-[var(--sl-muted)]">{e.track_count} titres</span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <p className="mb-3 text-xs text-[var(--sl-muted)]">Ouvre un export pour retrouver sa liste et l’envoyer vers TuneMyMusic : recopier un export déjà fait ne consomme pas d’export.</p>
+                    <div className="sl-card overflow-hidden">
+                      {exportsList.map((e) => {
+                        const tracks = readStored(e.tracks);
+                        const k = `e:${e.id}`;
+                        return (
+                          <div key={e.id} className="border-b border-[var(--sl-groove)] last:border-b-0">
+                            <div className="sl-row !border-b-0">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold">{e.playlist_name}</p>
+                                <p className="text-xs text-[var(--sl-muted)]">{when(e.created_at)}</p>
+                              </div>
+                              <span className="sl-mono text-[10px] uppercase tracking-wide text-[var(--sl-muted)]">{e.track_count} titres</span>
+                              <OpenToggle k={k} tracks={tracks} />
+                            </div>
+                            {tracks && openKey === k && <PlaylistDetail title={e.playlist_name} tracks={tracks} canFiles={isPremium} />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )
               )}
             </div>
