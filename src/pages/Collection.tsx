@@ -4,7 +4,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Crown } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/AuthContext';
@@ -43,6 +42,19 @@ export default function Collection() {
     return () => window.removeEventListener('message', onMessage);
   }, [sendTier, user, navigate]);
 
+  // La page vinyle occupe toute sa hauteur : une seule barre de défilement (celle du site), pas de zone interne
+  useEffect(() => {
+    const fit = () => {
+      const f = frame.current;
+      const body = f?.contentDocument?.body;
+      if (!f || !body) return;
+      const h = Math.ceil(Math.max(body.offsetHeight, body.scrollHeight));
+      if (h > 200 && Math.abs(h - f.offsetHeight) > 1) f.style.height = `${h}px`;
+    };
+    const id = window.setInterval(fit, 400);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Si /collection.html renvoie le site lui-même (fichier absent du déploiement), on l'explique au lieu d'afficher « le site dans le site »
   const onLoad = () => {
     try {
@@ -56,29 +68,17 @@ export default function Collection() {
     <div className="sl-page">
       <Header />
 
-      <section className="mx-auto max-w-[92rem] px-4 pt-4 md:px-8">
-        <div className="sl-card-dim p-5 md:p-6">
-          <p className="sl-label">Collection</p>
-          <h1 className="sl-display mt-1 text-3xl">Ta collection de vinyles, chiffrée</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed">
-            Connecte ton compte Discogs (un jeton à coller, expliqué plus bas) : Setlive estime la valeur marché de chacun de tes disques selon son état, calcule ta plus-value
-            et trace des graphiques de ta collection. Tu peux aussi estimer un seul vinyle, avec son code-barres.
-          </p>
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-            {premium ? (
-              <span className="sl-mono inline-flex items-center gap-1.5 uppercase tracking-widest text-[var(--sl-gold)]"><Crown className="h-3.5 w-3.5" /> Premium : plus-value, ROI, graphiques, liste complète, exports CSV et PDF</span>
-            ) : (
-              <>
-                <span className="text-[var(--sl-muted)]">
-                  <strong className="text-[var(--sl-ink)]">Gratuit :</strong> la valeur totale de ta collection et 3 albums détaillés par tableau.
-                  <strong className="ml-2 text-[var(--sl-ink)]">Premium :</strong> plus-value, ROI, graphiques, liste complète, exports CSV et PDF.
-                </span>
-                <Link to={user ? '/subscription' : '/auth'} className="sl-btn sl-btn-gold sl-btn-sm">{user ? 'Passer Premium' : 'Se connecter'}</Link>
-              </>
-            )}
-          </p>
-        </div>
-      </section>
+      <p className="mx-auto max-w-[92rem] px-4 pt-4 text-sm leading-relaxed md:px-8">
+        <strong>Collection :</strong> connecte ton compte Discogs (un jeton à coller, expliqué plus bas) et Setlive estime la valeur de chacun de tes vinyles selon son état.{' '}
+        {premium ? (
+          <span className="text-[var(--sl-muted)]">Compte Premium : plus-value, ROI, graphiques, liste complète et exports CSV et PDF sont débloqués.</span>
+        ) : (
+          <span className="text-[var(--sl-muted)]">
+            Gratuit : valeur totale et 3 albums détaillés par tableau. Premium : plus-value, ROI, graphiques, liste complète, exports CSV et PDF.{' '}
+            <Link to={user ? '/subscription' : '/auth'} className="font-semibold text-[var(--sl-gold)] underline">{user ? 'Passer Premium' : 'Se connecter'}</Link>
+          </span>
+        )}
+      </p>
 
       {missing ? (
         <div className="mx-auto mt-10 max-w-lg rounded-lg border border-[var(--sl-groove)] bg-[var(--sl-paper)] p-8 text-center">
@@ -93,8 +93,9 @@ export default function Collection() {
           onLoad={onLoad}
           title="My Vinyl Collection — Analytics Pro"
           src="/collection.html"
-          className="mt-4 w-full border-0"
-          style={{ height: 'calc(100vh - 4rem)', minHeight: 760 }}
+          scrolling="no"
+          className="mt-2 block w-full border-0"
+          style={{ height: 900 }}
         />
       )}
       <Footer />
