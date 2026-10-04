@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { FaceTitle, Frame } from '@/components/vinyl/Ui';
+import { FaceTitle, Frame, Steps } from '@/components/vinyl/Ui';
 import SourcePast from '@/components/studio/SourcePast';
 import SourceFuture from '@/components/studio/SourceFuture';
 import Basket from '@/components/studio/Basket';
@@ -155,9 +155,14 @@ export default function Index() {
       <Header />
       <Frame
         kicker="Concerts & festivals → playlists"
-        title="Setlive Studio"
-        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Choisis des concerts passés ou à venir, ajuste l’ordre, exporte vers Spotify, Deezer, Apple Music…</p>}
+        title="Studio"
+        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Ton atelier à playlists : choisis des concerts, Setlive retrouve les titres joués, et tu les importes dans Spotify, Deezer ou Apple Music.</p>}
       >
+        <Steps items={[
+          { title: 'Choisis', text: 'Un concert passé : on récupère sa vraie setlist (setlist.fm). Un concert à venir ou un festival : on reconstitue la setlist la plus probable.' },
+          { title: 'Ajuste', text: 'Réordonne, retire des artistes, donne un nom à ta playlist, puis lance la génération.' },
+          { title: 'Importe', text: 'Copie la liste et colle-la dans TuneMyMusic : elle arrive dans ton appli de streaming.' },
+        ]} />
         <div className="grid gap-8 pb-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pb-0">
           <div>
             <FaceTitle face="Face A" title="Choisir" />
