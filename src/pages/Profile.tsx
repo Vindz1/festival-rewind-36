@@ -97,7 +97,7 @@ export default function Profile() {
           </div>
 
           <div className="space-y-3 self-start">
-            <Link to="/history" className="sl-btn sl-btn-ink w-full !py-4"><HistoryIcon className="h-4 w-4" /> Mes playlists</Link>
+            <Link to="/history" className="sl-btn sl-btn-ink w-full !py-4"><HistoryIcon className="h-4 w-4" /> Back in Time</Link>
             {!isPremium && (
               <Link to="/subscription" className="sl-btn sl-btn-gold w-full !py-4"><Crown className="h-4 w-4" /> Devenir Premium</Link>
             )}
