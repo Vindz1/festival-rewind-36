@@ -64,7 +64,11 @@ export default function History() {
   return (
     <div className="sl-page">
       <Header />
-      <Frame kicker="Historique" title="Mes playlists">
+      <Frame
+        kicker="Historique"
+        title="Back in Time"
+        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Le journal de tes playlists : chaque playlist créée dans le Studio est gardée ici, avec la liste de tes exports. Retrouve ce que tu as déjà fait (historique complet avec Premium).</p>}
+      >
         {loading ? <div className="flex justify-center py-16"><Spinner className="h-6 w-6" /></div> : (
           <>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -75,7 +79,7 @@ export default function History() {
 
             {!isPremium && (
               <div className="sl-card-dim mt-6 flex flex-col gap-3 border-l-4 !border-l-[var(--sl-gold)] p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm">Premium : exports illimités, fichiers .txt/.csv et historique complet.</p>
+                <p className="text-sm">Premium : exports illimités, fichiers .txt/.csv, historique et collection complets.</p>
                 <Link to="/subscription" className="sl-btn sl-btn-gold">Voir les offres</Link>
               </div>
             )}
