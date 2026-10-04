@@ -11,7 +11,8 @@ import Basket from '@/components/studio/Basket';
 import Result from '@/components/studio/Result';
 import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
-import { checkExportQuota, trackExport, type ExportQuota } from '@/lib/subscription';
+import { checkExportQuota, type ExportQuota } from '@/lib/subscription';
+import { toStored, trackExportWithTracks } from '@/lib/playlists';
 import {
   ItemReport, Profile, StudioItem, Track,
   accessFor, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
@@ -92,7 +93,8 @@ export default function Index() {
         saveToHistory({
           userId: user.id,
           playlistName: finalName,
-          tracks: tracks.map((t) => ({ artist: t.artist })),
+          tracks,
+          live: preferLive,
           sourceType: items.every((i) => i.origin === 'past') ? 'concert' : 'upcoming',
           platform: 'csv',
         });
@@ -135,7 +137,8 @@ export default function Index() {
       await navigator.clipboard.writeText(toText(result.tracks, preferLive));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      const ok = await trackExport(user.id, result.name, result.tracks.length);
+      // On garde la liste exportée : elle pourra être rouverte depuis « Back in Time »
+      const ok = await trackExportWithTracks(user.id, result.name, toStored(result.tracks, preferLive) ?? []);
       if (ok && quota && !quota.isPremium) {
         const remaining = Math.max(0, quota.remaining - 1);
         setQuota({ ...quota, remaining, used: quota.used + 1, canExport: remaining > 0 });
