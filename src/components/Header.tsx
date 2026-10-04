@@ -7,9 +7,9 @@ import { getUserSubscription } from '@/lib/subscription';
 import { GoogleTranslate } from '@/components/GoogleTranslate';
 
 const NAV = [
-  { to: '/', label: 'Créer', end: true },
-  { to: '/history', label: 'Mes playlists', end: false },
-  { to: '/collection', label: 'Collection', end: false },
+  { to: '/', label: 'Studio', end: true, hint: 'Crée une playlist à partir de concerts ou de festivals' },
+  { to: '/history', label: 'Back in Time', end: false, hint: 'Retrouve toutes les playlists que tu as déjà créées' },
+  { to: '/collection', label: 'Collection', end: false, hint: 'Estime la valeur de ta collection de vinyles' },
 ];
 
 export function Header() {
@@ -40,7 +40,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
-          {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={link}>{n.label}</NavLink>)}
+          {NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.end} className={link} title={n.hint}>{n.label}</NavLink>)}
           {user && !isPremium && (
             <NavLink to="/subscription" className={link}><Crown className="mr-1.5 inline h-3.5 w-3.5 text-[var(--sl-gold-bright)]" />Premium</NavLink>
           )}
@@ -66,6 +66,7 @@ export function Header() {
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setOpen(false)} className={(s) => `${link(s)} border-b-0 py-3`}>
               {n.label}
+              <span className="mt-0.5 block text-[10px] font-normal normal-case tracking-normal text-[var(--sl-paper)]/50">{n.hint}</span>
             </NavLink>
           ))}
           {user && !isPremium && (
