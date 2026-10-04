@@ -13,11 +13,13 @@ const FREE_FEATURES = [
   '2 exports par an (copie de la liste)',
   'Liste complète tant qu’il reste des exports',
   'Historique enregistré, consultable avec Premium',
+  'Collection de vinyles : valeur totale et 3 albums détaillés',
 ];
 const PREMIUM_FEATURES = [
   'Exports illimités',
   'Téléchargement des listes en .txt et .csv',
   'Historique complet de tes playlists',
+  'Collection de vinyles : plus-value, ROI, graphiques, liste complète, exports CSV et PDF',
   'Badge supporter',
   'Support prioritaire',
   'Tu soutiens un projet indépendant',
@@ -98,7 +100,7 @@ export default function Subscription() {
             </div>
             <div className="sl-card-dim border-l-4 !border-l-[var(--sl-gold)] p-4 text-sm">
               <Sparkles className="mr-2 inline h-4 w-4 text-[var(--sl-gold)]" />
-              Exports illimités • Fichiers .txt et .csv • Historique complet
+              Exports illimités • Fichiers .txt et .csv • Historique complet • Collection complète
             </div>
             <button onClick={openPortal} className="sl-btn sl-btn-line w-full !py-4">
               Gérer mon abonnement (via Stripe) <ExternalLink className="h-3.5 w-3.5" />
