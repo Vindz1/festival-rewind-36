@@ -1,18 +1,19 @@
-import React from "react";
-import ReactDOM from "react-dom"; 
-import { createRoot } from "react-dom/client"; 
-import App from "./App.tsx";
-import "./index.css";
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+// Thème Vinyl AVANT index.css : les classes utilitaires Tailwind gardent la priorité
+import './styles/vinyl-theme.css';
+import './index.css';
 import { preventMusicTranslation } from './utils/preventTranslation';
 
-// 🛡️ LE BOUCLIER
+// Garde-fou historique (traduction automatique)
 (window as any).ReactDOM = ReactDOM;
 
-// Active la protection
+// Protège les noms de groupes de la traduction automatique
 preventMusicTranslation();
 
-// Rendu SANS le BrowserRouter ici
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

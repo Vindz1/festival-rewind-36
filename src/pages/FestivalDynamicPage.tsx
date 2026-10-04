@@ -1,429 +1,163 @@
-// src/pages/FestivalDynamicPage.tsx - VERSION CORRIGÉE
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Header } from '@/components/Header';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Filter, Check, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+// src/pages/FestivalDynamicPage.tsx — line-up d'un festival (slug dans l'URL)
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Check } from 'lucide-react';
+import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { Frame, Spinner } from '@/components/vinyl/Ui';
+import { supabase } from '@/integrations/supabase/client';
 
-interface Artist {
-  id: string;
-  name: string;
-  stage_name: string;
-  stage_id: string;
-  day_name: string;
-  day_id: string;
+interface Festival { id: string; name: string; year: number; location: string; description: string; start_date: string; end_date: string }
+interface Day { id: string; name: string; date?: string; order_index: number }
+interface Stage { id: string; name: string; order_index: number }
+interface Artist { id: string; name: string; stage_id: string; stage_name: string; day_id: string; day_name: string }
+
+function status(f: Festival) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const s = new Date(f.start_date); s.setHours(0, 0, 0, 0);
+  const e = new Date(f.end_date); e.setHours(23, 59, 59, 999);
+  if (e < today) return { label: 'Terminé', color: 'var(--sl-muted)' };
+  if (s <= today) return { label: 'En cours', color: 'var(--sl-wine-bright)' };
+  return { label: 'À venir', color: 'var(--sl-forest-bright)' };
 }
 
-interface Festival {
-  id: string;
-  name: string;
-  year: number;
-  location: string;
-  description: string;
-}
-
-const FestivalDynamicPage = () => {
-  const params = useParams();
-  const location = useLocation();
+export default function FestivalDynamicPage() {
+  const { slug } = useParams();
   const navigate = useNavigate();
-
-  // Extraire le slug de l'URL - supporte /festival/:slug et /:slug
-  const getSlugFromUrl = () => {
-    // Si on a params.slug (route /festival/:slug)
-    if (params.slug) return params.slug;
-    
-    // Sinon, extraire de l'URL directement
-    const pathname = location.pathname;
-    const parts = pathname.split('/').filter(Boolean);
-    // Prendre le dernier segment de l'URL
-    return parts[parts.length - 1] || '';
-  };
-
-  const slug = getSlugFromUrl();
-
   const [festival, setFestival] = useState<Festival | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [days, setDays] = useState<Day[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [availableDays, setAvailableDays] = useState<string[]>([]);
-  const [availableStages, setAvailableStages] = useState<string[]>([]);
-  
-  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set());
-  const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
-  const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
-  
-  const [showFilters, setShowFilters] = useState(false);
+  const [dayFilter, setDayFilter] = useState<string | null>(null);
+  const [stageFilter, setStageFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // Charger le festival et ses données
   useEffect(() => {
-    if (slug) {
-      console.log('Loading festival with slug:', slug);
-      loadFestivalData(slug);
-    }
-  }, [slug]);
-
-  const loadFestivalData = async (festivalSlug: string) => {
-    setLoading(true);
-
-    try {
-      console.log('Fetching festival:', festivalSlug);
-      
-      // 1. Charger le festival
-      const { data: festivalData, error: festivalError } = await supabase
-        .from('festivals')
-        .select('*')
-        .eq('slug', festivalSlug)
-        .eq('is_active', true)
-        .single();
-
-      if (festivalError) {
-        console.error('Festival error:', festivalError);
-        navigate('/festivals');
-        toast.error('Festival non trouvé');
-        return;
-      }
-
-      if (!festivalData) {
-        console.error('No festival data');
-        navigate('/festivals');
-        toast.error('Festival non trouvé');
-        return;
-      }
-
-      console.log('Festival found:', festivalData);
-      setFestival(festivalData);
-
-      // 2. Charger les artistes avec leurs informations de jour et scène
-      const { data: artistsData, error: artistsError } = await supabase
-        .from('festival_artists')
-        .select(`
-          id,
-          name,
-          stage_id,
-          day_id,
-          festival_stages!inner(name),
-          festival_days!inner(name)
-        `)
-        .eq('festival_id', festivalData.id)
-        .order('order_index');
-
-      if (artistsError) {
-        console.error('Artists error:', artistsError);
-        toast.error('Erreur lors du chargement des artistes');
-        return;
-      }
-
-      console.log('Artists loaded:', artistsData?.length || 0);
-
-      // Transformer les données
-      const transformedArtists: Artist[] = (artistsData || []).map((artist: any) => ({
-        id: artist.id,
-        name: artist.name,
-        stage_id: artist.stage_id,
-        stage_name: artist.festival_stages.name,
-        day_id: artist.day_id,
-        day_name: artist.festival_days.name,
-      }));
-
-      setArtists(transformedArtists);
-
-      // 3. Extraire les jours et scènes uniques
-      const uniqueDays = Array.from(new Set(transformedArtists.map(a => a.day_name)));
-      const uniqueStages = Array.from(new Set(transformedArtists.map(a => a.stage_name)));
-      
-      setAvailableDays(uniqueDays);
-      setAvailableStages(uniqueStages);
-
-    } catch (error) {
-      console.error('Error loading festival:', error);
-      toast.error('Erreur lors du chargement');
-    } finally {
+    if (!slug) return;
+    (async () => {
+      setLoading(true);
+      const { data: f, error } = await supabase.from('festivals').select('*').eq('slug', slug).eq('is_active', true).single();
+      if (error || !f) { toast.error('Festival introuvable'); navigate('/festivals', { replace: true }); return; }
+      setFestival(f);
+      const [a, d, s] = await Promise.all([
+        supabase.from('festival_artists').select('id, name, stage_id, day_id, festival_stages!inner(name), festival_days!inner(name)').eq('festival_id', f.id).order('order_index'),
+        supabase.from('festival_days').select('id, name, date, order_index').eq('festival_id', f.id).order('order_index'),
+        supabase.from('festival_stages').select('id, name, order_index').eq('festival_id', f.id).order('order_index'),
+      ]);
+      if (a.error) toast.error('Erreur lors du chargement des artistes');
+      setArtists((a.data || []).map((x: any) => ({ id: x.id, name: x.name, stage_id: x.stage_id, stage_name: x.festival_stages.name, day_id: x.day_id, day_name: x.festival_days.name })));
+      setDays(d.data || []);
+      setStages(s.data || []);
       setLoading(false);
-    }
-  };
+    })();
+  }, [slug, navigate]);
 
-  const toggleDay = (day: string) => {
-    const newDays = new Set(selectedDays);
-    if (newDays.has(day)) newDays.delete(day);
-    else newDays.add(day);
-    setSelectedDays(newDays);
-    autoSelectArtists(newDays, selectedStages);
-  };
+  const visible = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return artists.filter((a) => (!dayFilter || a.day_id === dayFilter) && (!stageFilter || a.stage_id === stageFilter) && (!q || a.name.toLowerCase().includes(q)));
+  }, [artists, dayFilter, stageFilter, search]);
 
-  const toggleStage = (stage: string) => {
-    const newStages = new Set(selectedStages);
-    if (newStages.has(stage)) newStages.delete(stage);
-    else newStages.add(stage);
-    setSelectedStages(newStages);
-    autoSelectArtists(selectedDays, newStages);
-  };
-
-  const autoSelectArtists = (days: Set<string>, stages: Set<string>) => {
-    const newSelection = new Set<string>();
-    
-    artists.forEach(artist => {
-      const dayMatch = days.size === 0 || days.has(artist.day_name);
-      const stageMatch = stages.size === 0 || stages.has(artist.stage_name);
-      
-      if ((days.size > 0 || stages.size > 0) && dayMatch && stageMatch) {
-        newSelection.add(artist.id);
-      }
+  const grouped = useMemo(() => {
+    const out: { day: Day | { id: string; name: string }; items: Artist[] }[] = [];
+    const order = days.length ? days : [...new Map(artists.map((a) => [a.day_id, { id: a.day_id, name: a.day_name }])).values()];
+    order.forEach((d: any) => {
+      const items = visible.filter((a) => a.day_id === d.id);
+      if (items.length) out.push({ day: d, items });
     });
-    
-    if (days.size > 0 || stages.size > 0) {
-      setSelectedArtists(newSelection);
-    }
+    return out;
+  }, [visible, days, artists]);
+
+  const toggle = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const selectVisible = () => setSelected((p) => new Set([...p, ...visible.map((a) => a.id)]));
+
+  const create = () => {
+    if (!festival) return;
+    const pool = selected.size ? artists.filter((a) => selected.has(a.id)) : visible;
+    const names = [...new Set(pool.map((a) => a.name))];
+    if (!names.length) return toast.error('Aucun artiste à ajouter');
+    navigate('/', { state: { artists: names, eventName: `${festival.name} ${festival.year}` } });
   };
 
-  const handleClearSelection = () => {
-    setSelectedArtists(new Set());
-  };
-
-  const toggleArtist = (id: string) => {
-    const newSet = new Set(selectedArtists);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedArtists(newSet);
-  };
-
-  const handleGenerate = () => {
-    if (selectedArtists.size === 0) {
-      toast.error("Sélectionnez au moins un artiste !");
-      return;
-    }
-
-    const selectedArray = artists
-      .filter(a => selectedArtists.has(a.id))
-      .map(a => ({
-        id: a.id,
-        artist: a.name,
-        eventDate: `${a.day_name} - ${festival?.name} ${festival?.year}`
-      }));
-
-    localStorage.setItem('selected_upcoming', JSON.stringify(selectedArray));
-    navigate('/generate?mode=upcoming');
-  };
-
-  const filteredArtists = artists.filter(artist => {
-    const dayMatch = selectedDays.size === 0 || selectedDays.has(artist.day_name);
-    const stageMatch = selectedStages.size === 0 || selectedStages.has(artist.stage_name);
-    return dayMatch && stageMatch;
-  });
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-[#00ff00] text-xl mb-2">Chargement...</div>
-          <div className="text-[#a0a0a0] text-sm">Slug: {slug}</div>
-        </div>
-      </div>
-    );
+  if (loading || !festival) {
+    return <div className="sl-page"><Header /><div className="flex justify-center py-32"><Spinner className="h-7 w-7" /></div></div>;
   }
-
-  if (!festival) {
-    return (
-      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-[#ff6b6b] text-xl mb-2">Festival non trouvé</div>
-          <div className="text-[#a0a0a0] text-sm">Slug recherché: {slug}</div>
-          <Button 
-            onClick={() => navigate('/festivals')}
-            className="mt-4 bg-[#00cc00] hover:bg-[#00ff00] text-black"
-          >
-            Voir tous les festivals
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const st = status(festival);
+  const range = `${new Date(festival.start_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} → ${new Date(festival.end_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a]">
+    <div className="sl-page pb-20">
       <Header />
-      
-      <main className="pt-20 pb-20 sm:pb-16 max-w-[1400px] mx-auto px-4">
-        {/* Header Festival */}
-        <div className="bg-[#2d2d2d] border border-[#00cc00] rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#00ff00] mb-2">
-            {festival.name.toUpperCase()} {festival.year}
-          </h1>
-          <p className="text-xs sm:text-sm text-[#a0a0a0]">
-            {festival.location} • {artists.length} groupes
-          </p>
+      <Frame
+        kicker={`${festival.location} · ${range}`}
+        title={`${festival.name} ${festival.year}`}
+        hero={
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <span className="sl-mono text-[11px] uppercase tracking-widest" style={{ color: st.color }}>● {st.label}</span>
+            <span className="sl-mono text-[11px] uppercase tracking-widest text-[var(--sl-paper)]/60">{artists.length} artistes</span>
+            <Link to="/festivals" className="sl-mono text-[11px] uppercase tracking-widest text-[var(--sl-gold-bright)] underline">← Tous les festivals</Link>
+          </div>
+        }
+      >
+        {festival.description && <p className="mb-6 max-w-3xl text-sm text-[var(--sl-muted)]">{festival.description}</p>}
+
+        <div className="sl-card-dim mb-8 space-y-3 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input className="sl-input" placeholder="Chercher un artiste…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <button className="sl-btn sl-btn-line shrink-0" onClick={selectVisible}>Tout sélectionner ({visible.length})</button>
+            {selected.size > 0 && <button className="sl-btn sl-btn-wine shrink-0" onClick={() => setSelected(new Set())}>Vider</button>}
+          </div>
+          {days.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              <button className={`sl-chip ${!dayFilter ? 'sl-chip-on' : ''}`} onClick={() => setDayFilter(null)}>Tous les jours</button>
+              {days.map((d) => <button key={d.id} className={`sl-chip ${dayFilter === d.id ? 'sl-chip-on' : ''}`} onClick={() => setDayFilter(dayFilter === d.id ? null : d.id)}>{d.name}</button>)}
+            </div>
+          )}
+          {stages.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              <button className={`sl-chip ${!stageFilter ? 'sl-chip-on' : ''}`} onClick={() => setStageFilter(null)}>Toutes les scènes</button>
+              {stages.map((s) => <button key={s.id} className={`sl-chip ${stageFilter === s.id ? 'sl-chip-on' : ''}`} onClick={() => setStageFilter(stageFilter === s.id ? null : s.id)}>{s.name}</button>)}
+            </div>
+          )}
         </div>
 
-        {/* Bouton Filtres Mobile */}
-        <div className="lg:hidden mb-4">
-          <Button
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full bg-[#2d2d2d] border border-[#404040] text-white hover:bg-[#3d3d3d] flex items-center justify-between"
-          >
-            <span className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtres
-              {(selectedDays.size > 0 || selectedStages.size > 0) && (
-                <span className="bg-[#00cc00] text-black text-xs px-2 py-0.5 rounded-full font-bold">
-                  {selectedDays.size + selectedStages.size}
-                </span>
-              )}
-            </span>
-            {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </Button>
-        </div>
-
-        <div className="grid lg:grid-cols-[280px_1fr] gap-4 sm:gap-6">
-          
-          {/* Sidebar Filtres */}
-          <div className={`
-            bg-[#2d2d2d] border border-[#404040] rounded-xl p-4 
-            lg:sticky lg:top-20 lg:h-fit
-            ${showFilters ? 'block' : 'hidden lg:block'}
-          `}>
-            <div className="flex items-center gap-2 mb-4 text-white font-semibold">
-              <Filter className="w-4 h-4" />
-              Filtres
-            </div>
-            
-            <div className="space-y-6">
-              {/* Jours */}
-              {availableDays.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-[#a0a0a0] mb-2 uppercase tracking-wider">Jours</h3>
-                  <div className="space-y-1.5">
-                    {availableDays.map(day => (
-                      <div key={day} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`day-${day}`}
-                          checked={selectedDays.has(day)}
-                          onCheckedChange={() => toggleDay(day)}
-                          className="border-[#404040] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:border-[#4d94ff]"
-                        />
-                        <label htmlFor={`day-${day}`} className="text-sm cursor-pointer select-none text-white">
-                          {day}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Scènes */}
-              {availableStages.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-[#a0a0a0] mb-2 uppercase tracking-wider">Scènes</h3>
-                  <div className="space-y-1.5">
-                    {availableStages.map(stage => (
-                      <div key={stage} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`stage-${stage}`}
-                          checked={selectedStages.has(stage)}
-                          onCheckedChange={() => toggleStage(stage)}
-                          className="border-[#404040] data-[state=checked]:bg-[#4d94ff] data-[state=checked]:border-[#4d94ff]"
-                        />
-                        <label htmlFor={`stage-${stage}`} className="text-sm cursor-pointer select-none text-white truncate">
-                          {stage}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-[#404040]">
-              <div className="text-sm text-white font-semibold mb-3">
-                {selectedArtists.size} groupe{selectedArtists.size > 1 ? 's' : ''}
+        <div className="space-y-8">
+          {grouped.map(({ day, items }) => (
+            <section key={day.id}>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="sl-faceTab">{day.name}</span>
+                <span className="flex-grow border-t border-[var(--sl-groove)]" />
               </div>
-              
-              <Button 
-                variant="outline"
-                onClick={handleClearSelection}
-                className="w-full mb-2 text-xs border-[#404040] text-[#a0a0a0] hover:bg-[#3d3d3d] hover:text-white"
-                disabled={selectedArtists.size === 0}
-              >
-                <XCircle className="w-3 h-3 mr-1.5" />
-                Tout désélectionner
-              </Button>
-
-              <Button 
-                onClick={handleGenerate}
-                className="w-full bg-[#00cc00] hover:bg-[#00ff00] text-black font-semibold"
-                disabled={selectedArtists.size === 0}
-              >
-                Créer Playlist
-              </Button>
-            </div>
-          </div>
-
-          {/* Grille des Artistes */}
-          <div className="space-y-1">
-            <div className="text-xs sm:text-sm text-[#a0a0a0] mb-3 font-semibold">
-              {filteredArtists.length} groupe{filteredArtists.length > 1 ? 's' : ''} affiché{filteredArtists.length > 1 ? 's' : ''}
-            </div>
-
-            {filteredArtists.map((artist) => {
-              const isSelected = selectedArtists.has(artist.id);
-
-              return (
-                <div
-                  key={artist.id}
-                  onClick={() => toggleArtist(artist.id)}
-                  className={`
-                    flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 cursor-pointer transition-colors border-l-2 rounded-r
-                    ${isSelected 
-                      ? 'bg-[#00cc00]/10 border-[#00cc00]' 
-                      : 'bg-[#2d2d2d] border-transparent hover:bg-[#3d3d3d]'}
-                  `}
-                >
-                  <div className={`
-                    w-4 h-4 sm:w-5 sm:h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors
-                    ${isSelected ? 'bg-[#00cc00] border-[#00cc00]' : 'border-[#404040]'}
-                  `}>
-                    {isSelected && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-black" />}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`text-xs sm:text-sm font-medium truncate ${isSelected ? 'text-[#00ff00]' : 'text-white'}`}>
-                      {artist.name}
-                    </h3>
-                    <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-[#a0a0a0] mt-0.5">
-                      <span className="truncate">{artist.day_name}</span>
-                      <span>•</span>
-                      <span className="truncate">{artist.stage_name}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {items.map((a) => {
+                  const on = selected.has(a.id);
+                  return (
+                    <button key={a.id} onClick={() => toggle(a.id)}
+                      className={`flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${on ? 'border-[var(--sl-ink)] bg-[var(--sl-ink)] text-[var(--sl-paper)]' : 'border-[var(--sl-groove)] bg-[var(--sl-paper)] hover:border-[var(--sl-gold)]'}`}>
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${on ? 'border-[var(--sl-gold-bright)] bg-[var(--sl-gold)]' : 'border-[var(--sl-groove)]'}`}>
+                        {on && <Check className="h-3.5 w-3.5 text-[var(--sl-ink)]" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold">{a.name}</span>
+                        <span className={`sl-mono block truncate text-[10px] uppercase tracking-wide ${on ? 'text-[var(--sl-paper)]/60' : 'text-[var(--sl-muted)]'}`}>{a.stage_name}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+          {!grouped.length && <p className="py-10 text-center text-sm text-[var(--sl-muted)]">Aucun artiste ne correspond.</p>}
         </div>
-      </main>
+      </Frame>
 
-      {/* Barre flottante génération (mobile) */}
-      {selectedArtists.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#2d2d2d] border-t border-[#404040] p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-40">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-white">
-              {selectedArtists.size} sélectionné{selectedArtists.size > 1 ? 's' : ''}
-            </span>
-            <Button 
-              onClick={handleGenerate}
-              className="bg-[#00cc00] hover:bg-[#00ff00] text-black font-bold px-6"
-            >
-              Créer Playlist
-            </Button>
-          </div>
-        </div>
-      )}
-
+      <div className="sl-noprint fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 bg-[var(--sl-ink)] px-4 py-3 text-[var(--sl-paper)]">
+        <span className="sl-mono text-[11px] uppercase tracking-widest">{selected.size ? `${selected.size} sélectionné(s)` : `Tout le line-up visible (${visible.length})`}</span>
+        <button className="sl-btn sl-btn-gold" onClick={create}>Créer la playlist →</button>
+      </div>
       <Footer />
     </div>
   );
-};
-
-export default FestivalDynamicPage;
+}

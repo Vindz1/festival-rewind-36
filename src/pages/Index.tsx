@@ -1,363 +1,213 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/pages/Index.tsx — le Studio : choisir → ajuster → exporter, sur une seule page
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Clock, Calendar, Crown, User, History, Sparkles, Check, Music, Zap, BookOpen, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FaceTitle, Frame, Steps } from '@/components/vinyl/Ui';
+import SourcePast from '@/components/studio/SourcePast';
+import SourceFuture from '@/components/studio/SourceFuture';
+import Basket from '@/components/studio/Basket';
+import Result from '@/components/studio/Result';
 import { useAuth } from '@/AuthContext';
-import { getUserSubscription } from '@/lib/subscription';
+import { saveToHistory } from '@/lib/history';
+import { checkExportQuota, trackExport, type ExportQuota } from '@/lib/subscription';
+import {
+  ItemReport, Profile, StudioItem, Track,
+  accessFor, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
+} from '@/lib/engine';
 
-type UserState = 'loading' | 'guest' | 'free' | 'premium';
+const EMPTY_PROFILE: Profile = { username: '', pastItems: [], futureItems: [], loading: false, loaded: false, partial: false };
+
+function defaultName(items: StudioItem[]) {
+  if (items.length === 1) return items[0].origin === 'past' ? `${items[0].artist} Live` : `${items[0].artist} — Setlive`;
+  return items.every((i) => i.origin === 'past') ? 'Mes concerts' : 'Ma playlist Setlive';
+}
 
 export default function Index() {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const [userState, setUserState] = useState<UserState>('loading');
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') === 'future' ? 'future' : 'past';
 
-  // Détermine l'état utilisateur : invité, gratuit ou premium
+  const [items, setItems] = useState<StudioItem[]>([]);
+  const [name, setName] = useState('');
+  const [topCount, setTopCount] = useState(5);
+  const [preferLive, setPreferLive] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [quota, setQuota] = useState<ExportQuota | null>(null);
+  const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setUserState('guest');
+    if (!user) { setQuota(null); return; }
+    checkExportQuota(user.id).then(setQuota).catch(() => setQuota(null));
+  }, [user]);
+
+  // ----- sélection -----
+  const has = (uid: string) => items.some((i) => i.uid === uid);
+  const add = (list: StudioItem[]) => {
+    const seen = new Set(items.map((i) => i.uid));
+    const fresh = list.filter((i) => (seen.has(i.uid) ? false : seen.add(i.uid)));
+    if (!fresh.length) return;
+    setItems((prev) => [...prev, ...fresh.filter((f) => !prev.some((p) => p.uid === f.uid))]);
+    if (fresh.length > 1) toast.success(`${fresh.length} éléments ajoutés`);
+  };
+  const remove = (uid: string) => setItems((prev) => prev.filter((i) => i.uid !== uid));
+  const move = (i: number, dir: -1 | 1) =>
+    setItems((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  // ----- profil Setlist.fm -----
+  const onLoadProfile = async (username: string) => {
+    setProfile((p) => ({ ...p, username, loading: true }));
+    try {
+      const d = await loadProfile(username, user?.id);
+      setProfile({ username, ...d, loading: false, loaded: true });
+      toast.success(`${d.pastItems.length} concerts passés, ${d.futureItems.length} à venir`);
+    } catch (e: any) {
+      setProfile((p) => ({ ...p, loading: false }));
+      toast.error(e.status === 404 ? 'Profil Setlist.fm introuvable' : 'Impossible de charger le profil, réessaie');
+    }
+  };
+
+  // ----- génération -----
+  const generate = async () => {
+    if (!items.length) return toast.error('Ajoute au moins un concert ou un artiste');
+    setBusy(true);
+    setResult(null);
+    try {
+      const { tracks, report } = await buildPlaylist(items, { topCount }, setProgress);
+      if (!tracks.length) throw new Error('Aucun morceau trouvé pour cette sélection.');
+      const finalName = name.trim() || defaultName(items);
+      setResult({ tracks, report, name: finalName });
+      if (user) {
+        saveToHistory({
+          userId: user.id,
+          playlistName: finalName,
+          tracks: tracks.map((t) => ({ artist: t.artist })),
+          sourceType: items.every((i) => i.origin === 'past') ? 'concert' : 'upcoming',
+          platform: 'csv',
+        });
+      }
+      toast.success(`${tracks.length} morceaux prêts !`);
+      setTimeout(() => document.getElementById('resultat')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur de génération');
+    } finally {
+      setBusy(false);
+      setProgress('');
+    }
+  };
+
+  // ----- droits : anonyme / gratuit / Premium (règles dans engine.ts → accessFor) -----
+  const access = accessFor(user, quota, result?.tracks.length ?? 0);
+  const unlock = () => navigate(user ? '/subscription' : '/auth');
+
+  // ----- export : « Copier » = connecté + quota (consomme 1 export) ; .txt/.csv = Premium -----
+  const onExport = async (kind: 'copy' | 'txt' | 'csv') => {
+    if (!result) return;
+    const slug = result.name.replace(/[^a-z0-9]/gi, '_');
+
+    if (kind === 'txt' || kind === 'csv') {
+      if (!access.canFiles) {
+        toast.error('Le téléchargement de fichiers est réservé aux membres Premium.', { action: { label: 'Voir Premium', onClick: () => navigate('/subscription') } });
+        return;
+      }
+      return kind === 'txt'
+        ? downloadFile(`${slug}.txt`, toText(result.tracks, preferLive), 'text/plain')
+        : downloadFile(`${slug}.csv`, toCsv(result.tracks, preferLive), 'text/csv');
+    }
+
+    if (!user) { toast.error('Connecte-toi pour copier la liste'); navigate('/auth'); return; }
+    if (!access.canCopy) {
+      toast.error('Quota épuisé : 2 exports par an en version gratuite.', { duration: 5000, action: { label: 'Passer Premium', onClick: () => navigate('/subscription') } });
       return;
     }
-    getUserSubscription(user.id)
-      .then(sub => setUserState(sub.subscription_type === 'premium' ? 'premium' : 'free'))
-      .catch(() => setUserState('free'));
-  }, [user, authLoading]);
+    try {
+      await navigator.clipboard.writeText(toText(result.tracks, preferLive));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      const ok = await trackExport(user.id, result.name, result.tracks.length);
+      if (ok && quota && !quota.isPremium) {
+        const remaining = Math.max(0, quota.remaining - 1);
+        setQuota({ ...quota, remaining, used: quota.used + 1, canExport: remaining > 0 });
+        toast.success(`Liste copiée ! ${remaining} export(s) restant(s)`);
+      } else toast.success('Liste copiée !');
+    } catch { toast.error('Impossible de copier la liste'); }
+  };
+
+  const quotaText =
+    access.tier === 'anon' ? 'Non connecté : seuls les 3 premiers titres sont visibles. Connecte-toi pour voir et copier la liste.'
+    : access.tier === 'premium' ? 'Premium : copie illimitée, .txt et .csv inclus.'
+    : access.canCopy ? `${quota?.remaining ?? 0}/2 exports restants (année glissante). Le téléchargement .txt/.csv est réservé à Premium.`
+    : 'Quota épuisé (2 exports par an en gratuit) : passe Premium pour voir et exporter toute la liste.';
 
   return (
-    <div className="min-h-screen text-white relative">
+    <div className="sl-page">
       <Header />
+      <Frame
+        kicker="Concerts & festivals → playlists"
+        title="Studio"
+        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Ton atelier à playlists : choisis des concerts, Setlive retrouve les titres joués, et tu les importes dans Spotify, Deezer ou Apple Music.</p>}
+      >
+        <Steps items={[
+          { title: 'Choisis', text: 'Un concert passé : on récupère sa vraie setlist (setlist.fm). Un concert à venir ou un festival : on reconstitue la setlist la plus probable.' },
+          { title: 'Ajuste', text: 'Réordonne, retire des artistes, donne un nom à ta playlist, puis lance la génération.' },
+          { title: 'Importe', text: 'Copie la liste et colle-la dans TuneMyMusic : elle arrive dans ton appli de streaming.' },
+        ]} />
+        <div className="grid gap-8 pb-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pb-0">
+          <div>
+            <FaceTitle face="Face A" title="Choisir" />
+            <div className="sl-seg mb-5">
+              <button className={tab === 'past' ? 'on' : ''} onClick={() => setParams({})}>Concerts passés</button>
+              <button className={tab === 'future' ? 'on' : ''} onClick={() => setParams({ tab: 'future' })}>Concerts à venir</button>
+            </div>
+            <div className={tab === 'past' ? '' : 'hidden'}>
+              <SourcePast onAdd={add} onRemove={remove} has={has} profile={profile} onLoadProfile={onLoadProfile} />
+            </div>
+            <div className={tab === 'future' ? '' : 'hidden'}>
+              <SourceFuture onAdd={add} onRemove={remove} has={has} profile={profile} />
+            </div>
+          </div>
 
-      {/* ====================================================== */}
-      {/* HERO — image de fond + baseline + formulaire + 2 CTAs   */}
-      {/* ====================================================== */}
+          <div className="self-start lg:sticky lg:top-20">
+            <Basket
+              items={items} name={name} setName={setName}
+              topCount={topCount} setTopCount={setTopCount}
+              preferLive={preferLive} setPreferLive={setPreferLive}
+              onMove={move} onRemove={remove} onClear={() => setItems([])}
+              onGenerate={generate} busy={busy} progress={progress}
+            />
+          </div>
+        </div>
 
-      {/* Image de fond : FIXED partout (effet ancré). Sur mobile, hauteur limitée à 60vh pour dézoomer
-          le format paysage de l'image. object-[40%_top] décale légèrement vers la gauche du visuel
-          (= image "glisse à droite" du point de vue de l'œil) pour révéler "Vos" qui était coupé. */}
-      <div className="fixed inset-x-0 top-0 h-[60vh] sm:inset-0 sm:h-auto -z-10 bg-[#0a0a0a] pointer-events-none overflow-hidden">
-        <img 
-          src="/og-image.jpg" 
-          alt=""
-          className="w-full h-full object-cover object-[40%_top] sm:object-center"
-        />
+        {result && (
+          <Result
+            name={result.name} tracks={result.tracks} report={result.report}
+            preferLive={preferLive} copied={copied} quotaText={quotaText}
+            access={access} onUnlock={unlock}
+            onRemoveTrack={(i) => setResult((r) => (r ? { ...r, tracks: r.tracks.filter((_, k) => k !== i) } : r))}
+            onExport={onExport}
+          />
+        )}
+      </Frame>
+
+      {/* Barre mobile : toujours accès à la playlist */}
+      <div className="sl-noprint fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 bg-[var(--sl-ink)] px-4 py-3 text-[var(--sl-paper)] lg:hidden">
+        <span className="sl-mono text-[11px] uppercase tracking-widest">{items.length} sélectionné(s)</span>
+        <a href="#playlist" className="sl-btn sl-btn-gold sl-btn-sm">Voir ma playlist</a>
       </div>
 
-      <section className="relative min-h-screen flex flex-col justify-end">
-        {/* Shade progressif du bas — démarre à 40% sur mobile pour fondre l'image (h=60vh) avec le noir,
-            et reste à 60% sur desktop comme avant */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent from-40% via-[#0a0a0a]/80 via-70% to-[#0a0a0a] sm:from-60% sm:via-90% pointer-events-none" />
-        
-        <div className="relative z-10 w-full pb-6 sm:pb-10">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-            
-            {/* Baseline sans année figée */}
-            <p className="text-base sm:text-2xl text-white mb-6 sm:mb-8 font-medium drop-shadow-lg">
-              Vos concerts vécus ou à venir, transformés en playlists Spotify, Deezer, Qobuz ou Apple Music.
-            </p>
-
-            {/* Formulaire Setlist.fm */}
-            <div className="max-w-xl mx-auto mb-6 sm:mb-8">
-              <div className="bg-gradient-to-br from-[#2d2d2d]/95 to-[#1a1a1a]/95 border border-[#404040] rounded-2xl p-4 sm:p-5 backdrop-blur-md">
-                <h3 className="text-xs sm:text-sm font-bold text-white mb-3 flex items-center gap-2 justify-center uppercase tracking-widest">
-                  <User className="w-4 h-4 text-[#4d94ff]" />
-                  Lier mon compte Setlist.fm
-                </h3>
-                <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const username = (e.target as any).username.value.trim();
-                    if (username) {
-                      localStorage.setItem('setlist_username', username);
-                      navigate(`/my-concerts?username=${encodeURIComponent(username)}`);
-                    }
-                  }}
-                  className="flex gap-2"
-                >
-                  <input
-                    name="username"
-                    type="text"
-                    placeholder="Votre pseudo Setlist.fm..."
-                    className="flex-1 min-w-0 h-11 bg-[#3d3d3d] border border-[#404040] rounded-xl px-4 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#4d94ff]"
-                  />
-                  <Button
-                    type="submit"
-                    className="shrink-0 h-11 px-6 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold rounded-xl"
-                  >
-                    Go
-                  </Button>
-                </form>
-              </div>
-            </div>
-
-            {/* 2 CTA principaux */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-              <Button
-                onClick={() => navigate('/my-concerts')}
-                size="lg"
-                className="w-full sm:w-auto bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 h-12 sm:h-14 text-base rounded-full shadow-lg shadow-blue-500/30"
-              >
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Mes concerts
-              </Button>
-              <Button
-                onClick={() => navigate('/festivals')}
-                size="lg"
-                variant="outline"
-                className="w-full sm:w-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 font-bold px-8 h-12 sm:h-14 text-base rounded-full"
-              >
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Festivals à venir
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ====================================================== */}
-      {/* DEUX PORTES D'ENTRÉE + mini-strip 1·2·3                 */}
-      {/* ====================================================== */}
-      <section className="py-16 sm:py-20 bg-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          
-          <div className="grid md:grid-cols-2 gap-5 sm:gap-6">
-            
-            {/* Concerts passés */}
-            <div 
-              onClick={() => navigate('/my-concerts')}
-              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-7 sm:p-8 hover:border-[#4d94ff] transition-all cursor-pointer overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#4d94ff]/5 rounded-full blur-3xl" />
-              <div className="relative">
-                <Clock className="w-10 h-10 text-[#4d94ff] mb-5 group-hover:scale-110 transition-transform" />
-                <h3 className="text-2xl sm:text-3xl font-black italic uppercase mb-3 leading-tight">
-                  Concerts<br /><span className="text-[#4d94ff]">passés</span>
-                </h3>
-                <p className="text-gray-400 text-sm sm:text-base mb-6 leading-relaxed">
-                  Retrouvez vos concerts vécus grâce à la base de setlist.fm. Revivez l'ambiance, titre par titre.
-                </p>
-                <div className="flex items-center gap-2 text-[#4d94ff] font-bold group-hover:gap-4 transition-all">
-                  <span>Voir mes concerts</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Festivals à venir (sans année figée) */}
-            <div 
-              onClick={() => navigate('/festivals')}
-              className="group relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-7 sm:p-8 hover:border-green-500 transition-all cursor-pointer overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl" />
-              <div className="relative">
-                <Calendar className="w-10 h-10 text-green-500 mb-5 group-hover:scale-110 transition-transform" />
-                <h3 className="text-2xl sm:text-3xl font-black italic uppercase mb-3 leading-tight">
-                  Festivals<br /><span className="text-green-500">à venir</span>
-                </h3>
-                <p className="text-gray-400 text-sm sm:text-base mb-6 leading-relaxed">
-                  Préparez vos prochains festivals. Programmations complètes des meilleurs festivals metal et rock.
-                </p>
-                <div className="flex items-center gap-2 text-green-500 font-bold group-hover:gap-4 transition-all">
-                  <span>Découvrir</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Mini-strip 1·2·3 discret (remplace l'ancienne section "Simple & Rapide") */}
-          <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-8 gap-y-3 text-xs sm:text-sm">
-            <span className="flex items-center gap-2 text-gray-400">
-              <span className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center font-black text-[#4d94ff] text-xs">1</span>
-              Recherchez
-            </span>
-            <span className="text-[#333] hidden sm:inline">·</span>
-            <span className="flex items-center gap-2 text-gray-400">
-              <span className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center font-black text-[#4d94ff] text-xs">2</span>
-              Sélectionnez
-            </span>
-            <span className="text-[#333] hidden sm:inline">·</span>
-            <span className="flex items-center gap-2 text-gray-400">
-              <span className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center font-black text-[#4d94ff] text-xs">3</span>
-              Exportez
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ====================================================== */}
-      {/* SECTION CONDITIONNELLE selon l'état utilisateur          */}
-      {/* ====================================================== */}
-      {userState !== 'loading' && (
-        <section className="py-16 sm:py-20 bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a]">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6">
-            
-            {/* ==================== PREMIUM ==================== */}
-            {/* Récap des avantages — pas d'offre, juste un rappel des privilèges */}
-            {userState === 'premium' && (
-              <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-yellow-500/40 rounded-3xl p-7 sm:p-10 shadow-[0_0_50px_-15px_rgba(234,179,8,0.3)] overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 rounded-full blur-3xl pointer-events-none" />
-                
-                <div className="relative text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/10 mb-4 border border-yellow-500/30">
-                    <Crown className="w-8 h-8 text-yellow-500" />
-                  </div>
-                  <h2 className="text-2xl sm:text-4xl font-black italic uppercase mb-2">
-                    Vos avantages <span className="text-yellow-500">Premium</span>
-                  </h2>
-                  <p className="text-gray-400 text-sm sm:text-base">
-                    Merci de soutenir Setlive. Voici ce dont vous profitez :
-                  </p>
-                </div>
-                
-                <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto">
-                  {[
-                    { Icon: Zap, label: 'Exports illimités', desc: 'Sans aucune limite annuelle' },
-                    { Icon: Music, label: 'Zéro publicité', desc: 'Sur tout le site' },
-                    { Icon: BookOpen, label: 'Historique complet', desc: 'Toutes vos playlists sauvegardées' },
-                    { Icon: Star, label: 'Badge supporter', desc: 'Visible sur votre profil' },
-                  ].map(({ Icon, label, desc }, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 bg-[#1a1a1a]/60 rounded-xl border border-yellow-500/20">
-                      <div className="w-9 h-9 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-yellow-500" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-white text-sm sm:text-base leading-tight">{label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
-                  <Button 
-                    onClick={() => navigate('/history')} 
-                    variant="outline" 
-                    className="border-yellow-500/40 bg-yellow-500/5 text-yellow-500 hover:bg-yellow-500/10 hover:text-yellow-400"
-                  >
-                    <History className="w-4 h-4 mr-2" />
-                    Mon historique
-                  </Button>
-                  <Button 
-                    onClick={() => navigate('/profile')} 
-                    variant="outline" 
-                    className="border-[#404040] text-gray-300 hover:bg-[#252525] hover:text-white"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Mon profil
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* ==================== FREE : 2 colonnes Gratuit / Premium ==================== */}
-            {userState === 'free' && (
-              <>
-                <div className="text-center mb-10">
-                  <h2 className="text-2xl sm:text-4xl font-black italic uppercase mb-3">
-                    Passez à la <span className="text-[#4d94ff]">vitesse supérieure</span>
-                  </h2>
-                  <p className="text-gray-400 text-sm sm:text-base">
-                    Libérez tout le potentiel de vos souvenirs de concerts.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
-                  
-                  {/* Plan actuel : Gratuit */}
-                  <div className="bg-[#252525] border border-[#333] rounded-2xl p-6 sm:p-7">
-                    <h3 className="text-lg font-bold mb-1">Gratuit</h3>
-                    <div className="flex items-baseline gap-1 mb-5">
-                      <span className="text-3xl font-black">0€</span>
-                      <span className="text-gray-400 text-xs">/an</span>
-                    </div>
-                    <ul className="space-y-2.5 mb-6 text-sm">
-                      <li className="flex items-center gap-2 text-gray-300">
-                        <Check className="w-4 h-4 text-gray-500 shrink-0" />2 exports par an
-                      </li>
-                      <li className="flex items-center gap-2 text-gray-300">
-                        <Check className="w-4 h-4 text-gray-500 shrink-0" />Accès aux festivals
-                      </li>
-                      <li className="flex items-center gap-2 text-gray-500">
-                        <span className="w-4 text-center shrink-0">⚠</span>Avec publicités
-                      </li>
-                    </ul>
-                    <Button variant="outline" className="w-full border-[#404040] text-gray-400 cursor-default" disabled>
-                      Plan actuel
-                    </Button>
-                  </div>
-
-                  {/* Premium recommandé */}
-                  <div className="relative bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border-2 border-[#4d94ff] rounded-2xl p-6 sm:p-7 shadow-[0_0_30px_-10px_rgba(77,148,255,0.4)]">
-                    <div className="absolute top-4 right-4 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">
-                      Recommandé
-                    </div>
-                    <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-                      Premium <Crown className="w-4 h-4 text-yellow-500" />
-                    </h3>
-                    <div className="flex items-baseline gap-1 mb-5">
-                      <span className="text-3xl font-black text-[#4d94ff]">5€</span>
-                      <span className="text-gray-400 text-xs">/an</span>
-                    </div>
-                    <ul className="space-y-2.5 mb-6 text-sm">
-                      <li className="flex items-center gap-2 text-white">
-                        <Check className="w-4 h-4 text-[#4d94ff] shrink-0" /><strong>Exports illimités</strong>
-                      </li>
-                      <li className="flex items-center gap-2 text-white">
-                        <Check className="w-4 h-4 text-[#4d94ff] shrink-0" />Zéro publicité
-                      </li>
-                      <li className="flex items-center gap-2 text-white">
-                        <Check className="w-4 h-4 text-[#4d94ff] shrink-0" />Historique complet
-                      </li>
-                      <li className="flex items-center gap-2 text-white">
-                        <Check className="w-4 h-4 text-[#4d94ff] shrink-0" />Badge supporter
-                      </li>
-                    </ul>
-                    <Button 
-                      onClick={() => navigate('/subscription')} 
-                      className="w-full bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
-                    >
-                      Devenir Premium
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ==================== GUEST : Création de compte + teaser Premium discret ==================== */}
-            {userState === 'guest' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] border border-[#404040] rounded-2xl p-7 sm:p-10 text-center">
-                  <Sparkles className="w-10 h-10 text-[#4d94ff] mx-auto mb-4" />
-                  <h2 className="text-2xl sm:text-3xl font-black italic uppercase mb-3">
-                    Créez votre <span className="text-[#4d94ff]">compte</span>
-                  </h2>
-                  <p className="text-gray-400 text-sm sm:text-base mb-6 max-w-md mx-auto">
-                    Sauvegardez vos playlists, suivez vos exports et accédez à tout votre historique de concerts.
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/auth')} 
-                    size="lg" 
-                    className="bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold px-8 rounded-full"
-                  >
-                    Créer un compte gratuit
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-6 flex items-center justify-center gap-2 flex-wrap">
-                    <Crown className="w-3 h-3 text-yellow-500" />
-                    Option Premium à 5€/an : exports illimités &amp; zéro pub
-                  </p>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </section>
-      )}
-
       <Footer />
+      <div className="h-14 lg:hidden" />
     </div>
   );
 }

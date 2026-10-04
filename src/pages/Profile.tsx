@@ -1,122 +1,113 @@
+// src/pages/Profile.tsx — Mon compte (thème Vinyl)
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Crown, History as HistoryIcon, LogOut, User } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Button } from '@/components/ui/button';
+import { Frame, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
-import { getUserSubscription } from '@/lib/subscription';
+import { checkExportQuota } from '@/lib/subscription';
 import { supabase } from '@/supabaseClient';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Crown, History, Music } from 'lucide-react';
 
 export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [historyCount, setHistoryCount] = useState(0);
+  const [waited, setWaited] = useState(false);
 
-  // 1. Charger les infos
   useEffect(() => {
-    if (user) {
-      // Check Premium
-      getUserSubscription(user.id).then(sub => {
-        setIsPremium(sub.subscription_type === 'premium');
-      });
-
-      // Check Historique (Nombre de playlists créées)
-      const fetchStats = async () => {
-        const { count } = await supabase
-          .from('playlists_history')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
-        setHistoryCount(count || 0);
-      };
-      fetchStats();
-    }
+    if (!user) return;
+    checkExportQuota(user.id)
+      .then((q) => { setIsPremium(q.isPremium); setRemaining(q.remaining); })
+      .catch(() => undefined);
+    supabase
+      .from('playlists_history')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .then(({ count }: any) => setHistoryCount(count || 0));
   }, [user]);
 
-  // 2. Fonction de Déconnexion "Brutale" (Force le refresh)
+  // Si la session n'arrive pas, on propose de se connecter plutôt que d'attendre indéfiniment
+  useEffect(() => {
+    const t = setTimeout(() => setWaited(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Déconnexion « brutale » : on recharge la page pour repartir d'un état propre
   const handleSignOut = async () => {
     await signOut();
-    window.location.href = '/'; // Redirection forcée vers l'accueil
+    window.location.href = '/';
   };
 
-  if (!user) return <div className="text-white pt-32 text-center">Chargement...</div>;
-
-  return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
-      <Header />
-      
-      <div className="flex-grow max-w-4xl mx-auto w-full px-4">
-        <h1 className="text-3xl font-black italic uppercase mb-8 border-b border-[#333] pb-4">Mon Profil</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* CARTE D'IDENTITÉ */}
-            <div className="md:col-span-2 space-y-6">
-                <div className="bg-[#252525] p-6 rounded-2xl border border-[#333] flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-full bg-[#333] flex items-center justify-center">
-                        <User className="w-10 h-10 text-[#a0a0a0]" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-[#a0a0a0] uppercase font-bold tracking-widest">Compte</p>
-                        <p className="text-xl font-bold text-white">{user.email}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                            {isPremium ? (
-                                <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/50 px-3 py-1 rounded-full text-xs font-black uppercase flex items-center gap-1">
-                                    <Crown className="w-3 h-3" /> Membre Premium
-                                </span>
-                            ) : (
-                                <span className="bg-[#333] text-[#a0a0a0] px-3 py-1 rounded-full text-xs font-bold uppercase">
-                                    Membre Gratuit
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* STATS RAPIDES */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[#2d2d2d] p-6 rounded-2xl border border-[#404040]">
-                        <History className="w-8 h-8 text-[#4d94ff] mb-2" />
-                        <p className="text-3xl font-black text-white">{historyCount}</p>
-                        <p className="text-sm text-[#a0a0a0]">Playlists générées</p>
-                    </div>
-                    <div className="bg-[#2d2d2d] p-6 rounded-2xl border border-[#404040] opacity-50">
-                        <Music className="w-8 h-8 text-gray-500 mb-2" />
-                        <p className="text-sm text-[#a0a0a0] mt-2">Top Artistes (Bientôt)</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* ACTIONS */}
-            <div className="space-y-4">
-                <Button 
-                    onClick={() => navigate('/my-concerts')}
-                    className="w-full h-14 bg-[#4d94ff] hover:bg-[#6ba6ff] text-white font-bold"
-                >
-                    Mes Setlists Sauvegardées
-                </Button>
-                
-                {!isPremium && (
-                    <Button 
-                        onClick={() => navigate('/subscription')}
-                        className="w-full h-14 bg-yellow-500 hover:bg-yellow-400 text-black font-bold"
-                    >
-                        Devenir PREMIUM
-                    </Button>
-                )}
-
-                <Button 
-                    onClick={handleSignOut}
-                    variant="outline"
-                    className="w-full h-14 border-red-900/50 text-red-500 hover:bg-red-950 hover:text-red-400 hover:border-red-500"
-                >
-                    <LogOut className="mr-2 w-4 h-4" /> Se déconnecter
-                </Button>
-            </div>
-
+  if (!user) {
+    return (
+      <div className="sl-page">
+        <Header />
+        <div className="mx-auto mt-24 max-w-md px-4 text-center">
+          {waited ? (
+            <>
+              <p className="sl-display text-3xl">Non connecté</p>
+              <p className="mt-2 text-sm text-[var(--sl-muted)]">Connecte-toi pour accéder à ton compte.</p>
+              <Link to="/auth" className="sl-btn sl-btn-ink mt-6">Se connecter</Link>
+            </>
+          ) : (
+            <Spinner className="h-6 w-6" />
+          )}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="sl-page">
+      <Header />
+      <Frame kicker="Mon compte" title="Profil">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="space-y-6">
+            <div className="sl-card flex items-center gap-5 p-5">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--sl-ink)] text-[var(--sl-paper)]">
+                <User className="h-7 w-7" />
+              </span>
+              <div className="min-w-0">
+                <p className="sl-label">Compte</p>
+                <p className="truncate text-lg font-semibold">{user.email}</p>
+                <span
+                  className="sl-mono mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-widest"
+                  style={isPremium
+                    ? { borderColor: 'var(--sl-gold)', color: 'var(--sl-gold)', background: 'rgba(201,151,28,0.1)' }
+                    : { borderColor: 'var(--sl-groove)', color: 'var(--sl-muted)' }}
+                >
+                  {isPremium && <Crown className="h-3 w-3" />} {isPremium ? 'Membre Premium' : 'Membre gratuit'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-ink)] p-4 text-[var(--sl-paper)]">
+                <p className="sl-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sl-gold-bright)]">Playlists générées</p>
+                <p className="sl-display mt-1 text-4xl">{historyCount}</p>
+              </div>
+              <div className="sl-card border-l-4 !border-l-[var(--sl-groove)] p-4">
+                <p className="sl-label">{isPremium ? 'Exports' : 'Exports restants'}</p>
+                <p className="sl-display mt-1 text-4xl">{isPremium ? '∞' : remaining ?? '–'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 self-start">
+            <Link to="/history" className="sl-btn sl-btn-ink w-full !py-4"><HistoryIcon className="h-4 w-4" /> Back in Time</Link>
+            {!isPremium && (
+              <Link to="/subscription" className="sl-btn sl-btn-gold w-full !py-4"><Crown className="h-4 w-4" /> Devenir Premium</Link>
+            )}
+            {isPremium && (
+              <Link to="/subscription" className="sl-btn sl-btn-line w-full !py-4"><Crown className="h-4 w-4" /> Mon abonnement</Link>
+            )}
+            <button onClick={handleSignOut} className="sl-btn sl-btn-wine w-full !py-4"><LogOut className="h-4 w-4" /> Se déconnecter</button>
+          </div>
+        </div>
+      </Frame>
       <Footer />
     </div>
   );
