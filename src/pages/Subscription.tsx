@@ -1,31 +1,50 @@
-import { useState, useEffect } from 'react';
+// src/pages/Subscription.tsx — offres, paiement Stripe, gestion de l'abonnement (thème Vinyl)
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Calendar, Check, Crown, ExternalLink, Sparkles } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Check, Loader2, Crown, Calendar, Sparkles, ExternalLink } from 'lucide-react';
+import { Frame, Groove, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
-import { toast } from 'sonner';
+
+const FREE_FEATURES = [
+  '2 exports par an (copie de la liste)',
+  'Liste complète tant qu’il reste des exports',
+  'Historique enregistré, consultable avec Premium',
+];
+const PREMIUM_FEATURES = [
+  'Exports illimités',
+  'Téléchargement des listes en .txt et .csv',
+  'Historique complet de tes playlists',
+  'Badge supporter',
+  'Support prioritaire',
+  'Tu soutiens un projet indépendant',
+];
+
+const formatDate = (d: string) =>
+  d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Non définie';
 
 export default function Subscription() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<'free' | 'premium' | null>(null);
-  const [renewalDate, setRenewalDate] = useState<string>('');
+  const [renewalDate, setRenewalDate] = useState('');
 
-  // Vérifier le statut au chargement
   useEffect(() => {
-    if (user) {
-      getUserSubscription(user.id).then(sub => {
-        setCurrentPlan(sub.subscription_type);
-        setRenewalDate(sub.end_date || '');
-      });
-    }
+    if (!user) return;
+    getUserSubscription(user.id).then((sub: any) => {
+      setCurrentPlan(sub.subscription_type);
+      setRenewalDate(sub.end_date || '');
+    });
   }, [user]);
 
   const handleSubscribe = async () => {
     if (!user) {
-      toast.error("Connectez-vous pour vous abonner !");
+      toast.error('Connecte-toi pour t’abonner.');
+      navigate('/auth');
       return;
     }
     setLoading(true);
@@ -37,161 +56,98 @@ export default function Subscription() {
       });
       const data = await response.json();
       if (data.url) window.location.href = data.url;
+      else throw new Error('no url');
     } catch (error) {
       console.error(error);
-      toast.error("Erreur paiement. Vérifiez votre connexion.");
+      toast.error('Erreur de paiement. Vérifie ta connexion.');
       setLoading(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return 'Non définie';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    });
+  const openPortal = async () => {
+    try {
+      const res = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      toast.error('Erreur de connexion à Stripe');
+    }
   };
 
-  // --- CAS 1 : L'UTILISATEUR EST DÉJÀ PREMIUM ---
+  // --- Déjà Premium ---
   if (currentPlan === 'premium') {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
+      <div className="sl-page">
         <Header />
-        <div className="flex-grow flex items-center justify-center px-4">
-            <div className="max-w-2xl w-full bg-gradient-to-br from-[#2d2d2d] to-[#1a1a1a] p-8 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_-10px_rgba(234,179,8,0.2)] text-center space-y-8">
-                
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-500/10 mb-4 animate-pulse">
-                    <Crown className="w-12 h-12 text-yellow-500" />
-                </div>
-
-                <div>
-                    <h1 className="text-4xl font-black italic uppercase mb-2">Vous êtes <span className="text-yellow-500">PREMIUM</span></h1>
-                    <p className="text-[#a0a0a0]">Merci de soutenir le projet Setlive.fr !</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                    <div className="p-4 bg-[#252525] rounded-xl border border-[#333]">
-                        <p className="text-xs text-[#a0a0a0] uppercase font-bold tracking-widest mb-1">Statut</p>
-                        <p className="text-green-400 font-bold flex items-center gap-2"><Check className="w-4 h-4"/> Actif</p>
-                    </div>
-                    <div className="p-4 bg-[#252525] rounded-xl border border-[#333]">
-                        <p className="text-xs text-[#a0a0a0] uppercase font-bold tracking-widest mb-1">Renouvellement</p>
-                        <p className="text-white font-bold flex items-center gap-2">
-                          <Calendar className="w-4 h-4"/> 
-                          {formatDate(renewalDate)}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="bg-yellow-500/10 p-4 rounded-xl border border-yellow-500/20 text-yellow-200 text-sm">
-                    <Sparkles className="w-4 h-4 inline mr-2"/>
-                    Exports illimités • Aucune publicité • Historique complet
-                </div>
-
-                {/* Bouton vers le portail client Stripe */}
-                <Button 
-                  onClick={async () => {
-                    try {
-                      const res = await fetch('/api/create-portal-session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user?.id })
-                      });
-                      const data = await res.json();
-                      if (data.url) window.location.href = data.url;
-                    } catch (err) {
-                      toast.error("Erreur de connexion à Stripe");
-                    }
-                  }}
-                  variant="outline" 
-                  className="w-full border-[#404040] hover:bg-[#333] text-[#a0a0a0] flex items-center justify-center gap-2"
-                >
-                  Gérer mon abonnement (via Stripe)
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
+        <Frame kicker="Mon abonnement" title="Tu es Premium">
+          <div className="mx-auto max-w-2xl space-y-6">
+            <p className="text-sm text-[var(--sl-muted)]">Merci de soutenir le projet Setlive.fr !</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sl-card border-l-4 !border-l-[var(--sl-forest)] p-4">
+                <p className="sl-label">Statut</p>
+                <p className="mt-1 flex items-center gap-2 font-semibold text-[var(--sl-forest)]"><Check className="h-4 w-4" /> Actif</p>
+              </div>
+              <div className="sl-card border-l-4 !border-l-[var(--sl-gold)] p-4">
+                <p className="sl-label">Renouvellement</p>
+                <p className="mt-1 flex items-center gap-2 font-semibold"><Calendar className="h-4 w-4" /> {formatDate(renewalDate)}</p>
+              </div>
             </div>
-        </div>
+            <div className="sl-card-dim border-l-4 !border-l-[var(--sl-gold)] p-4 text-sm">
+              <Sparkles className="mr-2 inline h-4 w-4 text-[var(--sl-gold)]" />
+              Exports illimités • Fichiers .txt et .csv • Historique complet
+            </div>
+            <button onClick={openPortal} className="sl-btn sl-btn-line w-full !py-4">
+              Gérer mon abonnement (via Stripe) <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </Frame>
         <Footer />
       </div>
     );
   }
 
-  // --- CAS 2 : L'UTILISATEUR EST FREE (Affichage des offres) ---
-  const plans = [
-    {
-      name: "Gratuit",
-      price: "0€",
-      period: "à vie",
-      desc: "Pour les festivaliers occasionnels",
-      features: [
-        "2 exports par an",
-        "Accès aux festivals",
-        "Prévisualisation des titres"
-      ],
-      button: "Plan Actuel",
-      premium: false
-    },
-    {
-      name: "Premium",
-      price: "5€",
-      period: "par an",
-      desc: "L'expérience ultime",
-      features: [
-        "Exports ILLIMITÉS",
-        "Zéro publicité",
-        "Historique complet",
-        "Badge supporter",
-        "Support prioritaire"
-      ],
-      button: "Devenir Premium",
-      premium: true
-    }
-  ];
-
+  // --- Gratuit / non connecté : les offres ---
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white pt-24 flex flex-col">
+    <div className="sl-page">
       <Header />
-      <div className="flex-grow max-w-4xl mx-auto px-4 pb-20 w-full">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-black italic uppercase mb-4">
-            Passez à la vitesse <span className="text-[#4d94ff]">Supérieure</span>
-          </h1>
-          <p className="text-[#a0a0a0] text-lg">Libérez tout le potentiel de vos souvenirs de concerts.</p>
-        </div>
+      <Frame kicker="Abonnement" title="Passe en Premium" hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Exports illimités, fichiers à télécharger et historique complet de tes playlists.</p>}>
+        <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+          <div className="sl-card flex flex-col p-6 md:p-8">
+            <h3 className="sl-display text-3xl">Gratuit</h3>
+            <p className="mt-2 flex items-baseline gap-1"><span className="sl-display text-5xl">0 €</span><span className="sl-label">à vie</span></p>
+            <p className="mt-3 text-sm text-[var(--sl-muted)]">Pour les festivaliers occasionnels</p>
+            <ul className="my-6 flex-1 space-y-3">
+              {FREE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-3 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--sl-muted)]" /><span>{f}</span></li>
+              ))}
+            </ul>
+            <button disabled className="sl-btn sl-btn-line w-full !py-4">{user ? 'Plan actuel' : 'Sans compte ni engagement'}</button>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {plans.map((plan, i) => (
-            <div key={i} className={`relative p-8 rounded-3xl border ${plan.premium ? 'border-[#4d94ff] bg-[#2d2d2d] shadow-[0_0_30px_-10px_rgba(77,148,255,0.3)]' : 'border-[#333] bg-[#252525]'}`}>
-              {plan.premium && (
-                <div className="absolute top-4 right-6 bg-[#4d94ff] text-white text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">Recommandé</div>
-              )}
-              <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-black">{plan.price}</span>
-                <span className="text-[#a0a0a0] text-sm">/{plan.period}</span>
-              </div>
-              <p className="text-sm text-[#a0a0a0] mb-8">{plan.desc}</p>
-              <ul className="space-y-4 mb-10">
-                {plan.features.map((feat, j) => (
-                  <li key={j} className="flex items-start gap-3 text-sm">
-                    <Check className={`w-5 h-5 shrink-0 ${plan.premium ? 'text-[#4d94ff]' : 'text-[#a0a0a0]'}`} />
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button 
-                onClick={plan.premium ? handleSubscribe : undefined}
-                disabled={loading && plan.premium}
-                className={`w-full h-12 font-bold uppercase tracking-widest transition-all ${plan.premium ? 'bg-[#4d94ff] hover:bg-[#6ba6ff] text-white' : 'bg-[#333] text-[#a0a0a0] hover:bg-[#444] cursor-default'}`}
-              >
-                {loading && plan.premium ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Redirection...</> : plan.button}
-              </Button>
-            </div>
-          ))}
+          <div className="relative flex flex-col overflow-hidden rounded-lg border-2 border-[var(--sl-gold)] bg-[var(--sl-ink)] p-6 text-[var(--sl-paper)] md:p-8">
+            <Groove className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 text-[var(--sl-paper)] opacity-10" />
+            <span className="sl-mono absolute right-4 top-4 rounded-full bg-[var(--sl-gold)] px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--sl-ink)]">Recommandé</span>
+            <h3 className="sl-display relative text-3xl">Premium <Crown className="inline h-6 w-6 text-[var(--sl-gold-bright)]" /></h3>
+            <p className="relative mt-2 flex items-baseline gap-1"><span className="sl-display text-5xl text-[var(--sl-gold-bright)]">5 €</span><span className="sl-label !text-[var(--sl-paper)]/60">par an</span></p>
+            <p className="relative mt-3 text-sm text-[var(--sl-paper)]/70">L’expérience complète</p>
+            <ul className="relative my-6 flex-1 space-y-3">
+              {PREMIUM_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-3 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--sl-gold-bright)]" /><span>{f}</span></li>
+              ))}
+            </ul>
+            <button onClick={handleSubscribe} disabled={loading} className="sl-btn sl-btn-gold relative w-full !py-4">
+              {loading ? <><Spinner /> Redirection…</> : 'Devenir Premium'}
+            </button>
+            <p className="relative mt-3 text-center text-[11px] text-[var(--sl-paper)]/50">
+              Abonnement annuel à renouvellement automatique · paiement sécurisé par Stripe · résiliable à tout moment depuis « Gérer mon abonnement ».
+            </p>
+          </div>
         </div>
-      </div>
+      </Frame>
       <Footer />
     </div>
   );
