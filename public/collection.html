@@ -1615,5 +1615,101 @@
             }
         }
     </script>
+    <script>
+        /* ===== Setlive : accès Premium à la collection complète =====
+           Comptes gratuits : valeur totale + 3 albums détaillés par tableau. Premium : achats, plus-value, ROI,
+           graphiques, liste complète, exports CSV/PDF. Le palier est envoyé par la page parente (/collection) ;
+           ouvert seul, ce fichier reste en mode gratuit. Protection d'affichage : elle guide l'utilisateur,
+           elle n'est pas un verrou de sécurité. */
+        (function () {
+            var FREE_LIMIT = 3;
+            var LIMITED = { tableValeur: 1, tableInventaire: 1 };
+            var HIDE_COLS = { achat: 1, pvFull: 1 };
+            var premium = false;
+            var embedded = window.parent !== window;
+
+            var origCreateTable = window.createTable;
+            var origCSV = window.exportToCSV;
+            var origPrint = window.triggerPrint;
+
+            // Garde-fou : si une fonction attendue a changé de nom, on masque le tableau de bord plutôt que de tout montrer
+            if (typeof origCreateTable !== 'function' || typeof origCSV !== 'function' || typeof origPrint !== 'function') {
+                var st = document.createElement('style');
+                st.textContent = '#dashboardSection{display:none !important}';
+                document.head.appendChild(st);
+                return;
+            }
+
+            // --- Éléments réservés Premium (masqués par défaut, tant que le palier n'est pas confirmé) ---
+            var css = document.createElement('style');
+            css.textContent =
+                'body.sl-free .sl-premium-only{display:none !important}' +
+                '.sl-lock-card{display:none;background:#F1E9D8;border:1px dashed #C9971C;border-radius:8px;padding:18px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#14110D}' +
+                'body.sl-free .sl-lock-card{display:block}' +
+                '.sl-lock-card button{margin-top:10px;background:#C9971C;color:#14110D;border:0;border-radius:6px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}' +
+                '@media(min-width:768px){.sl-lock-kpi{grid-column:span 3 / span 3}}';
+            document.head.appendChild(css);
+            document.body.classList.add('sl-free');
+
+            function lockCard(cls, text) {
+                var d = document.createElement('div');
+                d.className = 'sl-lock-card ' + cls;
+                d.innerHTML = '🔒 ' + text + '<br><button type="button">Passer Premium</button>';
+                d.querySelector('button').addEventListener('click', denied);
+                return d;
+            }
+            function markHidden(el) { if (el) el.classList.add('sl-premium-only'); return el; }
+
+            var hero = document.getElementById('totalEstimGlobal') && document.getElementById('totalEstimGlobal').closest('.kpi-hero');
+            var achat = document.getElementById('totalAchat') && document.getElementById('totalAchat').parentElement;
+            markHidden(achat); markHidden(document.getElementById('pvCard')); markHidden(document.getElementById('roiCard'));
+            if (hero) hero.insertAdjacentElement('afterend', lockCard('sl-lock-kpi', 'Achats, plus-value et ROI réservés aux membres Premium'));
+
+            var chartGrid = document.getElementById('yearsChart') && document.getElementById('yearsChart').closest('.grid');
+            if (chartGrid) { markHidden(chartGrid); chartGrid.insertAdjacentElement('beforebegin', lockCard('', 'Graphiques de la collection réservés aux membres Premium')); }
+
+            var profitSection = document.getElementById('tableProfitCash') && document.getElementById('tableProfitCash').closest('section');
+            if (profitSection) { markHidden(profitSection); profitSection.insertAdjacentElement('beforebegin', lockCard('', 'Top des plus-values réservé aux membres Premium')); }
+
+            // --- Tableaux : 3 lignes en gratuit, sans colonnes Achat / Plus-value ---
+            function lockNotice(id, total) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.insertAdjacentHTML('beforeend',
+                    '<div data-sl-lock style="padding:12px;text-align:center;font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:#F1E9D8;border-top:1px solid #DED2B8;">' +
+                    '🔒 ' + FREE_LIMIT + ' / ' + total + ' albums affichés — liste complète réservée aux membres Premium</div>');
+            }
+            window.createTable = function (id, data, cols, opts) {
+                if (!premium && LIMITED[id] && Array.isArray(data)) {
+                    var total = data.length;
+                    var safeCols = Array.isArray(cols) ? cols.filter(function (c) { return !HIDE_COLS[c.key]; }) : cols;
+                    origCreateTable.call(this, id, data.slice(0, FREE_LIMIT), safeCols, opts);
+                    if (total > FREE_LIMIT) lockNotice(id, total);
+                    return;
+                }
+                return origCreateTable.apply(this, arguments);
+            };
+
+            function denied() {
+                if (embedded) { parent.postMessage({ type: 'sl-upgrade' }, location.origin); }
+                else { alert('Fonction réservée aux membres Premium de Setlive.'); }
+            }
+            window.exportToCSV = function () { if (premium) return origCSV.apply(this, arguments); denied(); };
+            window.triggerPrint = function () { if (premium) return origPrint.apply(this, arguments); denied(); };
+
+            window.addEventListener('message', function (e) {
+                if (!embedded || e.origin !== location.origin || e.source !== window.parent) return;
+                if (!e.data || e.data.type !== 'sl-tier') return;
+                var was = premium;
+                premium = e.data.tier === 'premium';
+                document.body.classList.toggle('sl-free', !premium);
+                var dash = document.getElementById('dashboardSection');
+                if (premium !== was && dash && !dash.classList.contains('hidden')) {
+                    try { generateDashboard(); } catch (err) { console.error(err); }
+                }
+            });
+            if (embedded) { parent.postMessage({ type: 'sl-ready' }, location.origin); }
+        })();
+    </script>
 </body>
 </html>
