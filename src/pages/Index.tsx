@@ -34,7 +34,7 @@ export default function Index() {
   const [items, setItems] = useState<StudioItem[]>([]);
   const [name, setName] = useState('');
   const [topCount, setTopCount] = useState(5);
-  const [preferLive, setPreferLive] = useState(false);
+  const [preferLive, setPreferLive] = useState(true); // activé par défaut : on cherche les versions live
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(null);
