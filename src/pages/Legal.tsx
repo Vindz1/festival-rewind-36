@@ -18,9 +18,12 @@ export default function Legal() {
         <div className="mx-auto max-w-3xl space-y-5">
           <Section n={1} title="Éditeur du site">
             <p>
-              Le site <strong>Setlive.fr</strong> (ci-après « le Site ») est édité par Vincent DENIS, domicilié au 9 rue de la feltière, Lerné.<br />
+              Le site <strong>Setlive.fr</strong> (ci-après « le Site ») est un service édité à titre indépendant.<br />
               Contact : setlive@proton.me<br />
               Hébergeur : Vercel Inc., 340 S Lemon Ave #4133 Walnut, CA 91789, USA.
+            </p>
+            <p>
+              Conformément à l'article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 (LCEN), l'identité de l'éditeur a été communiquée à l'hébergeur et peut être transmise aux autorités compétentes sur demande.
             </p>
           </Section>
 
