@@ -1,7 +1,7 @@
 // src/components/studio/Result.tsx — résultat + export
 import { Check, Copy, Crown, Download, ExternalLink, Lock, X } from 'lucide-react';
 import { FaceTitle } from '@/components/vinyl/Ui';
-import { Access, ItemReport, Source, Track } from '@/lib/engine';
+import { Access, ItemReport, Source, Track, withLive } from '@/lib/engine';
 
 interface Props {
   name: string;
@@ -110,7 +110,7 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
               {tracks.slice(0, access.visible).map((t, i) => (
                 <tr key={`${t.artist}-${t.name}-${i}`} className="border-b border-[var(--sl-groove)] hover:bg-[var(--sl-paper-dim)]">
                   <td className="sl-mono px-3 py-2 text-right text-[11px] text-[var(--sl-muted)]">{i + 1}</td>
-                  <td className="px-3 py-2 font-semibold">{preferLive ? `${t.name} (Live)` : t.name}<span className="block text-xs font-normal text-[var(--sl-muted)] sm:hidden">{t.artist}</span></td>
+                  <td className="px-3 py-2 font-semibold">{withLive(t.name, t.source, preferLive)}<span className="block text-xs font-normal text-[var(--sl-muted)] sm:hidden">{t.artist}</span></td>
                   <td className="hidden px-3 py-2 sm:table-cell">{t.artist}</td>
                   <td className="hidden px-3 py-2 md:table-cell">
                     <span className="sl-mono inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--sl-muted)]">

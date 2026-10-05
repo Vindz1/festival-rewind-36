@@ -64,8 +64,8 @@ export default function Profile() {
     <div className="sl-page">
       <Header />
       <Frame kicker="Mon compte" title="Profil">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="min-w-0 space-y-6">
             <div className="sl-card flex items-center gap-5 p-5">
               <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--sl-ink)] text-[var(--sl-paper)]">
                 <User className="h-7 w-7" />
@@ -96,7 +96,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="space-y-3 self-start">
+          <div className="min-w-0 space-y-3 self-start">
             <Link to="/history" className="sl-btn sl-btn-ink w-full !py-4"><HistoryIcon className="h-4 w-4" /> Back in Time</Link>
             {!isPremium && (
               <Link to="/subscription" className="sl-btn sl-btn-gold w-full !py-4"><Crown className="h-4 w-4" /> Devenir Premium</Link>

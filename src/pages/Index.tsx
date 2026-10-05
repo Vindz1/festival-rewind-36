@@ -34,7 +34,7 @@ export default function Index() {
   const [items, setItems] = useState<StudioItem[]>([]);
   const [name, setName] = useState('');
   const [topCount, setTopCount] = useState(5);
-  const [preferLive, setPreferLive] = useState(false);
+  const [preferLive, setPreferLive] = useState(true); // activé par défaut : on cherche les versions live
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(null);
@@ -166,8 +166,8 @@ export default function Index() {
           { title: 'Ajuste', text: 'Réordonne, retire des artistes, donne un nom à ta playlist, puis lance la génération.' },
           { title: 'Importe', text: 'Copie la liste et colle-la dans TuneMyMusic : elle arrive dans ton appli de streaming.' },
         ]} />
-        <div className="grid gap-8 pb-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pb-0">
-          <div>
+        <div className="grid grid-cols-1 gap-8 pb-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:pb-0">
+          <div className="min-w-0">
             <FaceTitle face="Face A" title="Choisir" />
             <div className="sl-seg mb-5">
               <button className={tab === 'past' ? 'on' : ''} onClick={() => setParams({})}>Concerts passés</button>
@@ -181,7 +181,7 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="self-start lg:sticky lg:top-20">
+          <div className="min-w-0 self-start lg:sticky lg:top-20">
             <Basket
               items={items} name={name} setName={setName}
               topCount={topCount} setTopCount={setTopCount}

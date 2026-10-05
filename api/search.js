@@ -44,7 +44,9 @@ function songsOf(setlist, artistName) {
     for (const so of toArray(set.song)) {
       const name = (so?.name || '').trim();
       if (!name || so.tape || /unknown/i.test(name)) continue;
-      out.push({ name, artist: so.cover?.name || artistName });
+      // Reprise : auteur d'origine, sauf mentions génériques « [traditional] », « [unknown] »… → l'interprète
+      const cover = String(so.cover?.name || '').trim();
+      out.push({ name, artist: cover && !/^\[.*\]$/.test(cover) ? cover : artistName });
     }
   }
   return out;

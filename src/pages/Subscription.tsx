@@ -7,6 +7,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Frame, Groove, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { getUserSubscription } from '@/lib/subscription';
 
 const FREE_FEATURES = [
@@ -68,15 +69,19 @@ export default function Subscription() {
 
   const openPortal = async () => {
     try {
+      // Le serveur reconnaît l'utilisateur à son jeton de connexion (jamais à un identifiant envoyé par la page)
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) { toast.error('Reconnecte-toi pour gérer ton abonnement.'); return; }
       const res = await fetch('/api/create-portal-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
+      else throw new Error(data.error || 'no url');
     } catch {
-      toast.error('Erreur de connexion à Stripe');
+      toast.error('Impossible d’ouvrir la gestion de l’abonnement. Écris-nous : setlive@proton.me');
     }
   };
 

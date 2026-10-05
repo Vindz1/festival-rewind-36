@@ -4,7 +4,6 @@ import { Link, NavLink } from 'react-router-dom';
 import { Crown, Menu, User, X } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { getUserSubscription } from '@/lib/subscription';
-import { GoogleTranslate } from '@/components/GoogleTranslate';
 
 const NAV = [
   { to: '/', label: 'Studio', end: true, hint: 'Crée une playlist à partir de concerts ou de festivals' },
@@ -47,7 +46,6 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <GoogleTranslate />
           <Link
             to={user ? '/profile' : '/auth'}
             className="sl-btn sl-btn-sm border-[var(--sl-paper)]/30 text-[var(--sl-paper)] hover:bg-[var(--sl-paper)]/10"

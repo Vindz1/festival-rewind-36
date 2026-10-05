@@ -5,13 +5,10 @@ import App from './App';
 // Thème Vinyl AVANT index.css : les classes utilitaires Tailwind gardent la priorité
 import './styles/vinyl-theme.css';
 import './index.css';
-import { preventMusicTranslation } from './utils/preventTranslation';
+import './styles/mobile.css';
 
-// Garde-fou historique (traduction automatique)
+// Garde-fou historique
 (window as any).ReactDOM = ReactDOM;
-
-// Protège les noms de groupes de la traduction automatique
-preventMusicTranslation();
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

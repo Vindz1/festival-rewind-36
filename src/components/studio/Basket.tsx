@@ -64,7 +64,7 @@ export default function Basket(p: Props) {
         </div>
         <label className="flex cursor-pointer items-start gap-2 text-xs">
           <input type="checkbox" checked={p.preferLive} onChange={(e) => p.setPreferLive(e.target.checked)} className="mt-0.5 accent-[var(--sl-gold)]" />
-          <span>Ajouter « (Live) » aux titres exportés <span className="text-[var(--sl-muted)]">— pour tenter d’obtenir les versions live (expérimental)</span></span>
+          <span>Ajouter « (Live) » aux titres de setlist <span className="text-[var(--sl-muted)]">— pour retrouver les versions live sur ta plateforme (expérimental)</span></span>
         </label>
         <button className="sl-btn sl-btn-ink w-full !py-4" onClick={p.onGenerate} disabled={p.busy || !p.items.length}>
           {p.busy ? <><Spinner /> {p.progress || 'Analyse…'}</> : `Générer la playlist${p.items.length ? ` (${p.items.length})` : ''}`}

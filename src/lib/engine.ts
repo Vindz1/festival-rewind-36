@@ -162,7 +162,10 @@ function tracksFromSets(sets: any, artist: string) {
     (Array.isArray(s.song) ? s.song : s.song ? [s.song] : []).forEach((so: any) => {
       const name = (so?.name || '').trim();
       if (!name || so.tape || /unknown/i.test(name)) return;
-      out.push({ artist: so.cover?.name || artist, name });
+      // Reprise : on garde l'auteur d'origine, SAUF pour les mentions génériques de setlist.fm
+      // (« [traditional] », « [unknown] »…) qui ne sont pas des artistes : on prend alors l'interprète.
+      const cover = String(so.cover?.name || '').trim();
+      out.push({ artist: cover && !/^\[.*\]$/.test(cover) ? cover : artist, name });
     });
   });
   return out;
@@ -186,11 +189,11 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function averageTracks(it: StudioItem): Promise<Track[]> {
-  const key = `sl_avg_v2:${it.mbid || norm(it.artist)}`;
+  const key = `sl_avg_v3:${it.mbid || norm(it.artist)}`;
   let data = cacheGet<any>(key, 30 * 24 * 3600 * 1000);
   if (!data) {
     data = await serial(() =>
-      getJson(`/api/search?action=average&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
+      getJson(`/api/search?action=average&v=3&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
     );
     if (data?.songs?.length) cacheSet(key, data);
   }
@@ -367,7 +370,10 @@ export function accessFor(user: unknown, quota: { canExport: boolean; isPremium:
 }
 
 // ---------- exports ----------
-const label = (t: Track, live: boolean) => (live ? `${t.name} (Live)` : t.name);
+// « (Live) » : ajouté aux titres issus d'une setlist (exacte ou moyenne). Les « top titres » iTunes sont des
+// versions studio, sans concert associé : on ne leur ajoute pas de suffixe.
+export const withLive = (name: string, source: string | undefined, live: boolean) => (live && source !== 'top' ? `${name} (Live)` : name);
+const label = (t: Track, live: boolean) => withLive(t.name, t.source, live);
 export const toText = (tracks: Track[], live: boolean) => tracks.map((t) => `${t.artist} - ${label(t, live)}`).join('\n');
 export const toCsv = (tracks: Track[], live: boolean) =>
   'Artist,Title\n' + tracks.map((t) => `"${t.artist.replace(/"/g, '""')}","${label(t, live).replace(/"/g, '""')}"`).join('\n');
