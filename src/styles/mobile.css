@@ -1,0 +1,11 @@
+/* src/styles/mobile.css — confort mobile */
+
+/* Filet de sécurité : sur téléphone, rien ne doit élargir la page horizontalement */
+@media (max-width: 767px) {
+  html, body { overflow-x: clip; }
+}
+
+/* iOS zoome automatiquement sur les champs dont le texte fait moins de 16 px, puis la page reste « trop large » */
+@media (max-width: 767px) {
+  .sl-page input, .sl-page select, .sl-page textarea { font-size: 16px; }
+}
