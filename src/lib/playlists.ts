@@ -2,16 +2,17 @@
 // Les colonnes `tracks` (jsonb) sont ajoutées aux tables playlists_history et playlist_exports.
 // Si la colonne n'existe pas encore, on enregistre comme avant (sans la liste) : rien ne casse.
 import { supabase } from '@/supabaseClient';
+import { withLive } from '@/lib/engine';
 
 export interface StoredTrack { artist: string; name: string; source?: 'exact' | 'average' | 'top' }
 
-// Liste à stocker (null si on n'a pas les titres). « (Live) » est intégré au titre si l'option était cochée.
+// Liste à stocker (null si on n'a pas les titres). « (Live) » est intégré aux titres de setlist si l'option était cochée.
 export function toStored(tracks: { artist: string; name?: string; source?: string }[], live = false): StoredTrack[] | null {
   const out: StoredTrack[] = tracks
     .filter((t) => t.name)
     .map((t) => ({
       artist: t.artist,
-      name: live ? `${t.name} (Live)` : (t.name as string),
+      name: withLive(t.name as string, t.source, live),
       source: (t.source === 'exact' || t.source === 'average' || t.source === 'top' ? t.source : undefined) as StoredTrack['source'],
     }));
   return out.length ? out : null;
