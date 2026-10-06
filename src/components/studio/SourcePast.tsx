@@ -28,7 +28,7 @@ export default function SourcePast({ onAdd, onRemove, has, profile, onLoadProfil
   const [searched, setSearched] = useState('');
 
   const run = async (reset: boolean) => {
-    if (!q.trim()) return toast.error('Saisis un artiste, une tournée ou une ville');
+    if (!q.trim()) return toast.error('Saisis un artiste, un festival, une tournée ou une ville');
     setLoading(true);
     const start = reset ? 1 : page + 1;
     let acc: any[] = [];
@@ -85,6 +85,11 @@ export default function SourcePast({ onAdd, onRemove, has, profile, onLoadProfil
     const sorted = [...filtered].sort((x, y) => (parseDate(x.eventDate)?.getTime() ?? 0) - (parseDate(y.eventDate)?.getTime() ?? 0));
     onAdd(sorted);
   };
+  // Tout ajouter (ex. un festival entier) : dans l'ordre chronologique
+  const addAllResults = () => {
+    const sorted = [...results].sort((x, y) => (parseDate(x.eventDate)?.getTime() ?? 0) - (parseDate(y.eventDate)?.getTime() ?? 0));
+    onAdd(sorted);
+  };
   const toggle = (it: StudioItem) => (has(it.uid) ? onRemove(it.uid) : onAdd([it]));
 
   const loadProfile = () => {
@@ -104,12 +109,13 @@ export default function SourcePast({ onAdd, onRemove, has, profile, onLoadProfil
       {mode === 'search' && (
         <div>
           <form onSubmit={(e) => { e.preventDefault(); run(true); }} className="flex flex-col gap-2 sm:flex-row">
-            <input className="sl-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Artiste, tournée ou ville… (ex. Gojira, Hellfest 2025)" />
+            <input className="sl-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Artiste, festival, tournée ou ville (ex. Gojira, Hellfest 2025)" />
             <select className="sl-input sm:w-40" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="all">Artiste + tournée</option>
+              <option value="all">Tout (conseillé)</option>
               <option value="artistName">Artiste</option>
+              <option value="cityName">Festival / ville</option>
               <option value="tourName">Tournée</option>
-              <option value="cityName">Ville</option>
+              <option value="venueName">Salle / scène</option>
             </select>
             <button type="submit" className="sl-btn sl-btn-ink" disabled={loading}>
               {loading ? <Spinner /> : <Search className="h-3.5 w-3.5" />} Chercher
@@ -118,9 +124,13 @@ export default function SourcePast({ onAdd, onRemove, has, profile, onLoadProfil
 
           <div className="sl-card mt-4 overflow-hidden">
             {!results.length ? (
-              <Empty title={searched ? 'Aucun concert' : 'Prêt à fouiller'} text={searched ? 'Essaie une autre orthographe.' : 'Retrouve n’importe quel concert passé dans les archives de setlist.fm.'} />
+              <Empty title={searched ? 'Aucun concert' : 'Prêt à fouiller'} text={searched ? 'Essaie une autre orthographe, ou la ville du festival (ex. Clisson 2025).' : 'Un artiste, un festival (ex. Hellfest 2025), une tournée ou une ville : tout est dans les archives de setlist.fm.'} />
             ) : (
               <div className="sl-scroll max-h-[520px] overflow-y-auto">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--sl-groove)] bg-[var(--sl-paper-dim)] px-3 py-2">
+                  <span className="sl-label">{results.length} concert(s) affiché(s)</span>
+                  <button className="sl-btn sl-btn-gold sl-btn-sm" onClick={addAllResults}>Tout ajouter ({results.length})</button>
+                </div>
                 {results.map((it) => (
                   <PickRow key={it.uid} title={`${it.artist}`} sub={`${fmtDate(it.eventDate)} · ${it.sub}`} meta={meta(it)} added={has(it.uid)} onClick={() => toggle(it)} />
                 ))}
