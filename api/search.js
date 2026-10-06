@@ -1,6 +1,6 @@
 // api/search.js — moteur Setlist.fm unifié (Vercel serverless)
 // Actions :
-//   ?q=…&type=all|artistName|tourName|cityName&p=1   → recherche de concerts
+//   ?q=…&type=all|artistName|tourName|cityName|venueName&p=1   → recherche de concerts (« Hellfest 2025 » : l'année filtre)
 //   ?action=user&username=…                           → concerts d'un profil (pagination par lots)
 //   ?action=songs&setlistId=…                         → détail d'une setlist
 //   ?action=artists&q=…                               → autocomplétion d'artistes (mbid)
@@ -15,6 +15,26 @@ const norm = (s = '') =>
 function parseDate(d) {
   const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(d || '');
   return m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date(0);
+}
+
+// Sur setlist.fm, un festival n'existe pas sous son nom : ses concerts sont rangés par SCÈNE, dans la VILLE du festival
+// (ex. Hellfest = « Mainstage 01 », « Valley Stage »… à Clisson). On relie donc les festivals connus à leur ville.
+const FESTIVALS = {
+  hellfest: ['Clisson', 'FR'], 'hellfest open air': ['Clisson', 'FR'],
+  wacken: ['Wacken', 'DE'], 'wacken open air': ['Wacken', 'DE'],
+  graspop: ['Dessel', 'BE'], 'graspop metal meeting': ['Dessel', 'BE'],
+  download: ['Castle Donington', 'GB'], 'download festival': ['Castle Donington', 'GB'],
+  'rock am ring': ['Nürburg', 'DE'],
+  motocultor: ['Saint-Nolff', 'FR'],
+  werchter: ['Werchter', 'BE'], 'rock werchter': ['Werchter', 'BE'],
+  'rock en seine': ['Saint-Cloud', 'FR'],
+};
+
+// « Hellfest 2025 » → { term: 'Hellfest', year: '2025' } ; « 2025 » seul reste un terme
+function parseQuery(raw) {
+  const s = String(raw || '').trim();
+  const m = /^(.*?)[\s,]*((?:19|20)\d{2})$/.exec(s);
+  return m && m[1].trim() ? { term: m[1].trim(), year: m[2] } : { term: s, year: '' };
 }
 
 // Appel Setlist.fm avec reprise automatique sur 429 (rate limit)
@@ -150,29 +170,44 @@ export default async function handler(req, res) {
     // --- Recherche de concerts ---
     if (q && !action) {
       const page = Math.max(1, parseInt(p, 10) || 1);
-      const searchType = ['artistName', 'cityName', 'tourName', 'all'].includes(type) ? type : 'all';
-      const fetchBy = async (field) => {
-        const d = await sfm(`/search/setlists?${field}=${encodeURIComponent(q)}&p=${page}`);
-        return { list: toArray(d?.setlist), total: d?.total || 0, perPage: d?.itemsPerPage || 20 };
+      const searchType = ['artistName', 'cityName', 'tourName', 'venueName', 'all'].includes(type) ? type : 'all';
+      const { term, year } = parseQuery(q);
+      const fest = FESTIVALS[norm(term)];
+
+      // Une recherche Setlist.fm ; « aucun résultat » (404) = liste vide ; seule une limite de débit remonte en erreur
+      const run = async (params) => {
+        const qs = new URLSearchParams({ ...params, ...(year ? { year } : {}), p: String(page) });
+        try {
+          const d = await sfm(`/search/setlists?${qs}`);
+          return { list: toArray(d?.setlist), total: d?.total || 0, perPage: d?.itemsPerPage || 20 };
+        } catch (e) {
+          if (e.status === 429) throw e;
+          return { list: [], total: 0, perPage: 20 };
+        }
       };
-      let results = [];
-      let total = 0;
-      let perPage = 20;
+      const festival = () => run({ cityName: fest[0], countryCode: fest[1] });
+
+      let parts = [];
       if (searchType === 'all') {
-        const [a, t] = await Promise.all([fetchBy('artistName'), fetchBy('tourName')]);
-        const seen = new Set();
-        results = [...a.list, ...t.list].filter((c) => (seen.has(c.id) ? false : seen.add(c.id)));
-        results.sort((x, y) => parseDate(y.eventDate) - parseDate(x.eventDate));
-        total = Math.max(a.total, t.total);
-        perPage = a.perPage;
+        if (fest) parts = [await festival()];
+        if (!parts.some((x) => x.list.length)) {
+          // d'abord artiste et tournée ; si rien, salle/scène et ville (un festival tapé par sa ville, ex. « Clisson 2025 »)
+          parts = await Promise.all([run({ artistName: term }), run({ tourName: term })]);
+          if (!parts.some((x) => x.list.length)) parts = await Promise.all([run({ venueName: term }), run({ cityName: term })]);
+        }
+      } else if (searchType === 'cityName') {
+        parts = [fest ? await festival() : await run({ cityName: term })];
       } else {
-        const r = await fetchBy(searchType);
-        results = r.list;
-        total = r.total;
-        perPage = r.perPage;
+        parts = [await run({ [searchType]: term })];
       }
+
+      const seen = new Set();
+      const results = parts.flatMap((x) => x.list).filter((c) => (seen.has(c.id) ? false : seen.add(c.id)));
+      results.sort((x, y) => parseDate(y.eventDate) - parseDate(x.eventDate));
+      const total = Math.max(0, ...parts.map((x) => x.total));
+      const perPage = parts[0]?.perPage || 20;
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-      return res.status(200).json({ results, total, itemsPerPage: perPage, page, hasMore: page * perPage < total });
+      return res.status(200).json({ results, total, itemsPerPage: perPage, page, hasMore: page * perPage < total, festival: fest ? { city: fest[0], country: fest[1], year: year || null } : null });
     }
 
     // --- Profil Setlist.fm ---
