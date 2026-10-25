@@ -1,4 +1,4 @@
-// src/pages/History.tsx — « Back in Time » : playlists générées + exports, avec réouverture de la liste
+// src/pages/History.tsx — « Back in Time » : playlists générées + exports + analyses de collection, avec réouverture de la liste
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -10,22 +10,27 @@ import { useAuth } from '@/AuthContext';
 import { supabase } from '@/supabaseClient';
 import { checkExportQuota } from '@/lib/subscription';
 import { readStored, type StoredTrack } from '@/lib/playlists';
+import type { ArchivedItem } from '@/lib/collectionArchive';
 import PlaylistDetail from '@/components/PlaylistDetail';
 
 interface PlaylistRow { id: string; playlist_name: string; track_count: number; top_artists: string[]; source_type: 'concert' | 'upcoming'; created_at: string; tracks?: unknown }
 interface ExportRow { id: string; playlist_name: string; track_count: number; created_at: string; tracks?: unknown }
+interface AnalysisRow { id: string; discogs_username: string | null; item_count: number; total_value: number; total_purchase: number; total_gain: number; roi: number | null; created_at: string; updated_at: string }
 
 const when = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const eur = (n: number) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 export default function History() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
   const [exportsList, setExportsList] = useState<ExportRow[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
+  const [analysisItems, setAnalysisItems] = useState<Record<string, ArchivedItem[]>>({});
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [quota, setQuota] = useState({ remaining: 0, used: 0 });
-  const [tab, setTab] = useState<'playlists' | 'exports'>('playlists');
+  const [tab, setTab] = useState<'playlists' | 'exports' | 'collections'>('playlists');
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,6 +52,15 @@ export default function History() {
         const e = await supabase.from('playlist_exports').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50);
         if (e.error) throw e.error;
         setExportsList(e.data || []);
+        // Analyses de collection : la liste seulement (le détail est chargé à l'ouverture, il est volumineux)
+        const c = await supabase
+          .from('collection_analyses')
+          .select('id,discogs_username,item_count,total_value,total_purchase,total_gain,roi,created_at,updated_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(30);
+        if (c.error) console.warn('Archive de collection indisponible :', c.error.message);
+        else setAnalyses((c.data as AnalysisRow[]) || []);
       } catch (err) {
         console.error('Erreur chargement historique:', err);
         toast.error("Erreur lors du chargement de l'historique");
@@ -60,6 +74,37 @@ export default function History() {
     if (error) return toast.error('Erreur lors de la suppression');
     setPlaylists((p) => p.filter((x) => x.id !== id));
     toast.success('Playlist supprimée');
+  };
+
+  const removeAnalysis = async (id: string) => {
+    if (!confirm("Supprimer cette analyse de collection de l'historique ?")) return;
+    const { error } = await supabase.from('collection_analyses').delete().eq('id', id);
+    if (error) return toast.error('Erreur lors de la suppression');
+    setAnalyses((a) => a.filter((x) => x.id !== id));
+    toast.success('Analyse supprimée');
+  };
+
+  const toggleAnalysis = async (id: string) => {
+    const k = `c:${id}`;
+    if (openKey === k) { setOpenKey(null); return; }
+    setOpenKey(k);
+    if (analysisItems[id]) return;
+    const { data, error } = await supabase.from('collection_analyses').select('items').eq('id', id).single();
+    if (error) { toast.error('Impossible de charger le détail de cette analyse'); return; }
+    setAnalysisItems((m) => ({ ...m, [id]: ((data?.items as ArchivedItem[]) || []) }));
+  };
+
+  const downloadCsv = (a: AnalysisRow, items: ArchivedItem[]) => {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const head = ['Artiste', 'Titre', 'Format', 'État', 'Année pressage', 'Pays', 'Label', 'Prix achat (€)', 'Cote marché (€)', 'Confiance (%)'];
+    const lines = items.map((i) => [i.artist, i.title, i.format, i.condition, i.year, i.country, i.label, i.achat, i.marche, i.confidence].map(esc).join(';'));
+    const blob = new Blob(['\uFEFF' + [head.map(esc).join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `collection-${a.created_at.slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Bouton « Ouvrir » (liste conservée) ou mention (export fait avant que la liste soit enregistrée)
@@ -85,7 +130,7 @@ export default function History() {
       <Frame
         kicker="Historique"
         title="Back in Time"
-        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Le journal de tes playlists : chaque playlist créée dans le Studio est gardée ici, avec la liste de tes exports. Ouvre-en une pour la recopier ou l’envoyer vers TuneMyMusic (historique complet avec Premium).</p>}
+        hero={<p className="mt-4 max-w-xl text-sm text-[var(--sl-paper)]/70">Le journal de tes playlists : chaque playlist créée dans le Studio est gardée ici, avec la liste de tes exports et l’archive de tes analyses de collection. Ouvre-en une pour la recopier ou l’envoyer vers TuneMyMusic (historique complet avec Premium).</p>}
       >
         {loading ? <div className="flex justify-center py-16"><Spinner className="h-6 w-6" /></div> : (
           <>
@@ -107,6 +152,7 @@ export default function History() {
                 <div className="sl-seg">
                   <button className={tab === 'playlists' ? 'on' : ''} onClick={() => setTab('playlists')}>Playlists ({playlists.length})</button>
                   <button className={tab === 'exports' ? 'on' : ''} onClick={() => setTab('exports')}>Exports ({exportsList.length})</button>
+                  <button className={tab === 'collections' ? 'on' : ''} onClick={() => setTab('collections')}>Collection ({analyses.length})</button>
                 </div>
               } />
 
@@ -177,6 +223,89 @@ export default function History() {
                       })}
                     </div>
                   </>
+                )
+              )}
+
+              {tab === 'collections' && (
+                isPremium ? (
+                  !analyses.length ? (
+                    <div className="sl-card"><Empty title="Aucune analyse de collection" text="Lance une estimation dans l’onglet Collection : elle sera archivée ici automatiquement." /></div>
+                  ) : (
+                    <>
+                      <p className="mb-3 text-xs text-[var(--sl-muted)]">Chaque scan de ta collection est conservé. L’écart est calculé par rapport à l’analyse précédente.</p>
+                      <div className="sl-card overflow-hidden">
+                        {analyses.map((a, i) => {
+                          const prev = analyses[i + 1];
+                          const delta = prev ? Number(a.total_value) - Number(prev.total_value) : null;
+                          const k = `c:${a.id}`;
+                          const items = analysisItems[a.id];
+                          const top = items ? [...items].sort((x, y) => y.marche - x.marche).slice(0, 10) : [];
+                          return (
+                            <div key={a.id} className="border-b border-[var(--sl-groove)] last:border-b-0">
+                              <div className="sl-row !border-b-0">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold">{eur(a.total_value)} · {a.item_count} disques</p>
+                                  <p className="truncate text-xs text-[var(--sl-muted)]">{when(a.created_at)}{a.discogs_username ? ` · compte ${a.discogs_username}` : ''}</p>
+                                </div>
+                                {delta !== null && (
+                                  <span className="sl-mono hidden text-[10px] uppercase tracking-wide sm:block" style={{ color: delta >= 0 ? 'var(--sl-forest)' : 'var(--sl-wine)' }}>
+                                    {delta >= 0 ? '+' : ''}{eur(delta)} vs précédente
+                                  </span>
+                                )}
+                                <button className="sl-btn sl-btn-line sl-btn-sm shrink-0" onClick={() => toggleAnalysis(a.id)} aria-expanded={openKey === k}>
+                                  {openKey === k ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} {openKey === k ? 'Fermer' : 'Ouvrir'}
+                                </button>
+                                <button aria-label="Supprimer" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => removeAnalysis(a.id)}><Trash2 className="h-4 w-4" /></button>
+                              </div>
+
+                              {openKey === k && (
+                                <div className="border-t border-[var(--sl-groove)] bg-[var(--sl-paper-dim)] p-4">
+                                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    <div><p className="sl-label">Valeur marché</p><p className="sl-display text-2xl">{eur(a.total_value)}</p></div>
+                                    <div><p className="sl-label">Achats renseignés</p><p className="sl-display text-2xl">{eur(a.total_purchase)}</p></div>
+                                    <div><p className="sl-label">Gain</p><p className="sl-display text-2xl">{eur(a.total_gain)}</p></div>
+                                    <div><p className="sl-label">ROI</p><p className="sl-display text-2xl">{a.roi == null ? '—' : `${Math.round(Number(a.roi))} %`}</p></div>
+                                  </div>
+
+                                  {!items ? (
+                                    <div className="flex justify-center py-6"><Spinner className="h-5 w-5" /></div>
+                                  ) : (
+                                    <>
+                                      <p className="sl-label mt-5">Les 10 disques les plus cotés</p>
+                                      <div className="mt-2 overflow-x-auto rounded border border-[var(--sl-groove)] bg-[var(--sl-paper)]">
+                                        <table className="w-full text-left text-xs">
+                                          <tbody>
+                                            {top.map((it, n) => (
+                                              <tr key={`${it.id}-${n}`} className="border-b border-[var(--sl-groove)] last:border-b-0">
+                                                <td className="p-2"><span className="font-semibold">{it.artist}</span> — {it.title}</td>
+                                                <td className="p-2 text-[var(--sl-muted)]">{it.condition}</td>
+                                                <td className="p-2 text-right font-semibold">{it.marche > 0 ? `${it.marche.toFixed(2)} €` : 'N/C'}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                      <div className="mt-4">
+                                        <button className="sl-btn sl-btn-line sl-btn-sm" onClick={() => downloadCsv(a, items)}>Télécharger la liste complète (CSV)</button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )
+                ) : (
+                  <div className="sl-card">
+                    <Empty
+                      title="Archive de collection : Premium"
+                      text={analyses.length ? `Tes ${analyses.length} analyse(s) sont bien sauvegardées et seront visibles dès le passage en Premium.` : 'Tes prochaines analyses de collection seront sauvegardées automatiquement.'}
+                    />
+                    <div className="pb-6 text-center"><Link to="/subscription" className="sl-btn sl-btn-ink">Passer Premium</Link></div>
+                  </div>
                 )
               )}
             </div>
