@@ -99,7 +99,7 @@ export default function History() {
   const downloadCsv = (a: AnalysisRow, items: ArchivedItem[]) => {
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const head = ['Artiste', 'Titre', 'Format', 'État', 'Année pressage', 'Pays', 'Label', 'Prix achat (€)', 'Cote marché (€)', 'Confiance (%)'];
-    const lines = items.map((i) => [i.artist, i.title, i.format, i.condition, i.year, i.country, i.label, i.achat, i.marche, i.confidence].map(esc).join(';'));
+    const lines = items.map((i) => [i.artist, i.title, i.format, i.condition, i.pressingYear, i.country, i.label, i.achat, i.marche, i.confidence].map(esc).join(';'));
     const blob = new Blob(['\uFEFF' + [head.map(esc).join(';'), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -111,11 +111,13 @@ export default function History() {
 
   const downloadPdf = async (a: AnalysisRow, items: ArchivedItem[]) => {
     setPdfBusy(a.id);
+    const tid = toast.loading('Génération du PDF… (récupération des pochettes, cela peut prendre une minute)');
     try {
       await downloadCollectionPdf(a, items);
+      toast.success('PDF généré', { id: tid });
     } catch (err) {
       console.error('Erreur génération PDF :', err);
-      toast.error('Impossible de générer le PDF');
+      toast.error('Impossible de générer le PDF', { id: tid });
     } finally {
       setPdfBusy(null);
     }
@@ -253,7 +255,7 @@ export default function History() {
                           const delta = prev ? Number(a.total_value) - Number(prev.total_value) : null;
                           const k = `c:${a.id}`;
                           const items = analysisItems[a.id];
-                          const top = items ? [...items].sort((x, y) => y.marche - x.marche).slice(0, 10) : [];
+                          const top = items ? [...items].sort((x, y) => Number(y.marche) - Number(x.marche)).slice(0, 10) : [];
                           return (
                             <div key={a.id} className="border-b border-[var(--sl-groove)] last:border-b-0">
                               <div className="sl-row !border-b-0">
@@ -293,7 +295,7 @@ export default function History() {
                                               <tr key={`${it.id}-${n}`} className="border-b border-[var(--sl-groove)] last:border-b-0">
                                                 <td className="p-2"><span className="font-semibold">{it.artist}</span> — {it.title}</td>
                                                 <td className="p-2 text-[var(--sl-muted)]">{it.condition}</td>
-                                                <td className="p-2 text-right font-semibold">{it.marche > 0 ? `${it.marche.toFixed(2)} €` : 'N/C'}</td>
+                                                <td className="p-2 text-right font-semibold">{Number(it.marche) > 0 ? `${Number(it.marche).toFixed(2)} €` : 'N/C'}</td>
                                               </tr>
                                             ))}
                                           </tbody>
