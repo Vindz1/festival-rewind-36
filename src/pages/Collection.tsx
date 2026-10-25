@@ -1,6 +1,7 @@
 // src/pages/Collection.tsx — Vinyl Analytics intégré au site (page autonome /collection.html)
 // Gratuit : valeur totale + 3 albums détaillés. Premium : plus-value, ROI, graphiques, liste complète, exports CSV/PDF.
 // Le palier est envoyé à la page vinyle par postMessage (voir le bloc « accès Premium » de collection.html).
+// Chaque analyse est archivée dans Supabase (table collection_analyses) pour l'onglet « Back in Time ».
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,13 +9,25 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/AuthContext';
 import { checkExportQuota } from '@/lib/subscription';
+import { archiveCollection, buildSnapshot } from '@/lib/collectionArchive';
+
+type Raw = Record<string, unknown>;
+type FrameWin = Window & {
+  eval: (code: string) => unknown;
+  generateDashboard?: (...args: unknown[]) => unknown;
+  startNewScan?: (...args: unknown[]) => unknown;
+  __slArchive?: boolean;
+};
 
 export default function Collection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const frame = useRef<HTMLIFrameElement>(null);
+  const userIdRef = useRef<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [premium, setPremium] = useState(false);
+
+  useEffect(() => { userIdRef.current = user?.id ?? null; }, [user]);
 
   // Premium seulement une fois confirmé par le serveur ; sinon on reste en mode gratuit
   useEffect(() => {
@@ -55,6 +68,55 @@ export default function Collection() {
     return () => window.clearInterval(id);
   }, []);
 
+  // Archivage : on se branche sur la page vinyle (même origine) pour sauvegarder chaque analyse.
+  // Une « session » = un scan. Les ajouts de vinyles et les ajustements mettent à jour la même archive ;
+  // « Nouveau scan » en démarre une nouvelle.
+  const installArchive = () => {
+    const w = frame.current?.contentWindow as FrameWin | null | undefined;
+    if (!w || w.__slArchive || typeof w.generateDashboard !== 'function') return;
+    w.__slArchive = true;
+
+    let key = crypto.randomUUID();
+    let notified = false;
+    let timer: number | undefined;
+
+    const read = <T,>(name: string, fallback: T): T => {
+      try { return (w.eval(name) as T) ?? fallback; } catch { return fallback; }
+    };
+
+    const save = async () => {
+      const uid = userIdRef.current;
+      if (!uid) return;
+      const rows = read<Raw[]>('allResults', []);
+      if (!rows.length) return;
+      const financial = read<Raw[]>('validFinancialResults', []);
+      const username = read<string>('currentUsername', '');
+      const ok = await archiveCollection(uid, key, username, buildSnapshot(rows, financial));
+      if (ok && !notified) {
+        notified = true;
+        toast.success('Analyse archivée dans Back in Time');
+      }
+    };
+
+    const origGen = w.generateDashboard;
+    w.generateDashboard = function (this: unknown, ...args: unknown[]) {
+      const result = origGen.apply(this, args);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(save, 1500);
+      return result;
+    };
+
+    const origNew = w.startNewScan;
+    if (typeof origNew === 'function') {
+      w.startNewScan = function (this: unknown, ...args: unknown[]) {
+        const before = read<unknown[]>('allResults', []).length;
+        const result = origNew.apply(this, args);
+        if (before > 0 && read<unknown[]>('allResults', []).length === 0) { key = crypto.randomUUID(); notified = false; }
+        return result;
+      };
+    }
+  };
+
   // Si /collection.html renvoie le site lui-même (fichier absent du déploiement), on l'explique au lieu d'afficher « le site dans le site »
   const onLoad = () => {
     try {
@@ -62,6 +124,7 @@ export default function Collection() {
       if (doc && doc.getElementById('root')) { setMissing(true); return; }
     } catch { /* origine différente : on laisse tel quel */ }
     sendTier();
+    try { installArchive(); } catch (err) { console.error('Archivage collection indisponible', err); }
   };
 
   return (
@@ -71,7 +134,7 @@ export default function Collection() {
       <p className="mx-auto max-w-[92rem] px-4 pt-4 text-sm leading-relaxed md:px-8">
         <strong>Collection :</strong> connecte ton compte Discogs (un jeton à coller, expliqué plus bas) et Setlive estime la valeur de chacun de tes vinyles selon son état.{' '}
         {premium ? (
-          <span className="text-[var(--sl-muted)]">Compte Premium : plus-value, ROI, graphiques, liste complète et exports CSV et PDF sont débloqués.</span>
+          <span className="text-[var(--sl-muted)]">Compte Premium : plus-value, ROI, graphiques, liste complète et exports CSV et PDF sont débloqués. Chaque analyse est archivée dans Back in Time.</span>
         ) : (
           <span className="text-[var(--sl-muted)]">
             Gratuit : valeur totale et 3 albums détaillés par tableau. Premium : plus-value, ROI, graphiques, liste complète, exports CSV et PDF.{' '}
