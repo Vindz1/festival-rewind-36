@@ -1,115 +1,73 @@
-// src/lib/collectionPdf.ts — PDF d'une analyse de collection archivée (pdfmake chargé à la demande)
+// src/lib/collectionPdf.ts — PDF d'une analyse archivée : on réutilise le générateur PDF de /collection.html
+// (même mise en page, même fond, mêmes pochettes et graphiques que le PDF de fin d'analyse).
 import type { ArchivedItem } from '@/lib/collectionArchive';
 
-interface PdfMakeLike {
-  vfs?: unknown;
-  createPdf: (definition: unknown) => { download: (fileName: string) => void };
-}
+type PageWin = Window & {
+  eval: (code: string) => unknown;
+  triggerPrint?: () => Promise<void>;
+  Date: DateConstructor;
+  __slArchiveData?: unknown;
+};
 
 export interface AnalysisSummary {
   created_at: string;
   discogs_username: string | null;
-  item_count: number;
-  total_value: number;
-  total_purchase: number;
-  total_gain: number;
-  roi: number | null;
 }
 
-const PDFMAKE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/pdfmake.min.js';
-const FONTS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12/vfs_fonts.js';
-
-let loading: Promise<PdfMakeLike> | null = null;
-
-const loadScript = (src: string) =>
-  new Promise<void>((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(`Chargement impossible : ${src}`));
-    document.head.appendChild(s);
-  });
-
-function getPdfMake(): Promise<PdfMakeLike> {
-  const w = window as unknown as { pdfMake?: PdfMakeLike };
-  if (w.pdfMake?.vfs) return Promise.resolve(w.pdfMake);
-  if (!loading) {
-    loading = (async () => {
-      if (!w.pdfMake) await loadScript(PDFMAKE_URL);
-      if (!w.pdfMake?.vfs) await loadScript(FONTS_URL);
-      if (!w.pdfMake) throw new Error('pdfmake indisponible');
-      return w.pdfMake;
-    })().catch((err) => { loading = null; throw err; });
-  }
-  return loading;
-}
-
-// Les espaces insécables des nombres français ne s'affichent pas dans la police du PDF : on les remplace
-const clean = (s: string) => s.replace(/[\u202f\u00a0]/g, ' ');
-const eur = (n: number, digits = 0) =>
-  clean(Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: digits, maximumFractionDigits: digits }));
-const dateFr = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function downloadCollectionPdf(a: AnalysisSummary, items: ArchivedItem[]) {
-  const pdfMake = await getPdfMake();
+  if (!items.length) throw new Error('Analyse vide');
 
-  const byValue = [...items].sort((x, y) => y.marche - x.marche);
-  const inventory = [...items].sort((x, y) => x.artist.localeCompare(y.artist, 'fr') || x.title.localeCompare(y.title, 'fr'));
+  const iframe = document.createElement('iframe');
+  iframe.src = '/collection.html';
+  iframe.tabIndex = -1;
+  iframe.setAttribute('aria-hidden', 'true');
+  // Hors écran mais bien « affichée » : les graphiques ont besoin d'une vraie taille pour se dessiner
+  iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:1280px;height:900px;border:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(iframe);
 
-  const th = (text: string, alignment = 'left') => ({ text, bold: true, fontSize: 8, color: '#F1E9D8', fillColor: '#14110D', alignment, margin: [0, 3, 0, 3] });
-  const td = (text: string, alignment = 'left') => ({ text, fontSize: 8, alignment });
-  const kpi = (label: string, value: string) => ({
-    stack: [
-      { text: label.toUpperCase(), fontSize: 7, color: '#8A8272' },
-      { text: value, fontSize: 18, bold: true, margin: [0, 2, 0, 0] },
-    ],
-  });
-  const lines = { hLineColor: () => '#DED2B8', vLineColor: () => '#DED2B8', hLineWidth: () => 0.5, vLineWidth: () => 0 };
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Chargement de la page collection trop long')), 20000);
+      iframe.onload = () => { clearTimeout(timeout); resolve(); };
+      iframe.onerror = () => { clearTimeout(timeout); reject(new Error('Page collection introuvable')); };
+    });
 
-  const topRows = byValue.slice(0, 10).map((i) => [
-    td(i.artist), td(i.title), td(i.condition), td(i.year),
-    td(i.marche > 0 ? eur(i.marche, 2) : 'N/C', 'right'),
-  ]);
-  const inventoryRows = inventory.map((i) => [
-    td(i.artist), td(i.title), td(i.condition), td(i.year),
-    td(i.achat > 0 ? eur(i.achat, 2) : '-', 'right'),
-    td(i.marche > 0 ? eur(i.marche, 2) : 'N/C', 'right'),
-  ]);
+    const w = iframe.contentWindow as PageWin | null;
+    if (!w || typeof w.triggerPrint !== 'function') throw new Error('Générateur PDF indisponible');
 
-  const definition = {
-    pageOrientation: 'landscape',
-    pageMargins: [30, 30, 30, 40],
-    info: { title: 'Analyse de collection de vinyles' },
-    defaultStyle: { fontSize: 9 },
-    footer: (current: number, count: number) => ({ text: `${current} / ${count}`, alignment: 'center', fontSize: 8, color: '#8A8272', margin: [0, 12, 0, 0] }),
-    content: [
-      { text: 'My Vinyl Collection', fontSize: 22, bold: true },
-      {
-        text: `Analyse du ${dateFr(a.created_at)}${a.discogs_username ? ` · compte Discogs ${a.discogs_username}` : ''} · ${a.item_count} disques`,
-        fontSize: 10, color: '#8A8272', margin: [0, 2, 0, 14],
-      },
-      {
-        columns: [
-          kpi('Valeur marché', eur(a.total_value)),
-          kpi('Achats renseignés', eur(a.total_purchase)),
-          kpi('Gain', eur(a.total_gain)),
-          kpi('ROI', a.roi == null ? '—' : `${Math.round(Number(a.roi))} %`),
-        ],
-        columnGap: 10, margin: [0, 0, 0, 18],
-      },
-      { text: 'Les 10 disques les plus cotés', fontSize: 12, bold: true, margin: [0, 0, 0, 6] },
-      {
-        table: { headerRows: 1, widths: ['*', '*', 70, 45, 70], body: [[th('Artiste'), th('Titre'), th('État'), th('Année'), th('Cote', 'right')], ...topRows] },
-        layout: lines,
-      },
-      { text: 'Inventaire complet', fontSize: 12, bold: true, pageBreak: 'before', margin: [0, 0, 0, 6] },
-      {
-        table: { headerRows: 1, widths: ['*', '*', 70, 45, 65, 65], body: [[th('Artiste'), th('Titre'), th('État'), th('Année'), th('Achat', 'right'), th('Cote', 'right')], ...inventoryRows] },
-        layout: lines,
-      },
-    ],
-  };
+    // 1. Palier premium (sinon la page limiterait les tableaux à 3 lignes)
+    w.postMessage({ type: 'sl-tier', tier: 'premium' }, window.location.origin);
+    await sleep(400);
 
-  pdfMake.createPdf(definition).download(`collection-${a.created_at.slice(0, 10)}.pdf`);
+    // 2. On remet les données archivées à la place d'un scan, puis on dessine le tableau de bord
+    w.__slArchiveData = items;
+    w.eval(
+      "allResults = window.__slArchiveData;" +
+      "validFinancialResults = allResults.filter(function (r) { return r.achat > 0 && r.marche > 0; });" +
+      `currentUsername = ${JSON.stringify(a.discogs_username || '')};` +
+      "generateDashboard();",
+    );
+
+    // 3. On laisse les graphiques finir leur animation (le PDF en reprend l'image)
+    await sleep(2500);
+
+    // 4. Le PDF affichera la date de l'analyse archivée, pas celle d'aujourd'hui
+    const fixed = new Date(a.created_at).getTime();
+    const Base = w.Date as unknown as new (...args: unknown[]) => Date;
+    class ArchiveDate extends Base {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) super(fixed);
+        else super(...args);
+      }
+    }
+    w.Date = ArchiveDate as unknown as DateConstructor;
+
+    // 5. Génération et téléchargement par la fonction d'origine de la page
+    await w.triggerPrint();
+    await sleep(1500);
+  } finally {
+    iframe.remove();
+  }
 }
