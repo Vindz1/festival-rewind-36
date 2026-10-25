@@ -1,18 +1,29 @@
 // src/lib/collectionArchive.ts — archivage des analyses « My Vinyl Collection » (affichées dans Back in Time)
 import { supabase } from '@/supabaseClient';
 
+// Copie complète d'un disque tel que la page collection.html le manipule (pochette incluse),
+// pour pouvoir régénérer exactement le même PDF plus tard.
 export interface ArchivedItem {
-  id: string;
+  id: string | number;
   artist: string;
   title: string;
-  format: string;
-  condition: string;
-  year: string;
-  country: string;
-  label: string;
-  confidence: number;
+  format?: string;
+  condition?: string;
+  mediaCond?: string;
+  sleeveCond?: string;
+  initialYear?: string | number;
+  pressingYear?: string | number;
+  ecart?: string | number;
+  addedMonthRaw?: string;
+  country?: string;
+  label?: string;
+  thumb?: string;
+  confidence?: number;
   achat: number;
   marche: number;
+  pv?: number;
+  roi?: number;
+  manuallyEdited?: boolean;
 }
 
 type Raw = Record<string, unknown>;
@@ -21,25 +32,12 @@ const num = (v: unknown) => {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
   return Number.isFinite(n) ? n : 0;
 };
-const txt = (v: unknown) => (v == null ? '' : String(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Transforme les résultats de la page vinyle en un instantané compact (sans les images). */
+/** Transforme les résultats de la page vinyle en un instantané complet. */
 export function buildSnapshot(rows: Raw[], financial: Raw[]) {
-  const items: ArchivedItem[] = rows.map((r) => ({
-    id: txt(r.id),
-    artist: txt(r.artist),
-    title: txt(r.title),
-    format: txt(r.format),
-    condition: txt(r.condition),
-    year: txt(r.pressingYear),
-    country: txt(r.country),
-    label: txt(r.label),
-    confidence: num(r.confidence),
-    achat: num(r.achat),
-    marche: num(r.marche),
-  }));
-  const totalValue = round2(items.reduce((s, i) => s + i.marche, 0));
+  const items = rows.map((r) => JSON.parse(JSON.stringify(r)) as ArchivedItem);
+  const totalValue = round2(items.reduce((s, i) => s + num(i.marche), 0));
   const totalPurchase = round2(financial.reduce((s, r) => s + num(r.achat), 0));
   const totalGain = round2(financial.reduce((s, r) => s + num(r.pv), 0));
   const roi = totalPurchase > 0 ? round2((totalGain / totalPurchase) * 100) : null;
