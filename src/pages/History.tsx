@@ -11,6 +11,7 @@ import { supabase } from '@/supabaseClient';
 import { checkExportQuota } from '@/lib/subscription';
 import { readStored, type StoredTrack } from '@/lib/playlists';
 import type { ArchivedItem } from '@/lib/collectionArchive';
+import { downloadCollectionPdf } from '@/lib/collectionPdf';
 import PlaylistDetail from '@/components/PlaylistDetail';
 
 interface PlaylistRow { id: string; playlist_name: string; track_count: number; top_artists: string[]; source_type: 'concert' | 'upcoming'; created_at: string; tracks?: unknown }
@@ -32,6 +33,7 @@ export default function History() {
   const [quota, setQuota] = useState({ remaining: 0, used: 0 });
   const [tab, setTab] = useState<'playlists' | 'exports' | 'collections'>('playlists');
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -105,6 +107,18 @@ export default function History() {
     link.download = `collection-${a.created_at.slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadPdf = async (a: AnalysisRow, items: ArchivedItem[]) => {
+    setPdfBusy(a.id);
+    try {
+      await downloadCollectionPdf(a, items);
+    } catch (err) {
+      console.error('Erreur génération PDF :', err);
+      toast.error('Impossible de générer le PDF');
+    } finally {
+      setPdfBusy(null);
+    }
   };
 
   // Bouton « Ouvrir » (liste conservée) ou mention (export fait avant que la liste soit enregistrée)
@@ -285,7 +299,10 @@ export default function History() {
                                           </tbody>
                                         </table>
                                       </div>
-                                      <div className="mt-4">
+                                      <div className="mt-4 flex flex-wrap gap-2">
+                                        <button className="sl-btn sl-btn-line sl-btn-sm" onClick={() => downloadPdf(a, items)} disabled={pdfBusy === a.id}>
+                                          {pdfBusy === a.id ? 'Génération du PDF…' : 'Télécharger le rapport (PDF)'}
+                                        </button>
                                         <button className="sl-btn sl-btn-line sl-btn-sm" onClick={() => downloadCsv(a, items)}>Télécharger la liste complète (CSV)</button>
                                       </div>
                                     </>
