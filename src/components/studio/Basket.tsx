@@ -1,7 +1,7 @@
 // src/components/studio/Basket.tsx — Face B : la sélection et les options
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Empty, FaceTitle, Spinner } from '@/components/vinyl/Ui';
-import { StudioItem, fmtDate } from '@/lib/engine';
+import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, StudioItem, fmtDate } from '@/lib/engine';
 
 interface Props {
   items: StudioItem[];
@@ -30,6 +30,10 @@ export default function Basket(p: Props) {
   const guessed = guessedItems.length;
   const exactSongs = p.items.filter((it) => it.kind !== 'artist' && it.songCount).reduce((n, it) => n + (it.songCount || 0), 0);
   const estimate = guessed * p.topCount + exactSongs;
+  // Grosse affiche : on prévient de l'attente (première fois seulement) ; barre d'avancement pendant la génération
+  const waitMin = guessed > BULK_THRESHOLD ? Math.max(1, Math.round((guessed * BULK_SECONDS_PER_ARTIST) / 60)) : 0;
+  const prog = /^(\d+)\/(\d+)/.exec(p.progress);
+  const pct = p.busy && prog ? Math.round((+prog[1] / +prog[2]) * 100) : null;
   return (
     <section id="playlist" className="sl-card-dim p-4 md:p-5">
       <FaceTitle face="Face B" title="Ma playlist" right={p.items.length ? <button onClick={p.onClear} className="sl-mono text-[10px] uppercase tracking-widest text-[var(--sl-muted)] underline hover:text-[var(--sl-wine)]">Vider</button> : undefined} />
@@ -91,6 +95,12 @@ export default function Basket(p: Props) {
             <p className="mt-3 border-t border-[var(--sl-groove)] pt-2 text-[11px] text-[var(--sl-muted)]">
               {guessed} artiste(s) à setlist devinée · jusqu’à <strong className="text-[var(--sl-ink)]">{estimate} titres</strong> au total
             </p>
+            {waitMin > 0 && (
+              <p className="mt-1 text-[11px] text-[var(--sl-muted)]">Grosse affiche : compte environ {waitMin} min la première fois (les groupes déjà connus sont instantanés).</p>
+            )}
+            {estimate > 500 && (
+              <p className="mt-1 text-[11px] text-[var(--sl-muted)]">Playlist très longue : TuneMyMusic peut limiter les transferts gratuits. Réduis les titres par groupe si besoin.</p>
+            )}
           </div>
         )}
         <label className="flex cursor-pointer items-start gap-2 text-xs">
@@ -100,6 +110,11 @@ export default function Basket(p: Props) {
         <button className="sl-btn sl-btn-ink w-full !py-4" onClick={p.onGenerate} disabled={p.busy || !p.items.length}>
           {p.busy ? <><Spinner /> {p.progress || 'Analyse…'}</> : `Générer la playlist${p.items.length ? ` (${p.items.length})` : ''}`}
         </button>
+        {pct !== null && (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--sl-groove)]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full bg-[var(--sl-gold)] transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        )}
       </div>
     </section>
   );
