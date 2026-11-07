@@ -188,12 +188,12 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
-async function averageTracks(it: StudioItem): Promise<Track[]> {
+async function averageTracks(it: StudioItem, bulk = false): Promise<Track[]> {
   const key = `sl_avg_v3:${it.mbid || norm(it.artist)}`;
   let data = cacheGet<any>(key, 30 * 24 * 3600 * 1000);
   if (!data) {
     data = await serial(() =>
-      getJson(`/api/search?action=average&v=3&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
+      getJson(`/api/search?action=average&v=3${bulk ? '&fast=1' : ''}&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
     );
     if (data?.songs?.length) cacheSet(key, data);
   }
@@ -256,7 +256,7 @@ async function itunesFetch(artist: string, country: string, notice?: (m: string)
 
 interface TopEntry { want: number; tracks: Track[]; at: number }
 
-async function topTracks(artist: string, limit: number, notice?: (m: string) => void): Promise<{ tracks: Track[]; failed: boolean }> {
+async function topTracks(artist: string, limit: number, notice?: (m: string) => void, bulk = false): Promise<{ tracks: Track[]; failed: boolean }> {
   const key = `sl_top_v3:${norm(artist)}`;
   const cached = cacheGet<TopEntry>(key, 30 * 24 * 3600 * 1000);
   // Une réponse vide n'est gardée que 3 jours (l'artiste peut apparaître plus tard dans iTunes)
@@ -269,7 +269,8 @@ async function topTracks(artist: string, limit: number, notice?: (m: string) => 
   const wanted = norm(artist);
   const out: Track[] = [];
   let failed = false;
-  for (const country of ['FR', 'US', 'GB']) {
+  // Grosse affiche : une seule boutique iTunes par artiste (chaque appel coûte ≈ 3 s)
+  for (const country of bulk ? ['FR'] : ['FR', 'US', 'GB']) {
     const { ok, results } = await itunesFetch(artist, country, notice);
     if (!ok) { failed = true; break; }
     results.forEach((r: any) => {
@@ -285,13 +286,19 @@ async function topTracks(artist: string, limit: number, notice?: (m: string) => 
 }
 
 // ---------- génération ----------
+/** Au-delà de ce nombre d'artistes à setlist devinée, on passe en mode « grosse affiche ». */
+export const BULK_THRESHOLD = 10;
+/** Durée moyenne d'un artiste inconnu en mode grosse affiche (secondes) : sert à estimer l'attente affichée. */
+export const BULK_SECONDS_PER_ARTIST = 1.3;
+
 export async function buildPlaylist(
   items: StudioItem[],
   opts: { topCount: number },
   onProgress?: (msg: string) => void
 ): Promise<{ tracks: Track[]; report: ItemReport[] }> {
-  // Au-delà de 15 artistes sans setlist, on saute la setlist moyenne (trop d'appels Setlist.fm)
-  const allowAverage = items.filter((i) => i.kind === 'artist').length <= 15;
+  // Grosse affiche (plus de 10 artistes sans setlist exacte, ex. un festival) : mode rapide, ménage Setlist.fm et iTunes.
+  // Les groupes déjà calculés (mémoire du navigateur, 30 jours) sont instantanés.
+  const bulk = items.filter((i) => i.kind === 'artist').length > BULK_THRESHOLD;
   const results: Track[][] = new Array(items.length);
   const report: ItemReport[] = new Array(items.length);
   let next = 0;
@@ -310,12 +317,12 @@ export async function buildPlaylist(
           tracks = await exactTracks(it);
           if (tracks.length) source = 'exact';
         }
-        if (!tracks.length && allowAverage) {
-          tracks = pickMostLikely(await averageTracks(it), opts.topCount);
+        if (!tracks.length) {
+          tracks = pickMostLikely(await averageTracks(it, bulk), opts.topCount);
           if (tracks.length) source = 'average';
         }
         if (!tracks.length) {
-          const top = await topTracks(it.artist, opts.topCount, onProgress);
+          const top = await topTracks(it.artist, opts.topCount, onProgress, bulk);
           tracks = top.tracks;
           if (tracks.length) source = 'top';
           else reason = top.failed ? 'ratelimit' : 'notfound';
@@ -350,7 +357,7 @@ export function parseLineup(text: string): string[] {
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(s);
-    if (out.length >= 150) break;
+    if (out.length >= 300) break;
   }
   return out;
 }
