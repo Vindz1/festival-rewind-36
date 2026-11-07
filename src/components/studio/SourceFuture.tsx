@@ -1,9 +1,10 @@
-// src/components/studio/SourceFuture.tsx — Face A : concerts à venir (concert virtuel)
+// src/components/studio/SourceFuture.tsx — Face A : concerts à venir (setlist devinée)
+// Deux choix seulement : « Un groupe ou artiste » ou « Plusieurs groupes ou artistes » ; chacun ouvre son encadré.
 import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, User, Users } from 'lucide-react';
 import { Empty, PickRow, Spinner } from '@/components/vinyl/Ui';
 import { toast } from 'sonner';
-import { Profile, StudioItem, artistItem, fmtDate, parseLineup, searchArtists } from '@/lib/engine';
+import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, Profile, StudioItem, artistItem, fmtDate, parseLineup, searchArtists } from '@/lib/engine';
 
 interface Props {
   onAdd: (items: StudioItem[]) => void;
@@ -14,13 +15,21 @@ interface Props {
 
 interface Suggestion { mbid: string; name: string; disambiguation: string }
 
+type Mode = 'one' | 'many';
+
+const TILES = [
+  { id: 'one' as Mode, icon: User, title: 'Un groupe ou artiste', text: 'La setlist probable de son prochain concert' },
+  { id: 'many' as Mode, icon: Users, title: 'Plusieurs groupes ou artistes', text: 'Une affiche de festival, ou tes concerts à venir' },
+];
+
 export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
+  const [mode, setMode] = useState<Mode | null>(null);
+
+  // ----- un artiste -----
   const [q, setQ] = useState('');
   const [date, setDate] = useState('');
   const [sugg, setSugg] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lineup, setLineup] = useState('');
-  const parsed = parseLineup(lineup);
 
   useEffect(() => {
     if (q.trim().length < 2) { setSugg([]); return; }
@@ -37,86 +46,119 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
     setQ('');
     setSugg([]);
   };
+
+  // ----- plusieurs artistes : affiche collée -----
+  const [lineup, setLineup] = useState('');
+  const parsed = parseLineup(lineup);
   const addLineup = () => {
     if (!parsed.length) return toast.error('Colle d’abord une liste d’artistes');
-    onAdd(parsed.map((n) => artistItem(n, undefined, date || undefined, 'future')));
+    onAdd(parsed.map((n) => artistItem(n, undefined, undefined, 'future')));
     setLineup('');
   };
+  const waitMin = Math.max(1, Math.round((parsed.length * BULK_SECONDS_PER_ARTIST) / 60));
   const toggle = (it: StudioItem) => (has(it.uid) ? onRemove(it.uid) : onAdd([it]));
 
   return (
     <div>
-      <p className="mb-3 text-sm text-[var(--sl-muted)]">
-        Un concert à venir ? Setlive reconstitue la setlist la plus probable à partir des derniers concerts de l’artiste.
-      </p>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_11rem]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sl-muted)]" />
-          <input
-            className="sl-input pl-9"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && q.trim()) add(q.trim(), sugg[0]?.name.toLowerCase() === q.trim().toLowerCase() ? sugg[0].mbid : undefined); }}
-            placeholder="Nom de l’artiste…"
-          />
-          {loading && <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--sl-muted)]" />}
-        </div>
-        <input type="date" className="sl-input" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date du concert (facultatif)" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {TILES.map((t) => {
+          const on = mode === t.id;
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setMode(on ? null : t.id)}
+              className={`flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors ${on ? 'border-[var(--sl-gold)] bg-[var(--sl-ink)] text-[var(--sl-paper)]' : 'border-[var(--sl-groove)] bg-[var(--sl-paper)] hover:border-[var(--sl-gold)]'}`}
+            >
+              <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${on ? 'text-[var(--sl-gold-bright)]' : 'text-[var(--sl-gold)]'}`} />
+              <span className="min-w-0">
+                <span className="sl-display block text-xl leading-none">{t.title}</span>
+                <span className={`mt-1 block text-xs ${on ? 'text-[var(--sl-paper)]/70' : 'text-[var(--sl-muted)]'}`}>{t.text}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {sugg.length > 0 && (
-        <div className="sl-card mt-2 overflow-hidden">
-          {sugg.map((s) => (
-            <button key={s.mbid} className="sl-row w-full text-left" onClick={() => add(s.name, s.mbid)}>
-              <span className="flex-1 text-sm font-semibold">{s.name}</span>
-              {s.disambiguation && <span className="text-xs text-[var(--sl-muted)]">{s.disambiguation}</span>}
-              <span className="sl-btn sl-btn-sm sl-btn-line">+</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <p className="sl-label mt-2">Entrée = ajouter le nom tel quel · la date est facultative</p>
+      {mode === 'one' && (
+        <div className="mt-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_11rem]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sl-muted)]" />
+              <input
+                className="sl-input pl-9"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && q.trim()) add(q.trim(), sugg[0]?.name.toLowerCase() === q.trim().toLowerCase() ? sugg[0].mbid : undefined); }}
+                placeholder="Nom de l’artiste…"
+              />
+              {loading && <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--sl-muted)]" />}
+            </div>
+            <input type="date" className="sl-input" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date du concert (facultatif)" />
+          </div>
 
-      <div className="mt-6">
-        <p className="sl-label mb-2">Mes concerts à venir (profil Setlist.fm)</p>
-        <div className="sl-card overflow-hidden">
-          {!profile.loaded ? (
-            <Empty title="Profil non chargé" text="Charge ton profil dans l’onglet « Concerts passés » pour retrouver ici tes concerts à venir." />
-          ) : !profile.futureItems.length ? (
-            <Empty title="Rien de prévu" text="Aucun concert à venir sur ton profil." />
-          ) : (
-            <div className="sl-scroll max-h-[320px] overflow-y-auto">
-              {profile.futureItems.map((it) => (
-                <PickRow key={it.uid} title={it.artist} sub={[fmtDate(it.eventDate), it.sub].filter(Boolean).join(' · ')} added={has(it.uid)} onClick={() => toggle(it)} />
+          {sugg.length > 0 && (
+            <div className="sl-card mt-2 overflow-hidden">
+              {sugg.map((s) => (
+                <button key={s.mbid} className="sl-row w-full text-left" onClick={() => add(s.name, s.mbid)}>
+                  <span className="flex-1 text-sm font-semibold">{s.name}</span>
+                  {s.disambiguation && <span className="text-xs text-[var(--sl-muted)]">{s.disambiguation}</span>}
+                  <span className="sl-btn sl-btn-sm sl-btn-line">+</span>
+                </button>
               ))}
             </div>
           )}
+          <p className="sl-label mt-2">Entrée = ajouter le nom tel quel · la date est facultative</p>
         </div>
-        {profile.loaded && profile.futureItems.length > 0 && (
-          <button className="sl-btn sl-btn-gold mt-3" onClick={() => onAdd(profile.futureItems)}>Tout ajouter ({profile.futureItems.length})</button>
-        )}
-      </div>
+      )}
 
-      <div className="sl-card-dim mt-6 p-4">
-        <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
-        <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
-          Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les jours, heures et doublons sont ignorés.
-        </p>
-        <textarea
-          className="sl-input min-h-[120px] font-mono text-xs"
-          value={lineup}
-          onChange={(e) => setLineup(e.target.value)}
-          placeholder={'Gojira\nMastodon\nAlcest\n…'}
-        />
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <span className="sl-label">{parsed.length ? `${parsed.length} artiste(s) reconnus` : 'Aucun artiste reconnu'}</span>
-          <button className="sl-btn sl-btn-gold" onClick={addLineup} disabled={!parsed.length}>Ajouter à ma playlist</button>
+      {mode === 'many' && (
+        <div className="mt-4 space-y-5">
+          <div className="sl-card-dim p-4">
+            <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
+            <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
+              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les jours, heures et doublons sont ignorés. Jusqu’à 300 artistes.
+            </p>
+            <textarea
+              className="sl-input min-h-[120px] font-mono text-xs"
+              value={lineup}
+              onChange={(e) => setLineup(e.target.value)}
+              placeholder={'Gojira\nMastodon\nAlcest\n…'}
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="sl-label">{parsed.length ? `${parsed.length} artiste(s) reconnus` : 'Aucun artiste reconnu'}</span>
+              <button className="sl-btn sl-btn-gold" onClick={addLineup} disabled={!parsed.length}>Ajouter à ma playlist</button>
+            </div>
+            {parsed.length > BULK_THRESHOLD && (
+              <p className="mt-2 text-[11px] text-[var(--sl-muted)]">
+                Grosse affiche : compte environ {waitMin} min la première fois. Les groupes déjà connus de ton navigateur sont instantanés.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="sl-label mb-2">Mes concerts à venir (profil Setlist.fm)</p>
+            <div className="sl-card overflow-hidden">
+              {!profile.loaded ? (
+                <Empty title="Profil non chargé" text="Charge ton profil dans l’onglet « Concerts passés » pour retrouver ici tes concerts à venir." />
+              ) : !profile.futureItems.length ? (
+                <Empty title="Rien de prévu" text="Aucun concert à venir sur ton profil." />
+              ) : (
+                <div className="sl-scroll max-h-[320px] overflow-y-auto">
+                  {profile.futureItems.map((it) => (
+                    <PickRow key={it.uid} title={it.artist} sub={[fmtDate(it.eventDate), it.sub].filter(Boolean).join(' · ')} added={has(it.uid)} onClick={() => toggle(it)} />
+                  ))}
+                </div>
+              )}
+            </div>
+            {profile.loaded && profile.futureItems.length > 0 && (
+              <button className="sl-btn sl-btn-gold mt-3" onClick={() => onAdd(profile.futureItems)}>Tout ajouter ({profile.futureItems.length})</button>
+            )}
+          </div>
         </div>
-        {parsed.length > 15 && (
-          <p className="mt-2 text-[11px] text-[var(--sl-muted)]">Au-delà de 15 artistes, Setlive prend leurs titres les plus connus (plus rapide) au lieu de leur setlist habituelle.</p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
