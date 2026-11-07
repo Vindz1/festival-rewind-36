@@ -5,7 +5,7 @@ import { supabase } from '@/supabaseClient';
 export type Source = 'exact' | 'average' | 'top';
 export type Origin = 'past' | 'future' | 'festival';
 
-export interface Track { artist: string; name: string; source: Source }
+export interface Track { artist: string; name: string; source: Source; ratio?: number }
 
 export interface StudioItem {
   uid: string;
@@ -197,7 +197,19 @@ async function averageTracks(it: StudioItem): Promise<Track[]> {
     );
     if (data?.songs?.length) cacheSet(key, data);
   }
-  return (data?.songs || []).map((s: any) => ({ artist: s.artist || it.artist, name: s.name, source: 'average' as const }));
+  return (data?.songs || []).map((s: any) => ({ artist: s.artist || it.artist, name: s.name, source: 'average' as const, ratio: typeof s.ratio === 'number' ? s.ratio : undefined }));
+}
+
+// Setlist devinée trop longue : on garde les N titres les PLUS JOUÉS (ratio = part des derniers concerts où ils figurent),
+// puis on les remet dans l'ordre habituel du concert.
+export function pickMostLikely<T extends { ratio?: number }>(tracks: T[], n: number): T[] {
+  if (tracks.length <= n) return tracks;
+  return tracks
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => (b.t.ratio ?? 0) - (a.t.ratio ?? 0) || a.i - b.i)
+    .slice(0, n)
+    .sort((a, b) => a.i - b.i)
+    .map((x) => x.t);
 }
 
 // ---------- iTunes : débit maîtrisé ----------
@@ -299,7 +311,7 @@ export async function buildPlaylist(
           if (tracks.length) source = 'exact';
         }
         if (!tracks.length && allowAverage) {
-          tracks = await averageTracks(it);
+          tracks = pickMostLikely(await averageTracks(it), opts.topCount);
           if (tracks.length) source = 'average';
         }
         if (!tracks.length) {
