@@ -5,9 +5,16 @@
 //   ?action=songs&setlistId=…                         → détail d'une setlist
 //   ?action=artists&q=…                               → autocomplétion d'artistes (mbid)
 //   ?action=average&artist=…[&mbid=…][&year=…][&fast=1] → setlist moyenne récente d'un artiste (fast : 1 à 2 appels au lieu de 2 à 4, pour les grosses affiches)
+//   POST ?action=cache  {artists:[…]}                 → setlists moyennes déjà connues dans la mémoire partagée (une seule requête pour toute une affiche)
+//
+// Mémoire partagée (table Supabase « setlist_cache », lisible uniquement ici avec la clé de service) :
+// chaque groupe n'est calculé qu'une fois pour TOUS les visiteurs → on ménage le quota Setlist.fm (≈ 1 440 appels par jour).
+// Si Supabase n'est pas configuré, tout fonctionne comme avant (sans mémoire partagée).
+import { createClient } from '@supabase/supabase-js';
 
 const API = 'https://api.setlist.fm/rest/1.0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const DAY = 24 * 3600 * 1000;
 const toArray = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 const norm = (s = '') =>
   String(s).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
@@ -35,6 +42,44 @@ function parseQuery(raw) {
   const s = String(raw || '').trim();
   const m = /^(.*?)[\s,]*((?:19|20)\d{2})$/.exec(s);
   return m && m[1].trim() ? { term: m[1].trim(), year: m[2] } : { term: s, year: '' };
+}
+
+// ---------- mémoire partagée ----------
+let _db;
+function getDb() {
+  if (_db !== undefined) return _db;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  _db = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
+  return _db;
+}
+// Frais : 30 jours si on a trouvé des titres, 3 jours si le groupe est inconnu de Setlist.fm (on réessaiera plus tard)
+const isFresh = (row) => Date.now() - new Date(row.updated_at).getTime() < (row.based_on > 0 && toArray(row.songs).length ? 30 * DAY : 3 * DAY);
+const toAverage = (row) => ({ artist: row.artist_name, mbid: row.mbid, basedOn: row.based_on, songs: toArray(row.songs) });
+
+async function cacheRead(keys) {
+  const db = getDb();
+  if (!db || !keys.length) return [];
+  try {
+    const { data, error } = await db.from('setlist_cache').select('*').in('artist_key', keys);
+    return error ? [] : data || [];
+  } catch {
+    return [];
+  }
+}
+
+async function cacheWrite(name, mbidIn, data) {
+  const db = getDb();
+  if (!db) return;
+  const keys = new Set([`name:${norm(name)}`]);
+  if (data.mbid) keys.add(`mbid:${data.mbid}`);
+  if (mbidIn) keys.add(`mbid:${mbidIn}`);
+  const row = { artist_name: data.artist || name, mbid: data.mbid || null, songs: data.songs || [], based_on: data.basedOn || 0, updated_at: new Date().toISOString() };
+  try {
+    await db.from('setlist_cache').upsert([...keys].map((artist_key) => ({ ...row, artist_key })), { onConflict: 'artist_key' });
+  } catch {
+    /* la mémoire partagée est un bonus : on ne fait jamais échouer la recherche pour elle */
+  }
 }
 
 // Appel Setlist.fm avec reprise automatique sur 429 (rate limit)
@@ -192,6 +237,20 @@ export default async function handler(req, res) {
   const { q, action, username, setlistId, artist, mbid, year, type, p, fast } = req.query;
 
   try {
+    // --- Mémoire partagée : tout ce qui est déjà connu pour une affiche, en UNE requête ---
+    if (action === 'cache' && req.method === 'POST') {
+      const names = toArray(req.body?.artists).filter((n) => typeof n === 'string' && n.trim()).slice(0, 300);
+      const rows = await cacheRead([...new Set(names.map((n) => `name:${norm(n)}`))]);
+      const byKey = new Map(rows.filter(isFresh).map((r) => [r.artist_key, r]));
+      const hits = {};
+      names.forEach((n) => {
+        const row = byKey.get(`name:${norm(n)}`);
+        if (row) hits[n] = toAverage(row);
+      });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ hits });
+    }
+
     // --- Recherche de concerts ---
     if (q && !action) {
       const page = Math.max(1, parseInt(p, 10) || 1);
@@ -263,7 +322,21 @@ export default async function handler(req, res) {
 
     // --- Setlist moyenne ---
     if (action === 'average' && artist) {
-      const d = await averageSetlist(artist, mbid, year, fast === '1');
+      const key = mbid ? `mbid:${mbid}` : `name:${norm(artist)}`;
+      const known = (await cacheRead([key]))[0];
+      if (known && isFresh(known)) {
+        res.setHeader('Cache-Control', 's-maxage=604800, stale-while-revalidate=2592000');
+        return res.status(200).json(toAverage(known));
+      }
+      let d;
+      try {
+        d = await averageSetlist(artist, mbid, year, fast === '1');
+      } catch (err) {
+        // Setlist.fm indisponible ou quota atteint : une ancienne réponse vaut mieux qu'une erreur
+        if (known) return res.status(200).json(toAverage(known));
+        throw err;
+      }
+      await cacheWrite(artist, mbid, d);
       // Une setlist moyenne évolue lentement : on la garde une semaine (économise le quota Setlist.fm, partagé entre tous les visiteurs)
       res.setHeader('Cache-Control', 's-maxage=604800, stale-while-revalidate=2592000');
       return res.status(200).json(d);
