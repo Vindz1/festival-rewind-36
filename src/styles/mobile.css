@@ -9,3 +9,35 @@
 @media (max-width: 767px) {
   .sl-page input, .sl-page select, .sl-page textarea { font-size: 16px; }
 }
+
+/* Curseur « Titres par groupe » : piste dorée jusqu'à la valeur, pouce large (facile au doigt) */
+.sl-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(to right, var(--sl-gold) var(--pct, 0%), var(--sl-groove) var(--pct, 0%));
+}
+.sl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--sl-ink);
+  border: 4px solid var(--sl-gold);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+.sl-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--sl-ink);
+  border: 4px solid var(--sl-gold);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+}
+.sl-slider::-moz-range-track { background: transparent; height: 8px; }
+.sl-slider:focus-visible { box-shadow: 0 0 0 3px rgba(201, 151, 28, 0.35); }
