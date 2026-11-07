@@ -4,7 +4,7 @@
 //   ?action=user&username=…                           → concerts d'un profil (pagination par lots)
 //   ?action=songs&setlistId=…                         → détail d'une setlist
 //   ?action=artists&q=…                               → autocomplétion d'artistes (mbid)
-//   ?action=average&artist=…[&mbid=…][&year=…]        → setlist moyenne récente d'un artiste
+//   ?action=average&artist=…[&mbid=…][&year=…][&fast=1] → setlist moyenne récente d'un artiste (fast : 1 à 2 appels au lieu de 2 à 4, pour les grosses affiches)
 
 const API = 'https://api.setlist.fm/rest/1.0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -83,20 +83,45 @@ async function resolveArtist(name, mbid) {
 }
 
 // Setlist moyenne : titres présents dans ≥ 40 % des derniers concerts, classés par position moyenne
-async function averageSetlist(name, mbidIn, year) {
-  const artist = await resolveArtist(name, mbidIn);
+// Mode rapide (grosses affiches) : sans identifiant, UN SEUL appel (concerts portant exactement ce nom) au lieu de deux,
+// et on s'arrête dès 12 setlists exploitables. Le quota Setlist.fm (≈ 1 400 appels par jour) est ainsi ménagé.
+async function averageSetlist(name, mbidIn, year, fast = false) {
+  let artist = null;
+  let firstBatch = null;
+  if (!mbidIn && fast) {
+    const d = await sfm(`/search/setlists?artistName=${encodeURIComponent(name)}&p=1`);
+    const same = toArray(d?.setlist).filter((sl) => sl.artist?.mbid && norm(sl.artist.name) === norm(name));
+    if (same.length) {
+      // plusieurs artistes homonymes ? on garde celui qui a le plus de concerts dans cette page
+      const byMbid = new Map();
+      same.forEach((sl) => byMbid.set(sl.artist.mbid, (byMbid.get(sl.artist.mbid) || 0) + 1));
+      const best = [...byMbid.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      firstBatch = same.filter((sl) => sl.artist.mbid === best);
+      artist = { mbid: best, name: firstBatch[0].artist.name };
+    }
+  }
+  if (!artist) artist = await resolveArtist(name, mbidIn);
   if (!artist) return { artist: name, mbid: null, basedOn: 0, songs: [] };
 
+  const target = fast ? 12 : 40;
+  const seenIds = new Set();
   let lists = [];
   for (let p = 1; p <= 3; p++) {
-    const d = await sfm(`/artist/${artist.mbid}/setlists?p=${p}`);
-    const batch = toArray(d?.setlist);
+    let d = null;
+    let batch;
+    if (p === 1 && firstBatch) batch = firstBatch;
+    else {
+      d = await sfm(`/artist/${artist.mbid}/setlists?p=${p}`);
+      batch = toArray(d?.setlist);
+    }
     if (!batch.length) break;
     for (const sl of batch) {
+      if (sl.id && seenIds.has(sl.id)) continue;
+      if (sl.id) seenIds.add(sl.id);
       const songs = songsOf(sl, artist.name);
       if (songs.length >= 6) lists.push({ year: (sl.eventDate || '').slice(-4), songs });
     }
-    if (lists.length >= 40 || p * (d?.itemsPerPage || 20) >= (d?.total || 0)) break;
+    if (lists.length >= target || (d && p * (d.itemsPerPage || 20) >= (d.total || 0))) break;
     await sleep(250);
   }
   if (year) {
@@ -164,7 +189,7 @@ export default async function handler(req, res) {
   if (!process.env.SETLIST_FM_API_KEY) {
     return res.status(500).json({ error: 'SETLIST_FM_API_KEY manquante côté serveur', results: [] });
   }
-  const { q, action, username, setlistId, artist, mbid, year, type, p } = req.query;
+  const { q, action, username, setlistId, artist, mbid, year, type, p, fast } = req.query;
 
   try {
     // --- Recherche de concerts ---
@@ -238,8 +263,9 @@ export default async function handler(req, res) {
 
     // --- Setlist moyenne ---
     if (action === 'average' && artist) {
-      const d = await averageSetlist(artist, mbid, year);
-      res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
+      const d = await averageSetlist(artist, mbid, year, fast === '1');
+      // Une setlist moyenne évolue lentement : on la garde une semaine (économise le quota Setlist.fm, partagé entre tous les visiteurs)
+      res.setHeader('Cache-Control', 's-maxage=604800, stale-while-revalidate=2592000');
       return res.status(200).json(d);
     }
 
