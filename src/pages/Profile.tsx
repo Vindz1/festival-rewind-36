@@ -8,9 +8,10 @@ import { Frame, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
 import { checkExportQuota } from '@/lib/subscription';
 import { supabase } from '@/supabaseClient';
+import { supabase as authClient } from '@/integrations/supabase/client';
 
 export default function Profile() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -37,7 +38,8 @@ export default function Profile() {
 
   // Déconnexion « brutale » : on recharge la page pour repartir d'un état propre
   const handleSignOut = async () => {
-    await signOut();
+    // Même client que celui du contexte d'authentification (AuthContext n'expose pas de fonction de déconnexion)
+    await authClient.auth.signOut();
     window.location.href = '/';
   };
 
