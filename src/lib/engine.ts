@@ -188,9 +188,35 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
+const AVG_TTL = 30 * 24 * 3600 * 1000;
+const NEG_TTL = 3 * 24 * 3600 * 1000;
+
+// Mémoire partagée (base) : tout ce qui est déjà connu pour l'affiche, en UNE requête. Les groupes connus deviennent
+// instantanés ; les groupes que Setlist.fm ne connaît pas sont notés « inconnus » 3 jours (on ne les redemande pas).
+async function prefetchShared(items: StudioItem[], onProgress?: (msg: string) => void) {
+  const names = [...new Set(items.filter((i) => i.kind === 'artist' && !i.mbid).map((i) => i.artist))];
+  const todo = names.filter((n) => !cacheGet(`sl_avg_v3:${norm(n)}`, AVG_TTL) && !cacheGet(`sl_avg_neg_v1:${norm(n)}`, NEG_TTL));
+  if (todo.length < 3) return;
+  onProgress?.('Consultation de la mémoire partagée…');
+  try {
+    const r = await fetch('/api/search?action=cache', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artists: todo.slice(0, 300) }),
+    });
+    if (!r.ok) return;
+    const { hits } = await r.json();
+    Object.entries(hits || {}).forEach(([name, d]: [string, any]) => {
+      if (d?.songs?.length) cacheSet(`sl_avg_v3:${norm(name)}`, d);
+      else cacheSet(`sl_avg_neg_v1:${norm(name)}`, true);
+    });
+  } catch { /* mémoire partagée indisponible : on calcule groupe par groupe, comme avant */ }
+}
+
 async function averageTracks(it: StudioItem, bulk = false): Promise<Track[]> {
   const key = `sl_avg_v3:${it.mbid || norm(it.artist)}`;
-  let data = cacheGet<any>(key, 30 * 24 * 3600 * 1000);
+  let data = cacheGet<any>(key, AVG_TTL);
+  if (!data && !it.mbid && cacheGet(`sl_avg_neg_v1:${norm(it.artist)}`, NEG_TTL)) return [];
   if (!data) {
     data = await serial(() =>
       getJson(`/api/search?action=average&v=3${bulk ? '&fast=1' : ''}&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
@@ -303,6 +329,7 @@ export async function buildPlaylist(
   const report: ItemReport[] = new Array(items.length);
   let next = 0;
   let done = 0;
+  await prefetchShared(items.filter((i) => i.kind === 'artist'), onProgress);
 
   async function worker() {
     while (true) {
