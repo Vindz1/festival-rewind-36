@@ -22,6 +22,8 @@ interface Props {
 const ORIGIN = { past: 'Passé', future: 'À venir', festival: 'Festival' } as const;
 const SONGS_MIN = 3;
 const SONGS_MAX = 20;
+/** TuneMyMusic : transfert gratuit limité à 500 titres. */
+const TMM_LIMIT = 500;
 
 export default function Basket(p: Props) {
   // Le curseur ne sert que pour les setlists devinées : artistes seuls (concerts à venir, festival) ou concerts sans setlist
@@ -30,6 +32,8 @@ export default function Basket(p: Props) {
   const guessed = guessedItems.length;
   const exactSongs = p.items.filter((it) => it.kind !== 'artist' && it.songCount).reduce((n, it) => n + (it.songCount || 0), 0);
   const estimate = guessed * p.topCount + exactSongs;
+  // Nombre de titres par groupe qui garde la playlist sous la limite gratuite de TuneMyMusic
+  const fitPerGroup = guessed > 0 ? Math.floor((TMM_LIMIT - exactSongs) / guessed) : 0;
   // Grosse affiche : on prévient de l'attente (première fois seulement) ; barre d'avancement pendant la génération
   const waitMin = guessed > BULK_THRESHOLD ? Math.max(1, Math.round((guessed * BULK_SECONDS_PER_ARTIST) / 60)) : 0;
   const prog = /^(\d+)\/(\d+)/.exec(p.progress);
@@ -98,8 +102,17 @@ export default function Basket(p: Props) {
             {waitMin > 0 && (
               <p className="mt-1 text-[11px] text-[var(--sl-muted)]">Grosse affiche : compte environ {waitMin} min la première fois (les groupes déjà connus sont instantanés).</p>
             )}
-            {estimate > 500 && (
-              <p className="mt-1 text-[11px] text-[var(--sl-muted)]">Playlist très longue : TuneMyMusic peut limiter les transferts gratuits. Réduis les titres par groupe si besoin.</p>
+            {estimate > TMM_LIMIT && (
+              <div className="mt-2 rounded border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-2 text-[11px] leading-snug text-[var(--sl-ink)]" data-testid="tmm-warning">
+                <p>TuneMyMusic limite les transferts gratuits à <strong>{TMM_LIMIT} titres</strong> : ta playlist en compte jusqu’à {estimate}.</p>
+                {fitPerGroup >= SONGS_MIN ? (
+                  <button type="button" className="sl-btn sl-btn-gold sl-btn-sm mt-2" onClick={() => p.setTopCount(Math.min(SONGS_MAX, fitPerGroup))}>
+                    Passer à {Math.min(SONGS_MAX, fitPerGroup)} titres par groupe (sous {TMM_LIMIT})
+                  </button>
+                ) : (
+                  <p className="mt-1 text-[var(--sl-muted)]">Même à {SONGS_MIN} titres par groupe, la limite est dépassée : retire quelques groupes ou fais plusieurs playlists.</p>
+                )}
+              </div>
             )}
           </div>
         )}
