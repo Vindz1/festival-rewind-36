@@ -20,8 +20,16 @@ interface Props {
 }
 
 const ORIGIN = { past: 'Passé', future: 'À venir', festival: 'Festival' } as const;
+const SONGS_MIN = 3;
+const SONGS_MAX = 20;
 
 export default function Basket(p: Props) {
+  // Le curseur ne sert que pour les setlists devinées : artistes seuls (concerts à venir, festival) ou concerts sans setlist
+  const guessedItems = p.items.filter((it) => it.kind === 'artist' || !it.songCount);
+  const needsSlider = guessedItems.length > 0;
+  const guessed = guessedItems.length;
+  const exactSongs = p.items.filter((it) => it.kind !== 'artist' && it.songCount).reduce((n, it) => n + (it.songCount || 0), 0);
+  const estimate = guessed * p.topCount + exactSongs;
   return (
     <section id="playlist" className="sl-card-dim p-4 md:p-5">
       <FaceTitle face="Face B" title="Ma playlist" right={p.items.length ? <button onClick={p.onClear} className="sl-mono text-[10px] uppercase tracking-widest text-[var(--sl-muted)] underline hover:text-[var(--sl-wine)]">Vider</button> : undefined} />
@@ -55,13 +63,36 @@ export default function Basket(p: Props) {
           <label className="sl-label mb-1 block">Nom de la playlist</label>
           <input className="sl-input" value={p.name} onChange={(e) => p.setName(e.target.value)} placeholder="Automatique si vide" />
         </div>
-        <div>
-          <label className="sl-label mb-1 flex justify-between">
-            <span>Titres par artiste sans setlist</span>
-            <span className="text-[var(--sl-ink)]">{p.topCount}</span>
-          </label>
-          <input type="range" min={3} max={10} value={p.topCount} onChange={(e) => p.setTopCount(+e.target.value)} className="sl-range" />
-        </div>
+        {needsSlider && (
+          <div className="rounded-lg border border-[var(--sl-groove)] bg-[var(--sl-paper)] p-4" data-testid="songs-slider">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="sl-label">Titres par groupe</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[var(--sl-muted)]">
+                  Pour les concerts à venir (setlist devinée) : on garde les titres les plus probables.
+                </p>
+              </div>
+              <p className="sl-display shrink-0 text-5xl leading-none text-[var(--sl-ink)]">{p.topCount}</p>
+            </div>
+            <input
+              type="range"
+              min={SONGS_MIN}
+              max={SONGS_MAX}
+              step={1}
+              value={p.topCount}
+              onChange={(e) => p.setTopCount(+e.target.value)}
+              className="sl-slider mt-4"
+              style={{ ['--pct' as any]: `${((p.topCount - SONGS_MIN) / (SONGS_MAX - SONGS_MIN)) * 100}%` }}
+              aria-label="Nombre de titres par groupe"
+            />
+            <div className="sl-mono mt-1.5 flex justify-between text-[10px] text-[var(--sl-muted)]">
+              <span>{SONGS_MIN}</span><span>5</span><span>10</span><span>15</span><span>{SONGS_MAX}</span>
+            </div>
+            <p className="mt-3 border-t border-[var(--sl-groove)] pt-2 text-[11px] text-[var(--sl-muted)]">
+              {guessed} artiste(s) à setlist devinée · jusqu’à <strong className="text-[var(--sl-ink)]">{estimate} titres</strong> au total
+            </p>
+          </div>
+        )}
         <label className="flex cursor-pointer items-start gap-2 text-xs">
           <input type="checkbox" checked={p.preferLive} onChange={(e) => p.setPreferLive(e.target.checked)} className="mt-0.5 accent-[var(--sl-gold)]" />
           <span>Ajouter « (Live) » aux titres de setlist <span className="text-[var(--sl-muted)]">— pour retrouver les versions live sur ta plateforme (expérimental)</span></span>
