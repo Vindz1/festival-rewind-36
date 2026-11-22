@@ -22,6 +22,26 @@ const SRC: Record<Source, { label: string; color: string }> = {
   top: { label: 'Top titres', color: 'var(--sl-wine)' },
 };
 
+const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+
+/** Liste de noms : en entier si elle est courte, sinon un aperçu et un dépliant (avec 300 groupes, sinon c'est un pavé). */
+const NAMES_INLINE = 6;
+function NameList({ names }: { names: string[] }) {
+  if (names.length <= NAMES_INLINE) return <span>{names.join(', ')}</span>;
+  return (
+    <details className="group mt-1">
+      <summary className="cursor-pointer select-none list-none text-[var(--sl-muted)] [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">{names.slice(0, 3).join(', ')}… </span>
+        <span className="sl-mono whitespace-nowrap text-[10px] uppercase tracking-widest text-[var(--sl-ink)] underline">
+          <span className="group-open:hidden">Voir la liste ({names.length})</span>
+          <span className="hidden group-open:inline">Masquer la liste</span>
+        </span>
+      </summary>
+      <p className="mt-2 max-h-48 overflow-y-auto leading-relaxed">{names.join(', ')}</p>
+    </details>
+  );
+}
+
 export default function Result({ name, tracks, report, preferLive, copied, quotaText, access, onUnlock, onRemoveTrack, onExport }: Props) {
   const hidden = tracks.length - access.visible;
   const counts = (['exact', 'average', 'top'] as Source[]).map((s) => ({ s, n: tracks.filter((t) => t.source === s).length }));
@@ -29,6 +49,8 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
   const empty = report.filter((r) => r.source === 'none' && r.reason !== 'ratelimit');
   const limited = report.filter((r) => r.reason === 'ratelimit');
   const fallback = report.filter((r) => r.source === 'top' || r.source === 'average');
+  const avgCount = fallback.filter((r) => r.source === 'average').length;
+  const topCount = fallback.length - avgCount;
 
   return (
     <section id="resultat" className="mt-10">
@@ -54,19 +76,26 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
       {(empty.length > 0 || limited.length > 0 || fallback.length > 0) && (
         <div className="mt-4 space-y-2">
           {empty.length > 0 && (
-            <p className="rounded-r-lg border-l-4 border-[var(--sl-wine)] bg-[var(--sl-paper-dim)] p-3 text-xs">
-              <strong className="text-[var(--sl-wine)]">Aucun titre trouvé pour :</strong> {empty.map((r) => r.label).join(', ')}
-            </p>
+            <div className="rounded-r-lg border-l-4 border-[var(--sl-wine)] bg-[var(--sl-paper-dim)] p-3 text-xs" data-testid="msg-empty">
+              <strong className="text-[var(--sl-wine)]">Aucun titre trouvé pour {plural(empty.length, 'groupe')} :</strong>{' '}
+              <NameList names={empty.map((r) => r.label)} />
+            </div>
           )}
           {limited.length > 0 && (
-            <p className="rounded-r-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-3 text-xs">
-              <strong>iTunes a ralenti pour :</strong> {limited.map((r) => r.label).join(', ')}. Relance « Générer la playlist » : les autres sont déjà en mémoire, seuls ceux-ci seront recherchés.
-            </p>
+            <div className="rounded-r-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-3 text-xs" data-testid="msg-limited">
+              <strong>iTunes a ralenti pour {plural(limited.length, 'groupe')}.</strong> Relance « Générer la playlist » : les autres sont déjà en mémoire, seuls ceux-ci seront recherchés.{' '}
+              <NameList names={limited.map((r) => r.label)} />
+            </div>
           )}
           {fallback.length > 0 && (
-            <p className="rounded-r-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-3 text-xs">
-              <strong>Sans setlist exacte :</strong> {fallback.map((r) => `${r.label} (${r.source === 'average' ? 'moyenne' : 'top'})`).join(', ')}
-            </p>
+            <div className="rounded-r-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-3 text-xs" data-testid="msg-fallback">
+              <strong>Setlist devinée pour {plural(fallback.length, 'groupe')}</strong>
+              {' '}({[
+                avgCount ? `${avgCount} d’après leurs derniers concerts` : '',
+                topCount ? `${topCount} d’après leurs titres les plus connus` : '',
+              ].filter(Boolean).join(', ')}) :{' '}
+              <NameList names={fallback.map((r) => `${r.label} (${r.source === 'average' ? 'moyenne' : 'top'})`)} />
+            </div>
           )}
         </div>
       )}
