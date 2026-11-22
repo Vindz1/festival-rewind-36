@@ -117,14 +117,17 @@ function songsOf(setlist, artistName) {
   return out;
 }
 
+// Nom comparé sans « The » initial ni « & »/« and » : « Hives » = « The Hives », « Myles Kennedy & … » = « … and … »
+const loose = (s) => norm(s).replace(/^the /, '').replace(/ and /g, ' ').replace(/\s+/g, ' ').trim();
+
+// On n'accepte QUE le même nom : sinon « Temple » donnerait « Acid Mothers Temple », « Years » un autre groupe…
+// Un nom introuvable renvoie null : le site passe alors aux top titres iTunes (ou signale « aucun titre »).
 async function resolveArtist(name, mbid) {
   if (mbid) return { mbid, name };
   const d = await sfm(`/search/artists?artistName=${encodeURIComponent(name)}&sort=relevance&p=1`);
   const list = toArray(d?.artist);
-  if (!list.length) return null;
-  const exact = list.find((a) => norm(a.name) === norm(name));
-  const pick = exact || list[0];
-  return { mbid: pick.mbid, name: pick.name };
+  const pick = list.find((a) => norm(a.name) === norm(name)) || list.find((a) => loose(a.name) === loose(name));
+  return pick ? { mbid: pick.mbid, name: pick.name } : null;
 }
 
 // Setlist moyenne : titres présents dans ≥ 40 % des derniers concerts, classés par position moyenne
@@ -135,7 +138,7 @@ async function averageSetlist(name, mbidIn, year, fast = false) {
   let firstBatch = null;
   if (!mbidIn && fast) {
     const d = await sfm(`/search/setlists?artistName=${encodeURIComponent(name)}&p=1`);
-    const same = toArray(d?.setlist).filter((sl) => sl.artist?.mbid && norm(sl.artist.name) === norm(name));
+    const same = toArray(d?.setlist).filter((sl) => sl.artist?.mbid && loose(sl.artist.name) === loose(name));
     if (same.length) {
       // plusieurs artistes homonymes ? on garde celui qui a le plus de concerts dans cette page
       const byMbid = new Map();
