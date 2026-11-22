@@ -7,6 +7,7 @@ import { Footer } from '@/components/Footer';
 import { Groove, Spinner } from '@/components/vinyl/Ui';
 import { supabase } from '@/integrations/supabase/client';
 import { safeNext } from '@/lib/studioState';
+import { authErrorMessage, toLoginId } from '@/lib/identity';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -19,15 +20,22 @@ export default function Auth() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    // « E-mail ou pseudo » : un pseudo devient une adresse interne qui ne reçoit jamais rien (voir identity.ts)
+    const id = toLoginId(email);
+    if (id.ok === false) { toast.error((id as { error: string }).error); return; }
     setLoading(true);
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({ email: id.email, password });
+        if (error) throw new Error(authErrorMessage(error.message, id.kind, true));
         navigate(next);
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        const { data, error } = await supabase.auth.signUp({
+          email: id.email,
+          password,
+          options: id.kind === 'pseudo' ? { data: { pseudo: id.pseudo } } : undefined,
+        });
+        if (error) throw new Error(authErrorMessage(error.message, id.kind, false));
         // Si la confirmation par e-mail est activée dans Supabase, aucune session n'est ouverte tout de suite
         if (data?.session) navigate(next);
         else toast.success('Compte créé : vérifie ta boîte mail pour confirmer ton adresse.');
@@ -54,8 +62,13 @@ export default function Auth() {
 
           <form onSubmit={handleAuth} className="space-y-4 p-6 md:p-8">
             <div>
-              <label className="sl-label mb-1 block" htmlFor="email">E-mail</label>
-              <input id="email" type="email" className="sl-input" placeholder="toi@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+              <label className="sl-label mb-1 block" htmlFor="email">E-mail ou pseudo</label>
+              <input id="email" type="text" className="sl-input" placeholder={isLogin ? 'toi@exemple.fr ou ton pseudo' : 'toi@exemple.fr, ou juste un pseudo'} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
+              {!isLogin && (
+                <p className="mt-1.5 text-[11px] leading-snug text-[var(--sl-muted)]" data-testid="pseudo-hint">
+                  Pas envie de donner ton e-mail ? Choisis simplement un pseudo (3 à 30 caractères, sans espace ni accent). Aucune adresse n’est demandée, mais un mot de passe oublié ne pourra pas être récupéré.
+                </p>
+              )}
             </div>
             <div>
               <label className="sl-label mb-1 block" htmlFor="password">Mot de passe</label>
