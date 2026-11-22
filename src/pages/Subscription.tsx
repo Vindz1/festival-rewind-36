@@ -9,6 +9,7 @@ import { Frame, Groove, Spinner } from '@/components/vinyl/Ui';
 import { useAuth } from '@/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserSubscription } from '@/lib/subscription';
+import { realEmail } from '@/lib/identity';
 
 const FREE_FEATURES = [
   '2 exports par an (copie de la liste)',
@@ -55,7 +56,8 @@ export default function Subscription() {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
+        // Compte pseudo : pas d'adresse à pré-remplir, Stripe la demandera lui-même pour le reçu
+        body: JSON.stringify({ userId: user.id, email: realEmail(user.email) }),
       });
       const data = await response.json();
       if (data.url) window.location.href = data.url;
