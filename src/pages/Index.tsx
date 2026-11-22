@@ -36,7 +36,7 @@ export default function Index() {
   const saved = useRef(loadStudio()).current;
   const [items, setItems] = useState<StudioItem[]>(saved.items ?? []);
   const [name, setName] = useState(saved.name ?? '');
-  const [topCount, setTopCount] = useState(saved.topCount ?? 5);
+  const [topCount, setTopCount] = useState(saved.topCount ?? 3); // 3 titres par groupe par défaut : une grosse affiche reste lisible (et sous les 500 titres de TuneMyMusic jusqu’à 166 groupes)
   const [preferLive, setPreferLive] = useState(saved.preferLive ?? true); // activé par défaut : on cherche les versions live
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
