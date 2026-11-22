@@ -1,5 +1,5 @@
 // src/pages/Index.tsx — le Studio : choisir → ajuster → exporter, sur une seule page
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
@@ -13,6 +13,7 @@ import { useAuth } from '@/AuthContext';
 import { saveToHistory } from '@/lib/history';
 import { checkExportQuota, type ExportQuota } from '@/lib/subscription';
 import { toStored, trackExportWithTracks } from '@/lib/playlists';
+import { loadStudio, saveStudio } from '@/lib/studioState';
 import {
   ItemReport, Profile, StudioItem, Track,
   accessFor, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
@@ -31,16 +32,31 @@ export default function Index() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'future' ? 'future' : 'past';
 
-  const [items, setItems] = useState<StudioItem[]>([]);
-  const [name, setName] = useState('');
-  const [topCount, setTopCount] = useState(5);
-  const [preferLive, setPreferLive] = useState(true); // activé par défaut : on cherche les versions live
+  // Sélection et dernier résultat retrouvés après un passage par « Se connecter » (voir studioState.ts)
+  const saved = useRef(loadStudio()).current;
+  const [items, setItems] = useState<StudioItem[]>(saved.items ?? []);
+  const [name, setName] = useState(saved.name ?? '');
+  const [topCount, setTopCount] = useState(saved.topCount ?? 5);
+  const [preferLive, setPreferLive] = useState(saved.preferLive ?? true); // activé par défaut : on cherche les versions live
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
-  const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(null);
+  const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(saved.result ?? null);
   const [copied, setCopied] = useState(false);
   const [quota, setQuota] = useState<ExportQuota | null>(null);
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+
+  useEffect(() => { saveStudio({ items, name, topCount, preferLive, result }); }, [items, name, topCount, preferLive, result]);
+
+  // Retour de la page de connexion : on ramène le visiteur sur sa playlist
+  useEffect(() => {
+    if (params.get('voir') !== 'resultat') return;
+    const t = setTimeout(() => document.getElementById(result ? 'resultat' : 'playlist')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    const next = new URLSearchParams(params);
+    next.delete('voir');
+    setParams(next, { replace: true });
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user) { setQuota(null); return; }
@@ -111,7 +127,8 @@ export default function Index() {
 
   // ----- droits : anonyme / gratuit / Premium (règles dans engine.ts → accessFor) -----
   const access = accessFor(user, quota, result?.tracks.length ?? 0);
-  const unlock = () => navigate(user ? '/subscription' : '/auth');
+  const loginUrl = `/auth?next=${encodeURIComponent(`/?${tab === 'future' ? 'tab=future&' : ''}voir=resultat`)}`;
+  const unlock = () => navigate(user ? '/subscription' : loginUrl);
 
   // ----- export : « Copier » = connecté + quota (consomme 1 export) ; .txt/.csv = Premium -----
   const onExport = async (kind: 'copy' | 'txt' | 'csv') => {
@@ -128,7 +145,7 @@ export default function Index() {
         : downloadFile(`${slug}.csv`, toCsv(result.tracks, preferLive), 'text/csv');
     }
 
-    if (!user) { toast.error('Connecte-toi pour copier la liste'); navigate('/auth'); return; }
+    if (!user) { toast.error('Connecte-toi pour copier la liste'); navigate(loginUrl); return; }
     if (!access.canCopy) {
       toast.error('Quota épuisé : 2 exports par an en version gratuite.', { duration: 5000, action: { label: 'Passer Premium', onClick: () => navigate('/subscription') } });
       return;
