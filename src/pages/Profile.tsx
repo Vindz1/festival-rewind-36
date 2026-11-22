@@ -9,6 +9,7 @@ import { useAuth } from '@/AuthContext';
 import { checkExportQuota } from '@/lib/subscription';
 import { supabase } from '@/supabaseClient';
 import { supabase as authClient } from '@/integrations/supabase/client';
+import { displayIdentity, isPseudoEmail } from '@/lib/identity';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -73,8 +74,8 @@ export default function Profile() {
                 <User className="h-7 w-7" />
               </span>
               <div className="min-w-0">
-                <p className="sl-label">Compte</p>
-                <p className="truncate text-lg font-semibold">{user.email}</p>
+                <p className="sl-label">{isPseudoEmail(user.email) ? 'Pseudo' : 'Compte'}</p>
+                <p className="truncate text-lg font-semibold">{displayIdentity(user.email)}</p>
                 <span
                   className="sl-mono mt-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-widest"
                   style={isPremium
