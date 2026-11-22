@@ -119,7 +119,7 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
           <div className="sl-card-dim p-4">
             <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
             <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
-              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les jours, heures et doublons sont ignorés. Jusqu’à 300 artistes.
+              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les scènes, jours, heures et doublons sont ignorés. Jusqu’à 300 artistes.
             </p>
             <textarea
               className="sl-input min-h-[120px] font-mono text-xs"
