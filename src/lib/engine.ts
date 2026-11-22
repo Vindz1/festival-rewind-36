@@ -366,20 +366,46 @@ export async function buildPlaylist(
 }
 
 // ---------- affiche collée (concerts à venir / festival) ----------
+// Lignes qui ne sont PAS des groupes, comparées au nom normalisé (minuscules, sans accents ni ponctuation).
+// Scènes du Hellfest (10 scènes depuis 2027 + espaces annexes) et termes génériques de scène :
+// une ligne « WARZONE » ou « Mainstage 1 » est un titre de rubrique, pas le groupe Warzone.
+const STAGE_LINE =
+  /^(?:(?:la|le|l|the)\s+)?(?:(?:scene|stage)\s+)?(?:main\s?stage|warzone|valley|altar|temple|riot|abyss|forge|crypt|metal\s?corner|hell\s?stage|hell\s?cage|hell\s?city|kids\s?stage)(?:\s+(?:stage|scene))?(?:\s+0?\d){0,2}$/;
+const HEADER_LINE =
+  /^(?:jour|day|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday|stage|scene|scenes|line\s?up|lineup|programmation|affiche|hellfest|the absolute edition|a confirmer|tba|tbc)\b/;
+// Mois : « 17 juin », « 17 juin 2027 », « 17/06 », « 17.06.2027 »
+const DATE_LINE =
+  /^\d{1,2}(?:er)?\s*(?:[/.\-]\s*\d{1,2}(?:\s*[/.\-]\s*\d{2,4})?|\s+(?:janv|fevr|mars|avr|mai|juin|juil|aout|sept|oct|nov|dec|jan|feb|mar|apr|may|jun|jul|aug|sep)\w*(?:\s+\d{4})?)$/;
+const TIME = String.raw`\d{1,2}\s?[h:.]\s?\d{0,2}`;
+const TIME_ONLY = new RegExp(`^${TIME}(?:\\s*(?:[-–—à>]|to)\\s*${TIME})?$`, 'i');
+
+/** Une ligne de l'affiche est-elle un groupe ? (sinon : scène, jour, date, horaire, titre) */
+export function isLineupNoise(s: string): boolean {
+  const k = norm(s);
+  // dates et horaires : ponctuation conservée (« 17/06 », « 18:30 »), accents retirés
+  const d = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  return !k || STAGE_LINE.test(k) || HEADER_LINE.test(k) || DATE_LINE.test(d) || TIME_ONLY.test(d);
+}
+
 // Accepte une liste copiée depuis un site de festival : un artiste par ligne, ou séparés par des virgules / puces.
+// Les noms de scènes, jours, dates et horaires sont ignorés ; les groupes dont le nom commence par un chiffre
+// (« 36 Crazyfists », « 1349 », « 10 Years ») sont conservés tels quels.
 export function parseLineup(text: string): string[] {
   let parts = text.split(/\r?\n/);
   if (parts.length === 1) parts = text.split(/[,;•·|]/);
   const seen = new Set<string>();
   const out: string[] = [];
-  for (let raw of parts) {
-    let s = raw
-      .replace(/^[\s\-–—*•·>\d]+[.)]?\s+(?=\S)/, '')      // puces et numéros en début de ligne
-      .replace(/\s+[-–—@]\s*\d{1,2}[h:.]\d{0,2}.*$/, '')   // « — 21:00 », « - 21h30 »
-      .replace(/\s+\d{1,2}[h:]\d{2}\s*$/, '')
+  for (const raw of parts) {
+    const s = raw
+      .replace(/^\s*(?:[-–—*•·>]+\s*)+/, '')                                      // puces : « - », « • », « > »
+      .replace(/^\s*\d{1,3}\s*[.)]\s+(?=\S)/, '')                                  // numérotation : « 1. », « 12) »
+      .replace(new RegExp(`^\\s*${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*[-–—:|]?\\s+(?=\\D)`, 'i'), '') // « 21:00 Slipknot », « 18h30 - 19h20 Gojira »
+      .replace(new RegExp(`\\s+[-–—@|]\\s*${TIME}.*$`, 'i'), '')                    // « Gojira — 21:00 », « Gojira - 21h30 »
+      .replace(new RegExp(`\\s+${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*$`, 'i'), '')    // « Gojira 21:00 »
+      .replace(/\s*\((?:[A-Z]{2,3}(?:\s*\/\s*[A-Z]{2,3})*)\)\s*$/, '')            // pays : « Gojira (FR) », « (US/CA) »
       .trim();
     if (!s || s.length > 60 || s.length < 2) continue;
-    if (/^(jour|day|vendredi|samedi|dimanche|jeudi|mercredi|friday|saturday|sunday|thursday|stage|scène|main stage)\b/i.test(s)) continue;
+    if (isLineupNoise(s)) continue;
     const k = norm(s);
     if (!k || seen.has(k)) continue;
     seen.add(k);
