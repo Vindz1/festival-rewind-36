@@ -37,8 +37,8 @@ export default function Legal() {
           </Section>
 
           <Section n={3} title="Données">
-            <p><strong>Connexion :</strong> Votre compte (e-mail et mot de passe) est géré par notre prestataire Supabase. Setlive n'a jamais accès à votre mot de passe en clair.</p>
-            <p><strong>Données collectées :</strong> Nous stockons votre email et l'historique des setlists générées pour vous fournir le service « Historique ». Vous pouvez demander la suppression intégrale de vos données à tout moment via setlive@proton.me.</p>
+            <p><strong>Connexion :</strong> Votre compte (e-mail ou pseudo, et mot de passe) est géré par notre prestataire Supabase. Setlive n'a jamais accès à votre mot de passe en clair. Vous pouvez créer un compte avec un simple pseudo, sans fournir d'adresse e-mail : dans ce cas, un mot de passe oublié ne peut pas être récupéré.</p>
+            <p><strong>Données collectées :</strong> Nous stockons votre e-mail (uniquement si vous en fournissez un) et l'historique des setlists générées pour vous fournir le service « Historique ». Aucune donnée n'est revendue ni utilisée à des fins publicitaires. Vous pouvez demander la suppression intégrale de vos données à tout moment via setlive@proton.me.</p>
             <p><strong>Prestataires :</strong> Pour fournir le service, certaines données transitent par : Supabase (comptes et historique), Stripe (paiement), Vercel (hébergement), setlist.fm et Apple iTunes (recherche de concerts et de titres), Discogs (collection de vinyles).</p>
             <p><strong>Collection de vinyles :</strong> Le jeton Discogs que vous saisissez reste uniquement dans votre navigateur et n'est transmis qu'à Discogs.</p>
             <p><strong>Mesure d'audience :</strong> Avec votre accord (bandeau cookies), nous utilisons Google Analytics avec anonymisation de l'adresse IP. Vous pouvez modifier votre choix à tout moment via le lien « Gérer les cookies » en bas de page.</p>
