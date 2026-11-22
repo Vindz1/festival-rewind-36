@@ -1,11 +1,12 @@
 // src/pages/Auth.tsx — connexion / inscription (thème Vinyl)
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Groove, Spinner } from '@/components/vinyl/Ui';
 import { supabase } from '@/integrations/supabase/client';
+import { safeNext } from '@/lib/studioState';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,8 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  // Retour à la page d'origine (ex. le Studio et sa playlist) après connexion ou inscription
+  const next = safeNext(useSearchParams()[0].get('next'));
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,12 +24,12 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate('/');
+        navigate(next);
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         // Si la confirmation par e-mail est activée dans Supabase, aucune session n'est ouverte tout de suite
-        if (data?.session) navigate('/');
+        if (data?.session) navigate(next);
         else toast.success('Compte créé : vérifie ta boîte mail pour confirmer ton adresse.');
       }
     } catch (err: any) {
