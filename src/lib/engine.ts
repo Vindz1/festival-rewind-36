@@ -5,7 +5,28 @@ import { supabase } from '@/supabaseClient';
 export type Source = 'exact' | 'average' | 'top';
 export type Origin = 'past' | 'future' | 'festival';
 
-export interface Track { artist: string; name: string; source: Source; ratio?: number }
+/** Jour du festival auquel appartient le titre (si l'affiche collée était découpée par jours). */
+export interface Track { artist: string; name: string; source: Source; ratio?: number; day?: string }
+
+/** Jauge par groupe : 1 = quelques titres, 2 = dose normale (le curseur), 3 = le double. */
+export type Weight = 1 | 2 | 3;
+export const WEIGHT_LABELS: Record<Weight, string> = { 1: 'Juste un aperçu', 2: 'Dose normale', 3: 'Plein volume' };
+/** Plafond de titres par groupe (identique au curseur). */
+export const SONGS_CAP = 20;
+/** Nombre de titres d'un groupe à setlist devinée, selon le curseur (base) et sa jauge. */
+export function songsFor(weight: Weight | undefined, base: number): number {
+  if (weight === 1) return Math.max(1, Math.round(base / 2));
+  if (weight === 3) return Math.min(SONGS_CAP, base * 2);
+  return base;
+}
+/** Setlist devinée (artiste à venir, ou concert passé sans setlist connue) : c'est là que curseur et jauge s'appliquent. */
+export const isGuessed = (it: StudioItem) => it.kind === 'artist' || !it.songCount;
+/** Nombre de titres attendu pour ces éléments, avec le curseur réglé sur `base`. */
+export function estimateSongs(items: StudioItem[], base: number): number {
+  return items.reduce((n, it) => n + (isGuessed(it) ? songsFor(it.weight, base) : it.songCount || 0), 0);
+}
+/** Jauge suivante au clic : normal → plein volume → aperçu → normal. */
+export const nextWeight = (w: Weight | undefined): Weight => ((w ?? 2) === 2 ? 3 : (w ?? 2) === 3 ? 1 : 2);
 
 export interface StudioItem {
   uid: string;
@@ -18,6 +39,10 @@ export interface StudioItem {
   eventDate?: string;
   sets?: any;
   songCount?: number;
+  /** Jour du festival (« Jeudi »…), repris des titres de l'affiche collée. */
+  day?: string;
+  /** Jauge du groupe (setlists devinées uniquement). Absente = dose normale. */
+  weight?: Weight;
 }
 
 export interface Profile {
@@ -339,23 +364,24 @@ export async function buildPlaylist(
       let tracks: Track[] = [];
       let source: Source | 'none' = 'none';
       let reason: ItemReport['reason'];
+      const n = songsFor(it.weight, opts.topCount);
       try {
         if (it.kind === 'concert') {
           tracks = await exactTracks(it);
           if (tracks.length) source = 'exact';
         }
         if (!tracks.length) {
-          tracks = pickMostLikely(await averageTracks(it, bulk), opts.topCount);
+          tracks = pickMostLikely(await averageTracks(it, bulk), n);
           if (tracks.length) source = 'average';
         }
         if (!tracks.length) {
-          const top = await topTracks(it.artist, opts.topCount, onProgress, bulk);
+          const top = await topTracks(it.artist, n, onProgress, bulk);
           tracks = top.tracks;
           if (tracks.length) source = 'top';
           else reason = top.failed ? 'ratelimit' : 'notfound';
         }
       } catch { reason = 'notfound'; }
-      results[i] = tracks;
+      results[i] = it.day ? tracks.map((t) => ({ ...t, day: it.day })) : tracks;
       report[i] = { uid: it.uid, label: it.artist, source, count: tracks.length, reason };
       done += 1;
       onProgress?.(`${done}/${items.length} — ${it.artist}`);
@@ -387,14 +413,36 @@ export function isLineupNoise(s: string): boolean {
   return !k || STAGE_LINE.test(k) || HEADER_LINE.test(k) || DATE_LINE.test(d) || TIME_ONLY.test(d);
 }
 
+// Titre de jour dans l'affiche (« JEUDI 17 JUIN », « Friday », « Jour 2 », « 17 juin ») → libellé affiché.
+const WEEKDAYS: Record<string, string> = {
+  lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi', vendredi: 'Vendredi', samedi: 'Samedi', dimanche: 'Dimanche',
+  monday: 'Lundi', tuesday: 'Mardi', wednesday: 'Mercredi', thursday: 'Jeudi', friday: 'Vendredi', saturday: 'Samedi', sunday: 'Dimanche',
+};
+export function dayHeader(s: string): { label: string; weekday: boolean } | null {
+  const k = norm(s);
+  const w = /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/.exec(k);
+  if (w) return { label: WEEKDAYS[w[1]], weekday: true };
+  const j = /^(?:jour|day)\s*(\d{1,2})$/.exec(k);
+  if (j) return { label: `Jour ${+j[1]}`, weekday: false };
+  const d = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (DATE_LINE.test(d)) return { label: s.trim().replace(/\s+/g, ' '), weekday: false };
+  return null;
+}
+
+export interface LineupEntry { name: string; day?: string }
+
 // Accepte une liste copiée depuis un site de festival : un artiste par ligne, ou séparés par des virgules / puces.
-// Les noms de scènes, jours, dates et horaires sont ignorés ; les groupes dont le nom commence par un chiffre
+// Les noms de scènes, dates et horaires sont ignorés ; les groupes dont le nom commence par un chiffre
 // (« 36 Crazyfists », « 1349 », « 10 Years ») sont conservés tels quels.
-export function parseLineup(text: string): string[] {
+// Les titres de jours (« JEUDI 17 JUIN »…) ne sont pas des groupes : ils rangent les groupes qui suivent dans ce jour,
+// ce qui permet ensuite une playlist par jour.
+export function parseLineupEntries(text: string): LineupEntry[] {
   let parts = text.split(/\r?\n/);
   if (parts.length === 1) parts = text.split(/[,;•·|]/);
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: LineupEntry[] = [];
+  let day: { label: string; weekday: boolean } | null = null;
+  let bandsInDay = 0;
   for (const raw of parts) {
     const s = raw
       .replace(/^\s*(?:[-–—*•·>]+\s*)+/, '')                                      // puces : « - », « • », « > »
@@ -405,13 +453,32 @@ export function parseLineup(text: string): string[] {
       .replace(/\s*\((?:[A-Z]{2,3}(?:\s*\/\s*[A-Z]{2,3})*)\)\s*$/, '')            // pays : « Gojira (FR) », « (US/CA) »
       .trim();
     if (!s || s.length > 60 || s.length < 2) continue;
+    const h = dayHeader(s);
+    if (h) {
+      // « JEUDI » puis « 17 juin » sans groupe entre les deux : c'est le même jour, on garde le nom du jour de la semaine
+      if (day && bandsInDay === 0 && day.weekday && !h.weekday) continue;
+      day = h;
+      bandsInDay = 0;
+      continue;
+    }
     if (isLineupNoise(s)) continue;
     const k = norm(s);
     if (!k || seen.has(k)) continue;
     seen.add(k);
-    out.push(s);
+    out.push(day ? { name: s, day: day.label } : { name: s });
+    bandsInDay += 1;
     if (out.length >= 300) break;
   }
+  return out;
+}
+
+/** Les noms seuls (sans les jours). */
+export const parseLineup = (text: string): string[] => parseLineupEntries(text).map((e) => e.name);
+
+/** Jours présents dans une liste, dans l'ordre d'apparition. */
+export function daysOf<T extends { day?: string }>(list: T[]): string[] {
+  const out: string[] = [];
+  list.forEach((x) => { if (x.day && !out.includes(x.day)) out.push(x.day); });
   return out;
 }
 
