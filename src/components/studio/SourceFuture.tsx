@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, User, Users } from 'lucide-react';
 import { Empty, PickRow, Spinner } from '@/components/vinyl/Ui';
 import { toast } from 'sonner';
-import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, Profile, StudioItem, artistItem, fmtDate, parseLineup, searchArtists } from '@/lib/engine';
+import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, Profile, StudioItem, artistItem, daysOf, fmtDate, parseLineupEntries, searchArtists } from '@/lib/engine';
 
 interface Props {
   onAdd: (items: StudioItem[]) => void;
@@ -49,10 +49,12 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
 
   // ----- plusieurs artistes : affiche collée -----
   const [lineup, setLineup] = useState('');
-  const parsed = parseLineup(lineup);
+  const parsed = parseLineupEntries(lineup);
+  const lineupDays = daysOf(parsed);
   const addLineup = () => {
     if (!parsed.length) return toast.error('Colle d’abord une liste d’artistes');
-    onAdd(parsed.map((n) => artistItem(n, undefined, undefined, 'future')));
+    // Le jour (si l'affiche en contient) suit le groupe jusqu'au résultat : une playlist par jour
+    onAdd(parsed.map((e) => ({ ...artistItem(e.name, undefined, undefined, 'future'), ...(e.day ? { day: e.day } : {}) })));
     setLineup('');
   };
   const waitMin = Math.max(1, Math.round((parsed.length * BULK_SECONDS_PER_ARTIST) / 60));
@@ -119,7 +121,7 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
           <div className="sl-card-dim p-4">
             <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
             <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
-              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les scènes, jours, heures et doublons sont ignorés. Jusqu’à 300 artistes.
+              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les scènes, heures et doublons sont ignorés ; si l’affiche est découpée par jours, tu pourras exporter une playlist par jour. Jusqu’à 300 artistes.
             </p>
             <textarea
               className="sl-input min-h-[120px] font-mono text-xs"
@@ -128,7 +130,7 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
               placeholder={'Gojira\nMastodon\nAlcest\n…'}
             />
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <span className="sl-label">{parsed.length ? `${parsed.length} artiste(s) reconnus` : 'Aucun artiste reconnu'}</span>
+              <span className="sl-label">{parsed.length ? `${parsed.length} artiste(s) reconnus${lineupDays.length > 1 ? ` · ${lineupDays.length} jours` : ''}` : 'Aucun artiste reconnu'}</span>
               <button className="sl-btn sl-btn-gold" onClick={addLineup} disabled={!parsed.length}>Ajouter à ma playlist</button>
             </div>
             {parsed.length > BULK_THRESHOLD && (
