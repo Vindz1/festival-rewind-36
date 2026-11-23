@@ -1,7 +1,7 @@
 // src/components/studio/Basket.tsx — Face B : la sélection et les options
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Empty, FaceTitle, Spinner } from '@/components/vinyl/Ui';
-import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, StudioItem, fmtDate } from '@/lib/engine';
+import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, SONGS_CAP, StudioItem, WEIGHT_LABELS, Weight, daysOf, estimateSongs, fmtDate, isGuessed, nextWeight, songsFor } from '@/lib/engine';
 
 interface Props {
   items: StudioItem[];
@@ -13,6 +13,7 @@ interface Props {
   setPreferLive: (b: boolean) => void;
   onMove: (i: number, dir: -1 | 1) => void;
   onRemove: (uid: string) => void;
+  onWeight: (uid: string, w: Weight) => void;
   onClear: () => void;
   onGenerate: () => void;
   busy: boolean;
@@ -21,19 +22,57 @@ interface Props {
 
 const ORIGIN = { past: 'Passé', future: 'À venir', festival: 'Festival' } as const;
 const SONGS_MIN = 3;
-const SONGS_MAX = 20;
+const SONGS_MAX = SONGS_CAP;
 /** TuneMyMusic : transfert gratuit limité à 500 titres. */
 const TMM_LIMIT = 500;
 
+/** Petite jauge façon vumètre : 1, 2 ou 3 barres allumées. Un clic passe au réglage suivant. */
+function Gauge({ weight, count, onClick }: { weight?: Weight; count: number; onClick: () => void }) {
+  const w = weight ?? 2;
+  const label = `${WEIGHT_LABELS[w]} : ${count} titre${count > 1 ? 's' : ''}`;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex shrink-0 items-center gap-1 rounded px-1 py-1 transition-colors hover:bg-[var(--sl-paper-dim)]"
+      aria-label={`${label}. Cliquer pour changer la dose de titres`}
+      title={`${label} · clique pour changer`}
+      data-testid="gauge"
+      data-weight={w}
+    >
+      <span className="flex h-3.5 items-end gap-[2px]" aria-hidden="true">
+        {[1, 2, 3].map((b) => (
+          <span key={b} className="w-[3px] rounded-sm transition-colors" style={{ height: `${34 + (b - 1) * 33}%`, background: b <= w ? 'var(--sl-gold)' : 'var(--sl-groove)' }} />
+        ))}
+      </span>
+      <span className="sl-mono w-4 text-left text-[10px] tabular-nums text-[var(--sl-muted)]">{count}</span>
+    </button>
+  );
+}
+
+/** Réglage du curseur le plus haut qui garde ces éléments sous la limite TuneMyMusic (0 si impossible). */
+function fitBase(items: StudioItem[]): number {
+  for (let b = SONGS_MAX; b >= SONGS_MIN; b--) if (estimateSongs(items, b) <= TMM_LIMIT) return b;
+  return 0;
+}
+
 export default function Basket(p: Props) {
   // Le curseur ne sert que pour les setlists devinées : artistes seuls (concerts à venir, festival) ou concerts sans setlist
-  const guessedItems = p.items.filter((it) => it.kind === 'artist' || !it.songCount);
+  const guessedItems = p.items.filter(isGuessed);
   const needsSlider = guessedItems.length > 0;
   const guessed = guessedItems.length;
-  const exactSongs = p.items.filter((it) => it.kind !== 'artist' && it.songCount).reduce((n, it) => n + (it.songCount || 0), 0);
-  const estimate = guessed * p.topCount + exactSongs;
-  // Nombre de titres par groupe qui garde la playlist sous la limite gratuite de TuneMyMusic
-  const fitPerGroup = guessed > 0 ? Math.floor((TMM_LIMIT - exactSongs) / guessed) : 0;
+  const estimate = estimateSongs(p.items, p.topCount);
+  // Affiche découpée par jours : on exporte jour par jour, c'est donc la journée la plus chargée qui compte
+  const days = daysOf(p.items);
+  const byDay = days.map((d) => ({ day: d, items: p.items.filter((it) => it.day === d) }));
+  const busiest = byDay.reduce<{ day: string; items: StudioItem[]; n: number } | null>((best, g) => {
+    const n = estimateSongs(g.items, p.topCount);
+    return !best || n > best.n ? { ...g, n } : best;
+  }, null);
+  const perDay = days.length > 1 && busiest !== null;
+  const overLimit = perDay ? busiest!.n > TMM_LIMIT : estimate > TMM_LIMIT;
+  // Réglage du curseur qui garde la playlist (ou la journée la plus chargée) sous la limite gratuite de TuneMyMusic
+  const fitPerGroup = fitBase(perDay ? busiest!.items : p.items);
   // Grosse affiche : on prévient de l'attente (première fois seulement) ; barre d'avancement pendant la génération
   const waitMin = guessed > BULK_THRESHOLD ? Math.max(1, Math.round((guessed * BULK_SECONDS_PER_ARTIST) / 60)) : 0;
   const prog = /^(\d+)\/(\d+)/.exec(p.progress);
@@ -54,9 +93,13 @@ export default function Basket(p: Props) {
                   <p className="truncate text-sm font-semibold">{it.artist}</p>
                   <p className="truncate text-[11px] text-[var(--sl-muted)]">
                     <span className="sl-mono uppercase">{ORIGIN[it.origin]}</span>
+                    {it.day ? ` · ${it.day}` : ''}
                     {it.eventDate ? ` · ${fmtDate(it.eventDate)}` : ''}
                   </p>
                 </div>
+                {isGuessed(it) && (
+                  <Gauge weight={it.weight} count={songsFor(it.weight, p.topCount)} onClick={() => p.onWeight(it.uid, nextWeight(it.weight))} />
+                )}
                 <button aria-label="Monter" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-ink)] disabled:opacity-30" disabled={i === 0} onClick={() => p.onMove(i, -1)}><ArrowUp className="h-4 w-4" /></button>
                 <button aria-label="Descendre" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-ink)] disabled:opacity-30" disabled={i === p.items.length - 1} onClick={() => p.onMove(i, 1)}><ArrowDown className="h-4 w-4" /></button>
                 <button aria-label="Retirer" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => p.onRemove(it.uid)}><X className="h-4 w-4" /></button>
@@ -77,7 +120,7 @@ export default function Basket(p: Props) {
               <div>
                 <p className="sl-label">Titres par groupe</p>
                 <p className="mt-0.5 text-[11px] leading-snug text-[var(--sl-muted)]">
-                  Pour les concerts à venir (setlist devinée) : on garde les titres les plus probables.
+                  Pour les concerts à venir (setlist devinée) : on garde les titres les plus probables. La petite jauge à côté de chaque groupe en met moins, ou le double.
                 </p>
               </div>
               <p className="sl-display shrink-0 text-5xl leading-none text-[var(--sl-ink)]">{p.topCount}</p>
@@ -98,19 +141,28 @@ export default function Basket(p: Props) {
             </div>
             <p className="mt-3 border-t border-[var(--sl-groove)] pt-2 text-[11px] text-[var(--sl-muted)]">
               {guessed} artiste(s) à setlist devinée · jusqu’à <strong className="text-[var(--sl-ink)]">{estimate} titres</strong> au total
+              {perDay && <> · {days.length} jours, jusqu’à <strong className="text-[var(--sl-ink)]">{busiest!.n}</strong> le {busiest!.day.toLowerCase()}</>}
             </p>
             {waitMin > 0 && (
               <p className="mt-1 text-[11px] text-[var(--sl-muted)]">Grosse affiche : compte environ {waitMin} min la première fois (les groupes déjà connus sont instantanés).</p>
             )}
-            {estimate > TMM_LIMIT && (
+            {perDay && !overLimit && estimate > TMM_LIMIT && (
+              <p className="mt-2 rounded border-l-4 border-[var(--sl-forest)] bg-[var(--sl-paper-dim)] p-2 text-[11px] leading-snug text-[var(--sl-ink)]" data-testid="tmm-per-day">
+                Toute l’affiche dépasse les {TMM_LIMIT} titres du transfert gratuit TuneMyMusic, mais chaque jour tient dessous : après la génération, exporte jour par jour.
+              </p>
+            )}
+            {overLimit && (
               <div className="mt-2 rounded border-l-4 border-[var(--sl-gold)] bg-[var(--sl-paper-dim)] p-2 text-[11px] leading-snug text-[var(--sl-ink)]" data-testid="tmm-warning">
-                <p>TuneMyMusic limite les transferts gratuits à <strong>{TMM_LIMIT} titres</strong> : ta playlist en compte jusqu’à {estimate}.</p>
+                <p>
+                  TuneMyMusic limite les transferts gratuits à <strong>{TMM_LIMIT} titres</strong> :{' '}
+                  {perDay ? `le ${busiest!.day.toLowerCase()} en compte jusqu’à ${busiest!.n}.` : `ta playlist en compte jusqu’à ${estimate}.`}
+                </p>
                 {fitPerGroup >= SONGS_MIN ? (
-                  <button type="button" className="sl-btn sl-btn-gold sl-btn-sm mt-2" onClick={() => p.setTopCount(Math.min(SONGS_MAX, fitPerGroup))}>
-                    Passer à {Math.min(SONGS_MAX, fitPerGroup)} titres par groupe (sous {TMM_LIMIT})
+                  <button type="button" className="sl-btn sl-btn-gold sl-btn-sm mt-2" onClick={() => p.setTopCount(fitPerGroup)}>
+                    Passer à {fitPerGroup} titres par groupe (sous {TMM_LIMIT})
                   </button>
                 ) : (
-                  <p className="mt-1 text-[var(--sl-muted)]">Même à {SONGS_MIN} titres par groupe, la limite est dépassée : retire quelques groupes ou fais plusieurs playlists.</p>
+                  <p className="mt-1 text-[var(--sl-muted)]">Même à {SONGS_MIN} titres par groupe, la limite est dépassée : retire quelques groupes, baisse leur jauge ou fais plusieurs playlists.</p>
                 )}
               </div>
             )}
