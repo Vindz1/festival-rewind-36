@@ -15,8 +15,8 @@ import { checkExportQuota, type ExportQuota } from '@/lib/subscription';
 import { toStored, trackExportWithTracks } from '@/lib/playlists';
 import { loadStudio, saveStudio } from '@/lib/studioState';
 import {
-  ItemReport, Profile, StudioItem, Track,
-  accessFor, buildPlaylist, downloadFile, loadProfile, toCsv, toText,
+  ItemReport, Profile, StudioItem, Track, Weight,
+  accessFor, buildPlaylist, daysOf, downloadFile, loadProfile, toCsv, toText,
 } from '@/lib/engine';
 
 const EMPTY_PROFILE: Profile = { username: '', pastItems: [], futureItems: [], loading: false, loaded: false, partial: false };
@@ -42,6 +42,8 @@ export default function Index() {
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<{ tracks: Track[]; report: ItemReport[]; name: string } | null>(saved.result ?? null);
   const [copied, setCopied] = useState(false);
+  // Affiche découpée par jours : jour affiché et exporté (null = toute l'affiche)
+  const [day, setDay] = useState<string | null>(null);
   const [quota, setQuota] = useState<ExportQuota | null>(null);
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
 
@@ -73,6 +75,8 @@ export default function Index() {
     if (fresh.length > 1) toast.success(`${fresh.length} éléments ajoutés`);
   };
   const remove = (uid: string) => setItems((prev) => prev.filter((i) => i.uid !== uid));
+  const setWeight = (uid: string, w: Weight) =>
+    setItems((prev) => prev.map((i) => (i.uid === uid ? { ...i, weight: w } : i)));
   const move = (i: number, dir: -1 | 1) =>
     setItems((prev) => {
       const j = i + dir;
@@ -100,6 +104,7 @@ export default function Index() {
     if (!items.length) return toast.error('Ajoute au moins un concert ou un artiste');
     setBusy(true);
     setResult(null);
+    setDay(null);
     try {
       const { tracks, report } = await buildPlaylist(items, { topCount }, setProgress);
       if (!tracks.length) throw new Error('Aucun morceau trouvé pour cette sélection.');
@@ -126,14 +131,20 @@ export default function Index() {
   };
 
   // ----- droits : anonyme / gratuit / Premium (règles dans engine.ts → accessFor) -----
-  const access = accessFor(user, quota, result?.tracks.length ?? 0);
+  // Une playlist par jour : la vue (affichage, copie, fichiers) se limite au jour choisi
+  const resultDays = result ? daysOf(result.tracks) : [];
+  const activeDay = resultDays.length > 1 && day && resultDays.includes(day) ? day : null;
+  const view = result && activeDay
+    ? { ...result, name: `${result.name} · ${activeDay}`, tracks: result.tracks.filter((t) => t.day === activeDay) }
+    : result;
+  const access = accessFor(user, quota, view?.tracks.length ?? 0);
   const loginUrl = `/auth?next=${encodeURIComponent(`/?${tab === 'future' ? 'tab=future&' : ''}voir=resultat`)}`;
   const unlock = () => navigate(user ? '/subscription' : loginUrl);
 
   // ----- export : « Copier » = connecté + quota (consomme 1 export) ; .txt/.csv = Premium -----
   const onExport = async (kind: 'copy' | 'txt' | 'csv') => {
-    if (!result) return;
-    const slug = result.name.replace(/[^a-z0-9]/gi, '_');
+    if (!view) return;
+    const slug = view.name.replace(/[^a-z0-9]/gi, '_');
 
     if (kind === 'txt' || kind === 'csv') {
       if (!access.canFiles) {
@@ -141,8 +152,8 @@ export default function Index() {
         return;
       }
       return kind === 'txt'
-        ? downloadFile(`${slug}.txt`, toText(result.tracks, preferLive), 'text/plain')
-        : downloadFile(`${slug}.csv`, toCsv(result.tracks, preferLive), 'text/csv');
+        ? downloadFile(`${slug}.txt`, toText(view.tracks, preferLive), 'text/plain')
+        : downloadFile(`${slug}.csv`, toCsv(view.tracks, preferLive), 'text/csv');
     }
 
     if (!user) { toast.error('Connecte-toi pour copier la liste'); navigate(loginUrl); return; }
@@ -151,11 +162,11 @@ export default function Index() {
       return;
     }
     try {
-      await navigator.clipboard.writeText(toText(result.tracks, preferLive));
+      await navigator.clipboard.writeText(toText(view.tracks, preferLive));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       // On garde la liste exportée : elle pourra être rouverte depuis « Back in Time »
-      const ok = await trackExportWithTracks(user.id, result.name, toStored(result.tracks, preferLive) ?? []);
+      const ok = await trackExportWithTracks(user.id, view.name, toStored(view.tracks, preferLive) ?? []);
       if (ok && quota && !quota.isPremium) {
         const remaining = Math.max(0, quota.remaining - 1);
         setQuota({ ...quota, remaining, used: quota.used + 1, canExport: remaining > 0 });
@@ -203,18 +214,20 @@ export default function Index() {
               items={items} name={name} setName={setName}
               topCount={topCount} setTopCount={setTopCount}
               preferLive={preferLive} setPreferLive={setPreferLive}
-              onMove={move} onRemove={remove} onClear={() => setItems([])}
+              onMove={move} onRemove={remove} onWeight={setWeight} onClear={() => setItems([])}
               onGenerate={generate} busy={busy} progress={progress}
             />
           </div>
         </div>
 
-        {result && (
+        {result && view && (
           <Result
-            name={result.name} tracks={result.tracks} report={result.report}
+            name={view.name} tracks={view.tracks} report={result.report}
+            days={resultDays.length > 1 ? resultDays.map((d) => ({ label: d, count: result.tracks.filter((t) => t.day === d).length })) : []}
+            total={result.tracks.length} day={activeDay} onDay={setDay}
             preferLive={preferLive} copied={copied} quotaText={quotaText}
             access={access} onUnlock={unlock}
-            onRemoveTrack={(i) => setResult((r) => (r ? { ...r, tracks: r.tracks.filter((_, k) => k !== i) } : r))}
+            onRemoveTrack={(t) => setResult((r) => (r ? { ...r, tracks: r.tracks.filter((x) => x !== t) } : r))}
             onExport={onExport}
           />
         )}
