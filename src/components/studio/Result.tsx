@@ -12,8 +12,15 @@ interface Props {
   quotaText: string;
   access: Access;
   onUnlock: () => void;
-  onRemoveTrack: (i: number) => void;
+  onRemoveTrack: (t: Track) => void;
   onExport: (kind: 'copy' | 'txt' | 'csv') => void;
+  /** Affiche découpée par jours : un onglet par jour (vide sinon). */
+  days?: { label: string; count: number }[];
+  /** Nombre de titres de toute l'affiche. */
+  total?: number;
+  /** Jour affiché (null = toute l'affiche). */
+  day?: string | null;
+  onDay?: (day: string | null) => void;
 }
 
 const SRC: Record<Source, { label: string; color: string }> = {
@@ -42,7 +49,7 @@ function NameList({ names }: { names: string[] }) {
   );
 }
 
-export default function Result({ name, tracks, report, preferLive, copied, quotaText, access, onUnlock, onRemoveTrack, onExport }: Props) {
+export default function Result({ name, tracks, report, preferLive, copied, quotaText, access, onUnlock, onRemoveTrack, onExport, days = [], total, day = null, onDay }: Props) {
   const hidden = tracks.length - access.visible;
   const counts = (['exact', 'average', 'top'] as Source[]).map((s) => ({ s, n: tracks.filter((t) => t.source === s).length }));
   const artists = new Set(tracks.map((t) => t.artist)).size;
@@ -55,6 +62,28 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
   return (
     <section id="resultat" className="mt-10">
       <FaceTitle face="Face C" title={name} />
+
+      {days.length > 1 && (
+        <div className="mb-4" data-testid="day-tabs">
+          <p className="sl-label mb-2">Une playlist par jour</p>
+          <div className="flex flex-wrap gap-2">
+            {[{ label: 'Toute l’affiche', value: null as string | null, count: total ?? tracks.length }, ...days.map((d) => ({ label: d.label, value: d.label as string | null, count: d.count }))].map((d) => {
+              const on = day === d.value;
+              return (
+                <button
+                  key={d.label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onDay?.(d.value)}
+                  className={`sl-mono rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-widest transition-colors ${on ? 'border-[var(--sl-ink)] bg-[var(--sl-ink)] text-[var(--sl-paper)]' : 'border-[var(--sl-groove)] bg-[var(--sl-paper)] text-[var(--sl-ink)] hover:border-[var(--sl-gold)]'}`}
+                >
+                  {d.label} <span className={on ? 'text-[var(--sl-gold-bright)]' : 'text-[var(--sl-muted)]'}>{d.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="rounded-lg border-l-4 border-[var(--sl-gold)] bg-[var(--sl-ink)] p-4 text-[var(--sl-paper)]">
@@ -146,7 +175,7 @@ export default function Result({ name, tracks, report, preferLive, copied, quota
                       <span className="sl-dot" style={{ background: SRC[t.source].color }} />{SRC[t.source].label}
                     </span>
                   </td>
-                  <td className="px-2"><button aria-label="Retirer ce titre" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => onRemoveTrack(i)}><X className="h-4 w-4" /></button></td>
+                  <td className="px-2"><button aria-label="Retirer ce titre" className="p-1 text-[var(--sl-muted)] hover:text-[var(--sl-wine)]" onClick={() => onRemoveTrack(t)}><X className="h-4 w-4" /></button></td>
                 </tr>
               ))}
               {hidden > 0 && (
