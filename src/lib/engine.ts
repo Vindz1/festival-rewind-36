@@ -60,8 +60,21 @@ export interface ItemReport { uid: string; label: string; source: Source | 'none
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const enc = encodeURIComponent;
 
+// Ligatures et lettres que la décomposition Unicode ne simplifie pas (« Ætheria » = « Aetheria », « Mötörhead »…)
+const LIGATURES: Record<string, string> = { æ: 'ae', œ: 'oe', ø: 'o', ß: 'ss', ð: 'd', þ: 'th', ł: 'l', đ: 'd' };
 export const norm = (s = '') =>
-  s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  s.toLowerCase().replace(/[æœøßðþłđ]/g, (c) => LIGATURES[c]).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+
+// Lignes de setlist qui ne sont pas des morceaux : « Intro », « Drum Solo », « Duo Orgue/Guitare », « Jam »…
+// (introuvables sur les plateformes de streaming, elles finissaient « Missing » dans TuneMyMusic)
+const INSTRUMENT = String.raw`(?:drums?|batterie|guitars?|guitares?|bass|basse|keyboards?|keys|claviers?|piano|organ|orgue|synth|percussions?|violin|violon)`;
+const NOT_A_SONG = new RegExp(
+  String.raw`^(?:intro|outro|interlude|intermission|jam|solo|encore|soundcheck|improv(?:isation)?|` +
+  String.raw`${INSTRUMENT}(?:\s*(?:/|&|and|et|\+)\s*${INSTRUMENT})*\s+(?:solo|duo|jam|battle)|` +
+  String.raw`(?:solo|duo|jam)\s+(?:de\s+|of\s+)?${INSTRUMENT}(?:\s*(?:/|&|and|et|\+)\s*${INSTRUMENT})*)$`,
+  'i'
+);
+export const isNotASong = (name: string) => NOT_A_SONG.test(name.trim().replace(/\s+/g, ' '));
 
 // clé de dédoublonnage des titres : ignore (Remastered), [Live], « - 2011 Remaster »…
 const titleKey = (s: string) => norm(s.replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/\s-\s.*$/, ' '));
@@ -186,7 +199,7 @@ function tracksFromSets(sets: any, artist: string) {
   list.forEach((s: any) => {
     (Array.isArray(s.song) ? s.song : s.song ? [s.song] : []).forEach((so: any) => {
       const name = (so?.name || '').trim();
-      if (!name || so.tape || /unknown/i.test(name)) return;
+      if (!name || so.tape || /unknown/i.test(name) || isNotASong(name)) return;
       // Reprise : on garde l'auteur d'origine, SAUF pour les mentions génériques de setlist.fm
       // (« [traditional] », « [unknown] »…) qui ne sont pas des artistes : on prend alors l'interprète.
       const cover = String(so.cover?.name || '').trim();
@@ -220,7 +233,7 @@ const NEG_TTL = 3 * 24 * 3600 * 1000;
 // instantanés ; les groupes que Setlist.fm ne connaît pas sont notés « inconnus » 3 jours (on ne les redemande pas).
 async function prefetchShared(items: StudioItem[], onProgress?: (msg: string) => void) {
   const names = [...new Set(items.filter((i) => i.kind === 'artist' && !i.mbid).map((i) => i.artist))];
-  const todo = names.filter((n) => !cacheGet(`sl_avg_v3:${norm(n)}`, AVG_TTL) && !cacheGet(`sl_avg_neg_v1:${norm(n)}`, NEG_TTL));
+  const todo = names.filter((n) => !cacheGet(`sl_avg_v3:${norm(n)}`, AVG_TTL) && !cacheGet(`sl_avg_neg_v2:${norm(n)}`, NEG_TTL));
   if (todo.length < 3) return;
   onProgress?.('Consultation de la mémoire partagée…');
   try {
@@ -233,7 +246,7 @@ async function prefetchShared(items: StudioItem[], onProgress?: (msg: string) =>
     const { hits } = await r.json();
     Object.entries(hits || {}).forEach(([name, d]: [string, any]) => {
       if (d?.songs?.length) cacheSet(`sl_avg_v3:${norm(name)}`, d);
-      else cacheSet(`sl_avg_neg_v1:${norm(name)}`, true);
+      else cacheSet(`sl_avg_neg_v2:${norm(name)}`, true);
     });
   } catch { /* mémoire partagée indisponible : on calcule groupe par groupe, comme avant */ }
 }
@@ -241,14 +254,14 @@ async function prefetchShared(items: StudioItem[], onProgress?: (msg: string) =>
 async function averageTracks(it: StudioItem, bulk = false): Promise<Track[]> {
   const key = `sl_avg_v3:${it.mbid || norm(it.artist)}`;
   let data = cacheGet<any>(key, AVG_TTL);
-  if (!data && !it.mbid && cacheGet(`sl_avg_neg_v1:${norm(it.artist)}`, NEG_TTL)) return [];
+  if (!data && !it.mbid && cacheGet(`sl_avg_neg_v2:${norm(it.artist)}`, NEG_TTL)) return [];
   if (!data) {
     data = await serial(() =>
       getJson(`/api/search?action=average&v=3${bulk ? '&fast=1' : ''}&artist=${enc(it.artist)}${it.mbid ? `&mbid=${it.mbid}` : ''}`).catch(() => null)
     );
     if (data?.songs?.length) cacheSet(key, data);
   }
-  return (data?.songs || []).map((s: any) => ({ artist: s.artist || it.artist, name: s.name, source: 'average' as const, ratio: typeof s.ratio === 'number' ? s.ratio : undefined }));
+  return (data?.songs || []).filter((s: any) => s?.name && !isNotASong(s.name)).map((s: any) => ({ artist: s.artist || it.artist, name: s.name, source: 'average' as const, ratio: typeof s.ratio === 'number' ? s.ratio : undefined }));
 }
 
 // Setlist devinée trop longue : on garde les N titres les PLUS JOUÉS (ratio = part des derniers concerts où ils figurent),
@@ -286,11 +299,11 @@ function itunesSlot(): Promise<void> {
   return slot;
 }
 
-async function itunesFetch(artist: string, country: string, notice?: (m: string) => void): Promise<{ ok: boolean; results: any[] }> {
+async function itunesFetch(query: string, notice?: (m: string) => void): Promise<{ ok: boolean; results: any[] }> {
   for (let attempt = 0; attempt < 2; attempt++) {
     await itunesSlot();
     try {
-      const r = await fetch(`https://itunes.apple.com/search?term=${enc(artist)}&entity=song&limit=50&country=${country}`);
+      const r = await fetch(`https://itunes.apple.com/${query}`);
       if (r.status === 403 || r.status === 429) {
         itunesCooldownUntil = Date.now() + ITUNES_COOLDOWN;
         notice?.(`iTunes limite le débit : pause de ${Math.round(ITUNES_COOLDOWN / 1000)} s…`);
@@ -305,10 +318,22 @@ async function itunesFetch(artist: string, country: string, notice?: (m: string)
   return { ok: false, results: [] };
 }
 
+// Genres « maison » de Setlive : entre plusieurs homonymes (H2O, Nebula, Speed…), on préfère le groupe rock/metal/punk.
+const ROCKISH = /rock|metal|punk|hardcore|alternati|indie|grunge|psych|stoner|doom|sludge|emo|ska|garage|industri|goth|noise|blues|hard/i;
+const loose = (s: string) => norm(s).replace(/^the /, '').replace(/ and /g, ' ').replace(/\s+/g, ' ').trim();
+
+/** Choisit, parmi des artistes iTunes, celui qui porte exactement ce nom (rock/metal en priorité). */
+export function pickItunesArtist<T extends { artistName?: string; primaryGenreName?: string }>(list: T[], artist: string): T | undefined {
+  const same = list.filter((a) => a.artistName && loose(a.artistName) === loose(artist));
+  return same.find((a) => ROCKISH.test(a.primaryGenreName || '')) || same[0];
+}
+
 interface TopEntry { want: number; tracks: Track[]; at: number }
 
+// Top titres iTunes : on cherche d'abord L'ARTISTE (pas les morceaux), puis ses titres les plus populaires.
+// Chercher « H2O » ou « Nebula » parmi les morceaux ne renvoyait que des chansons d'autres artistes portant ce mot.
 async function topTracks(artist: string, limit: number, notice?: (m: string) => void, bulk = false): Promise<{ tracks: Track[]; failed: boolean }> {
-  const key = `sl_top_v3:${norm(artist)}`;
+  const key = `sl_top_v4:${norm(artist)}`;
   const cached = cacheGet<TopEntry>(key, 30 * 24 * 3600 * 1000);
   // Une réponse vide n'est gardée que 3 jours (l'artiste peut apparaître plus tard dans iTunes)
   const fresh = cached && (cached.tracks.length > 0 || Date.now() - cached.at < 3 * 24 * 3600 * 1000);
@@ -318,17 +343,29 @@ async function topTracks(artist: string, limit: number, notice?: (m: string) => 
 
   const want = Math.max(limit, 8);
   const wanted = norm(artist);
-  const out: Track[] = [];
+  let out: Track[] = [];
   let failed = false;
   // Grosse affiche : une seule boutique iTunes par artiste (chaque appel coûte ≈ 3 s)
-  for (const country of bulk ? ['FR'] : ['FR', 'US', 'GB']) {
-    const { ok, results } = await itunesFetch(artist, country, notice);
-    if (!ok) { failed = true; break; }
+  for (const country of bulk ? ['FR'] : ['FR', 'US']) {
+    const found = await itunesFetch(`search?term=${enc(artist)}&entity=musicArtist&limit=25&country=${country}`, notice);
+    if (!found.ok) { failed = true; break; }
+    const pick = pickItunesArtist(found.results, artist) as any;
+    if (!pick?.artistId) continue;
+    const songs = await itunesFetch(`lookup?id=${pick.artistId}&entity=song&limit=${want + 5}&country=${country}`, notice);
+    if (!songs.ok) { failed = true; break; }
+    out = songs.results
+      .filter((r: any) => r.wrapperType === 'track' && r.trackName && r.artistId === pick.artistId)
+      .map((r: any) => ({ artist: r.artistName, name: r.trackName, source: 'top' as const }));
+    if (out.length) break;
+  }
+  // Artiste introuvable en tant que tel : ancienne méthode (recherche parmi les morceaux, nom exact de l'artiste)
+  if (!out.length && !failed) {
+    const { ok, results } = await itunesFetch(`search?term=${enc(artist)}&entity=song&attribute=artistTerm&limit=50&country=FR`, notice);
+    if (!ok) failed = true;
     results.forEach((r: any) => {
       const n = norm(r.artistName || '');
       if ((n === wanted || ` ${n} `.includes(` ${wanted} `)) && r.trackName) out.push({ artist: r.artistName, name: r.trackName, source: 'top' });
     });
-    if (dedupe(out).length >= want) break;
   }
   const tracks = dedupe(out).slice(0, want);
   // On ne met en cache que les réponses fiables (jamais un échec réseau / limite de débit)
