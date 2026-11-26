@@ -242,7 +242,7 @@ export default async function handler(req, res) {
   try {
     // --- Mémoire partagée : tout ce qui est déjà connu pour une affiche, en UNE requête ---
     if (action === 'cache' && req.method === 'POST') {
-      const names = toArray(req.body?.artists).filter((n) => typeof n === 'string' && n.trim()).slice(0, 300);
+      const names = toArray(req.body?.artists).filter((n) => typeof n === 'string' && n.trim()).slice(0, 350); // = LINEUP_MAX côté site
       const rows = await cacheRead([...new Set(names.map((n) => `name:${norm(n)}`))]);
       const byKey = new Map(rows.filter(isFresh).map((r) => [r.artist_key, r]));
       const hits = {};

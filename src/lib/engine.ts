@@ -227,7 +227,7 @@ async function prefetchShared(items: StudioItem[], onProgress?: (msg: string) =>
     const r = await fetch('/api/search?action=cache', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ artists: todo.slice(0, 300) }),
+      body: JSON.stringify({ artists: todo.slice(0, LINEUP_MAX) }),
     });
     if (!r.ok) return;
     const { hits } = await r.json();
@@ -431,6 +431,24 @@ export function dayHeader(s: string): { label: string; weekday: boolean } | null
 
 export interface LineupEntry { name: string; day?: string }
 
+/** Nombre maximal d'artistes lus dans une affiche collée (le Hellfest 2027 en compte ~306). */
+export const LINEUP_MAX = 350;
+
+// Noms de scène qui sont aussi de vrais groupes quand ils sont seuls sur une ligne (ex. Warzone, groupe NYHC du Hellfest 2027).
+const BAND_OR_STAGE = /^(?:warzone|riot|valley|altar|temple|abyss|forge|crypt)$/;
+
+// Nettoie une ligne d'affiche : puces, numérotation, horaires et pays retirés.
+function cleanLineupLine(raw: string): string {
+  return raw
+    .replace(/^\s*(?:[-–—*•·>]+\s*)+/, '')                                      // puces : « - », « • », « > »
+    .replace(/^\s*\d{1,3}\s*[.)]\s+(?=\S)/, '')                                  // numérotation : « 1. », « 12) »
+    .replace(new RegExp(`^\\s*${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*[-–—:|]?\\s+(?=\\D)`, 'i'), '') // « 21:00 Slipknot », « 18h30 - 19h20 Gojira »
+    .replace(new RegExp(`\\s+[-–—@|]\\s*${TIME}.*$`, 'i'), '')                    // « Gojira — 21:00 », « Gojira - 21h30 »
+    .replace(new RegExp(`\\s+${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*$`, 'i'), '')    // « Gojira 21:00 »
+    .replace(/\s*\((?:[A-Z]{2,3}(?:\s*\/\s*[A-Z]{2,3})*)\)\s*$/, '')            // pays : « Gojira (FR) », « (US/CA) »
+    .trim();
+}
+
 // Accepte une liste copiée depuis un site de festival : un artiste par ligne, ou séparés par des virgules / puces.
 // Les noms de scènes, dates et horaires sont ignorés ; les groupes dont le nom commence par un chiffre
 // (« 36 Crazyfists », « 1349 », « 10 Years ») sont conservés tels quels.
@@ -439,19 +457,16 @@ export interface LineupEntry { name: string; day?: string }
 export function parseLineupEntries(text: string): LineupEntry[] {
   let parts = text.split(/\r?\n/);
   if (parts.length === 1) parts = text.split(/[,;•·|]/);
+  const lines = parts.map(cleanLineupLine);
+  // L'affiche est-elle découpée par scènes ? (au moins deux titres de scène différents)
+  // Sinon, « Warzone » seul sur sa ligne est le groupe, pas la scène.
+  const stageTitles = new Set(lines.map(norm).filter((k) => STAGE_LINE.test(k)));
+  const hasStageTitles = stageTitles.size >= 2;
   const seen = new Set<string>();
   const out: LineupEntry[] = [];
   let day: { label: string; weekday: boolean } | null = null;
   let bandsInDay = 0;
-  for (const raw of parts) {
-    const s = raw
-      .replace(/^\s*(?:[-–—*•·>]+\s*)+/, '')                                      // puces : « - », « • », « > »
-      .replace(/^\s*\d{1,3}\s*[.)]\s+(?=\S)/, '')                                  // numérotation : « 1. », « 12) »
-      .replace(new RegExp(`^\\s*${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*[-–—:|]?\\s+(?=\\D)`, 'i'), '') // « 21:00 Slipknot », « 18h30 - 19h20 Gojira »
-      .replace(new RegExp(`\\s+[-–—@|]\\s*${TIME}.*$`, 'i'), '')                    // « Gojira — 21:00 », « Gojira - 21h30 »
-      .replace(new RegExp(`\\s+${TIME}(?:\\s*[-–—à]\\s*${TIME})?\\s*$`, 'i'), '')    // « Gojira 21:00 »
-      .replace(/\s*\((?:[A-Z]{2,3}(?:\s*\/\s*[A-Z]{2,3})*)\)\s*$/, '')            // pays : « Gojira (FR) », « (US/CA) »
-      .trim();
+  for (const s of lines) {
     if (!s || s.length > 60 || s.length < 2) continue;
     const h = dayHeader(s);
     if (h) {
@@ -461,13 +476,14 @@ export function parseLineupEntries(text: string): LineupEntry[] {
       bandsInDay = 0;
       continue;
     }
-    if (isLineupNoise(s)) continue;
+    const bandNamedLikeStage = !hasStageTitles && BAND_OR_STAGE.test(norm(s));
+    if (!bandNamedLikeStage && isLineupNoise(s)) continue;
     const k = norm(s);
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(day ? { name: s, day: day.label } : { name: s });
     bandsInDay += 1;
-    if (out.length >= 300) break;
+    if (out.length >= LINEUP_MAX) break;
   }
   return out;
 }
