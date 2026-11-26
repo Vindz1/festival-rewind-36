@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLineupNoise, parseLineup } from '@/lib/engine';
+import { LINEUP_MAX, isLineupNoise, parseLineup } from '@/lib/engine';
 
 describe('parseLineup — affiche copiée-collée', () => {
   it('ignore les 10 scènes du Hellfest, les jours, les dates et les horaires', () => {
@@ -63,7 +63,17 @@ Alcest 20h45`;
       expect(isLineupNoise(band), band).toBe(false);
   });
 
-  it('plafonne à 300 artistes', () => {
-    expect(parseLineup(Array.from({ length: 350 }, (_, i) => `Band ${i + 1}`).join('\n'))).toHaveLength(300);
+  it('plafonne à LINEUP_MAX artistes (assez pour les ~306 groupes du Hellfest 2027)', () => {
+    expect(LINEUP_MAX).toBeGreaterThanOrEqual(306);
+    expect(parseLineup(Array.from({ length: 400 }, (_, i) => `Band ${i + 1}`).join('\n'))).toHaveLength(LINEUP_MAX);
+  });
+
+  it('garde le groupe Warzone quand l’affiche n’a pas de titres de scène', () => {
+    expect(parseLineup('VENDREDI 18 JUIN\nSick of It All\nAgnostic Front\nMadball\nWarzone\nMurphy\'s Law'))
+      .toEqual(['Sick of It All', 'Agnostic Front', 'Madball', 'Warzone', "Murphy's Law"]);
+  });
+
+  it('ignore Warzone quand l’affiche est découpée par scènes', () => {
+    expect(parseLineup('MAINSTAGE 1\nGojira\nWARZONE\nMadball\nVALLEY\nClutch')).toEqual(['Gojira', 'Madball', 'Clutch']);
   });
 });

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, User, Users } from 'lucide-react';
 import { Empty, PickRow, Spinner } from '@/components/vinyl/Ui';
 import { toast } from 'sonner';
-import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, Profile, StudioItem, artistItem, daysOf, fmtDate, parseLineupEntries, searchArtists } from '@/lib/engine';
+import { BULK_SECONDS_PER_ARTIST, BULK_THRESHOLD, LINEUP_MAX, Profile, StudioItem, artistItem, daysOf, fmtDate, parseLineupEntries, searchArtists } from '@/lib/engine';
 
 interface Props {
   onAdd: (items: StudioItem[]) => void;
@@ -121,7 +121,7 @@ export default function SourceFuture({ onAdd, onRemove, has, profile }: Props) {
           <div className="sl-card-dim p-4">
             <p className="sl-display text-xl">Un festival ? Colle l’affiche</p>
             <p className="mb-3 mt-1 text-xs text-[var(--sl-muted)]">
-              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les scènes, heures et doublons sont ignorés ; si l’affiche est découpée par jours, tu pourras exporter une playlist par jour. Jusqu’à 300 artistes.
+              Copie la liste des groupes depuis le site du festival (un nom par ligne, ou séparés par des virgules). Les scènes, heures et doublons sont ignorés ; si l’affiche est découpée par jours, tu pourras exporter une playlist par jour. Jusqu’à {LINEUP_MAX} artistes.
             </p>
             <textarea
               className="sl-input min-h-[120px] font-mono text-xs"

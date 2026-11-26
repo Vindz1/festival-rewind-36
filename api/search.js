@@ -16,8 +16,10 @@ const API = 'https://api.setlist.fm/rest/1.0';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const DAY = 24 * 3600 * 1000;
 const toArray = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+// Ligatures que la décomposition Unicode ne simplifie pas : « Ætheria » = « Aetheria » (même règle que src/lib/engine.ts)
+const LIGATURES = { æ: 'ae', œ: 'oe', ø: 'o', ß: 'ss', ð: 'd', þ: 'th', ł: 'l', đ: 'd' };
 const norm = (s = '') =>
-  String(s).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+  String(s).toLowerCase().replace(/[æœøßðþłđ]/g, (c) => LIGATURES[c]).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
 
 function parseDate(d) {
   const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(d || '');
@@ -54,7 +56,14 @@ function getDb() {
   return _db;
 }
 // Frais : 30 jours si on a trouvé des titres, 3 jours si le groupe est inconnu de Setlist.fm (on réessaiera plus tard)
-const isFresh = (row) => Date.now() - new Date(row.updated_at).getTime() < (row.based_on > 0 && toArray(row.songs).length ? 30 * DAY : 3 * DAY);
+// Les réponses vides enregistrées avant le correctif des homonymes / ligatures (H2O, Nebula, Ætheria…) sont recalculées.
+const EMPTY_VALID_SINCE = Date.parse('2026-11-27T00:00:00+01:00');
+const isFresh = (row) => {
+  const at = new Date(row.updated_at).getTime();
+  const full = row.based_on > 0 && toArray(row.songs).length;
+  if (!full && at < EMPTY_VALID_SINCE) return false;
+  return Date.now() - at < (full ? 30 * DAY : 3 * DAY);
+};
 const toAverage = (row) => ({ artist: row.artist_name, mbid: row.mbid, basedOn: row.based_on, songs: toArray(row.songs) });
 
 async function cacheRead(keys) {
@@ -103,12 +112,22 @@ async function sfm(path, retries = 3) {
   return null;
 }
 
+// Lignes de setlist qui ne sont pas des morceaux (« Intro », « Drum Solo », « Duo Orgue/Guitare »…) — même règle que le site
+const INSTRUMENT = String.raw`(?:drums?|batterie|guitars?|guitares?|bass|basse|keyboards?|keys|claviers?|piano|organ|orgue|synth|percussions?|violin|violon)`;
+const NOT_A_SONG = new RegExp(
+  String.raw`^(?:intro|outro|interlude|intermission|jam|solo|encore|soundcheck|improv(?:isation)?|` +
+    String.raw`${INSTRUMENT}(?:\s*(?:/|&|and|et|\+)\s*${INSTRUMENT})*\s+(?:solo|duo|jam|battle)|` +
+    String.raw`(?:solo|duo|jam)\s+(?:de\s+|of\s+)?${INSTRUMENT}(?:\s*(?:/|&|and|et|\+)\s*${INSTRUMENT})*)$`,
+  'i'
+);
+const isNotASong = (name) => NOT_A_SONG.test(String(name).trim().replace(/\s+/g, ' '));
+
 function songsOf(setlist, artistName) {
   const out = [];
   for (const set of toArray(setlist?.sets?.set)) {
     for (const so of toArray(set.song)) {
       const name = (so?.name || '').trim();
-      if (!name || so.tape || /unknown/i.test(name)) continue;
+      if (!name || so.tape || /unknown/i.test(name) || isNotASong(name)) continue;
       // Reprise : auteur d'origine, sauf mentions génériques « [traditional] », « [unknown] »… → l'interprète
       const cover = String(so.cover?.name || '').trim();
       out.push({ name, artist: cover && !/^\[.*\]$/.test(cover) ? cover : artistName });
@@ -123,11 +142,17 @@ const loose = (s) => norm(s).replace(/^the /, '').replace(/ and /g, ' ').replace
 // On n'accepte QUE le même nom : sinon « Temple » donnerait « Acid Mothers Temple », « Years » un autre groupe…
 // Un nom introuvable renvoie null : le site passe alors aux top titres iTunes (ou signale « aucun titre »).
 async function resolveArtist(name, mbid) {
-  if (mbid) return { mbid, name };
+  return (await artistCandidates(name, mbid))[0] || null;
+}
+
+// Tous les artistes portant exactement ce nom (homonymes compris : il existe plusieurs « H2O », « Nebula »…), le plus pertinent d'abord
+async function artistCandidates(name, mbid) {
+  if (mbid) return [{ mbid, name }];
   const d = await sfm(`/search/artists?artistName=${encodeURIComponent(name)}&sort=relevance&p=1`);
   const list = toArray(d?.artist);
-  const pick = list.find((a) => norm(a.name) === norm(name)) || list.find((a) => loose(a.name) === loose(name));
-  return pick ? { mbid: pick.mbid, name: pick.name } : null;
+  const exact = list.filter((a) => norm(a.name) === norm(name));
+  const near = list.filter((a) => !exact.includes(a) && loose(a.name) === loose(name));
+  return [...exact, ...near].map((a) => ({ mbid: a.mbid, name: a.name }));
 }
 
 // Setlist moyenne : titres présents dans ≥ 40 % des derniers concerts, classés par position moyenne
@@ -148,12 +173,26 @@ async function averageSetlist(name, mbidIn, year, fast = false) {
       artist = { mbid: best, name: firstBatch[0].artist.name };
     }
   }
-  if (!artist) artist = await resolveArtist(name, mbidIn);
-  if (!artist) return { artist: name, mbid: null, basedOn: 0, songs: [] };
-
   const target = fast ? 12 : 40;
-  const seenIds = new Set();
   let lists = [];
+  if (artist) lists = await collectSetlists(artist, firstBatch, target);
+  // Homonymes : si le premier « H2O » trouvé n'a aucun concert exploitable, on essaie les suivants (3 au plus)
+  if (!lists.length) {
+    const tried = new Set(artist ? [artist.mbid] : []);
+    const others = (await artistCandidates(name, mbidIn)).filter((a) => !tried.has(a.mbid)).slice(0, 3);
+    for (const cand of others) {
+      const got = await collectSetlists(cand, null, target);
+      if (got.length) { artist = cand; lists = got; break; }
+      if (!artist) artist = cand;
+    }
+  }
+  if (!artist) return { artist: name, mbid: null, basedOn: 0, songs: [] };
+  return summarize(artist, lists, year);
+}
+
+async function collectSetlists(artist, firstBatch, target) {
+  const seenIds = new Set();
+  const lists = [];
   for (let p = 1; p <= 3; p++) {
     let d = null;
     let batch;
@@ -172,6 +211,11 @@ async function averageSetlist(name, mbidIn, year, fast = false) {
     if (lists.length >= target || (d && p * (d.itemsPerPage || 20) >= (d.total || 0))) break;
     await sleep(250);
   }
+  return lists;
+}
+
+function summarize(artist, listsIn, year) {
+  let lists = listsIn;
   if (year) {
     const inYear = lists.filter((l) => l.year === String(year));
     if (inYear.length >= 4) lists = inYear;
@@ -242,7 +286,7 @@ export default async function handler(req, res) {
   try {
     // --- Mémoire partagée : tout ce qui est déjà connu pour une affiche, en UNE requête ---
     if (action === 'cache' && req.method === 'POST') {
-      const names = toArray(req.body?.artists).filter((n) => typeof n === 'string' && n.trim()).slice(0, 300);
+      const names = toArray(req.body?.artists).filter((n) => typeof n === 'string' && n.trim()).slice(0, 350); // = LINEUP_MAX côté site
       const rows = await cacheRead([...new Set(names.map((n) => `name:${norm(n)}`))]);
       const byKey = new Map(rows.filter(isFresh).map((r) => [r.artist_key, r]));
       const hits = {};
